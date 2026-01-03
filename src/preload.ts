@@ -1,19 +1,26 @@
 import { contextBridge, ipcRenderer, IpcRendererEvent } from 'electron';
 
-export interface ClaudeAPI {
-  askClaude: (question: string) => Promise<unknown>;
-  onStream: (callback: (chunk: string) => void) => void;
-  removeStreamListener: () => void;
+// Electron API 노출
+contextBridge.exposeInMainWorld('electron', {
+  invoke: (channel: string, ...args: any[]) => {
+    return ipcRenderer.invoke(channel, ...args);
+  },
+  on: (channel: string, callback: (...args: any[]) => void) => {
+    const subscription = (_event: IpcRendererEvent, ...args: any[]) => callback(...args);
+    ipcRenderer.on(channel, subscription);
+
+    return () => {
+      ipcRenderer.removeListener(channel, subscription);
+    };
+  },
+});
+
+// TypeScript 타입 정의
+declare global {
+  interface Window {
+    electron: {
+      invoke: (channel: string, ...args: any[]) => Promise<any>;
+      on: (channel: string, callback: (...args: any[]) => void) => () => void;
+    };
+  }
 }
-
-contextBridge.exposeInMainWorld('api', {
-  askClaude: (question: string): Promise<unknown> => ipcRenderer.invoke('ask-claude', question),
-
-  onStream: (callback: (chunk: string) => void): void => {
-    ipcRenderer.on('claude-stream', (_event: IpcRendererEvent, chunk: string) => callback(chunk));
-  },
-
-  removeStreamListener: (): void => {
-    ipcRenderer.removeAllListeners('claude-stream');
-  },
-} satisfies ClaudeAPI);

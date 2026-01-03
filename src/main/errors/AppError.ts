@@ -1,0 +1,38 @@
+export enum ErrorCode {
+  // 녹음 에러
+  MICROPHONE_PERMISSION_DENIED = 'MICROPHONE_PERMISSION_DENIED',
+  MICROPHONE_NOT_FOUND = 'MICROPHONE_NOT_FOUND',
+  RECORDING_FAILED = 'RECORDING_FAILED',
+
+  // STT 에러
+  STT_SERVICE_UNAVAILABLE = 'STT_SERVICE_UNAVAILABLE',
+  STT_PROCESSING_FAILED = 'STT_PROCESSING_FAILED',
+  AUDIO_FILE_INVALID = 'AUDIO_FILE_INVALID',
+
+  // AI 에러
+  CLAUDE_API_ERROR = 'CLAUDE_API_ERROR',
+  CLAUDE_PARSING_ERROR = 'CLAUDE_PARSING_ERROR',
+  CLAUDE_TIMEOUT = 'CLAUDE_TIMEOUT',
+
+  // DB 에러
+  DATABASE_CONNECTION_ERROR = 'DATABASE_CONNECTION_ERROR',
+  DATABASE_QUERY_ERROR = 'DATABASE_QUERY_ERROR',
+  TOPIC_NOT_FOUND = 'TOPIC_NOT_FOUND',
+
+  // 일반 에러
+  NETWORK_ERROR = 'NETWORK_ERROR',
+  UNKNOWN_ERROR = 'UNKNOWN_ERROR',
+}
+
+export class AppError extends Error {
+  constructor(
+    public code: ErrorCode,
+    message: string,
+    public userMessage: string,
+    public originalError?: Error
+  ) {
+    super(message);
+    this.name = 'AppError';
+    Error.captureStackTrace(this, this.constructor);
+  }
+}
