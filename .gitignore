@@ -3,6 +3,7 @@ node_modules/
 
 # Claude
 .claude/
+claude.config/
 
 # Build outputs
 dist/

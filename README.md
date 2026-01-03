@@ -74,7 +74,7 @@ npm install
 cd python-backend
 pip install -r requirements.txt
 
-# Run the app
+# Build TypeScript and run the app
 npm start
 ```
 
