@@ -1,0 +1,40 @@
+# Dependencies
+node_modules/
+
+# Claude
+.claude/
+
+# Build outputs
+dist/
+build/
+out/
+
+# Python
+python-backend/venv/
+python-backend/__pycache__/
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# Data (local DB & recordings)
+data/app.db
+data/recordings/
+
+# Environment
+.env
+.env.local
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+
+# Electron
+*.asar

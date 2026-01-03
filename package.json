@@ -1,0 +1,22 @@
+{
+  "name": "fluentloop",
+  "version": "0.1.0",
+  "description": "6-step English learning desktop app with AI-powered conversation and correction",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron ."
+  },
+  "keywords": [
+    "english-learning",
+    "electron",
+    "ai",
+    "tts",
+    "stt",
+    "language-learning"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^33.0.0"
+  }
+}
