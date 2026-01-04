@@ -1,19 +1,14 @@
-import { app, BrowserWindow, ipcMain, IpcMainInvokeEvent } from 'electron';
-import { spawn } from 'child_process';
+import { app, BrowserWindow } from 'electron';
 import path from 'path';
+import { registerTopicHandlers } from './main/ipc/topicHandlers';
+import { closeDatabase } from './main/database/db';
 
 let mainWindow: BrowserWindow | null = null;
 
-interface ClaudeResponse {
-  success: boolean;
-  output?: string;
-  error?: string;
-}
-
 function createWindow(): void {
   mainWindow = new BrowserWindow({
-    width: 900,
-    height: 700,
+    width: 1200,
+    height: 800,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -21,74 +16,38 @@ function createWindow(): void {
     },
   });
 
+  // 개발 모드에서는 개발자 도구 자동 열기
+  if (process.env.NODE_ENV === 'development') {
+    mainWindow.webContents.openDevTools();
+  }
+
   mainWindow.loadFile('index.html');
 }
 
-app.whenReady().then(createWindow);
+// 앱 준비 완료
+app.whenReady().then(() => {
+  // IPC 핸들러 등록
+  registerTopicHandlers();
 
+  createWindow();
+});
+
+// 모든 창이 닫힘
 app.on('window-all-closed', () => {
+  // macOS가 아니면 앱 종료
   if (process.platform !== 'darwin') {
     app.quit();
   }
 });
 
+// 앱 활성화 (macOS)
 app.on('activate', () => {
   if (BrowserWindow.getAllWindows().length === 0) {
     createWindow();
   }
 });
 
-ipcMain.handle(
-  'ask-claude',
-  async (_event: IpcMainInvokeEvent, question: string): Promise<ClaudeResponse> => {
-    return new Promise((resolve, reject) => {
-      let output = '';
-      let errorOutput = '';
-
-      console.log('Question:', question);
-
-      const escapedQuestion = question.replace(/"/g, '\\"');
-      const command = `claude -p "${escapedQuestion}" --model haiku`;
-
-      console.log('Command:', command);
-
-      const child = spawn(command, [], {
-        shell: true,
-        stdio: ['ignore', 'pipe', 'pipe'],
-        env: { ...process.env },
-      });
-
-      console.log('Process spawned, PID:', child.pid);
-
-      // stdin is 'ignore', so no need to close it
-
-      child.stdout.on('data', (data: Buffer) => {
-        const chunk = data.toString('utf8');
-        console.log('stdout:', chunk);
-        output += chunk;
-        mainWindow?.webContents.send('claude-stream', chunk);
-      });
-
-      child.stderr.on('data', (data: Buffer) => {
-        const chunk = data.toString('utf8');
-        console.error('stderr:', chunk);
-        errorOutput += chunk;
-        mainWindow?.webContents.send('claude-stream', `[stderr] ${chunk}`);
-      });
-
-      child.on('close', (code: number | null) => {
-        console.log('Process closed with code:', code);
-        if (code === 0) {
-          resolve({ success: true, output });
-        } else {
-          resolve({ success: false, error: errorOutput || `Exit code: ${code}` });
-        }
-      });
-
-      child.on('error', (err: Error) => {
-        console.error('Process error:', err);
-        reject({ success: false, error: err.message });
-      });
-    });
-  }
-);
+// 앱 종료 시 DB 연결 닫기
+app.on('quit', () => {
+  closeDatabase();
+});
