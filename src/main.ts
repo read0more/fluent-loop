@@ -1,6 +1,7 @@
 import { app, BrowserWindow } from 'electron';
 import path from 'path';
 import { registerTopicHandlers } from './main/ipc/topicHandlers';
+import { registerStep2Handlers } from './main/ipc/step2Handlers';
 import { closeDatabase } from './main/database/db';
 
 let mainWindow: BrowserWindow | null = null;
@@ -28,6 +29,7 @@ function createWindow(): void {
 app.whenReady().then(() => {
   // IPC 핸들러 등록
   registerTopicHandlers();
+  registerStep2Handlers();
 
   createWindow();
 });

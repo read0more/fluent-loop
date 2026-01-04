@@ -93,3 +93,70 @@ export interface SaveTopicArgs {
 export interface SaveTopicResult {
   topicId: number;
 }
+
+// ==================== Step 2: TTS & 녹음 관련 타입 ====================
+
+// TTS 요청
+export interface TTSRequest {
+  text: string;
+  voiceId?: string;
+}
+
+// TTS 결과
+export interface TTSResult {
+  success: boolean;
+  filePath?: string;
+  duration?: number;
+  voiceId?: string;
+  error?: string;
+}
+
+// 음성 정보
+export interface Voice {
+  id: string;
+  name: string;
+  language: string;
+  gender?: 'male' | 'female' | 'neutral';
+}
+
+// 앱 설정
+export interface AppSettings {
+  ttsVoiceId: string;
+  recordingSavePath: string;
+  [key: string]: string;
+}
+
+// 녹음 파일 정보
+export interface RecordingFile {
+  fileName: string;
+  filePath: string;
+  createdAt: Date;
+  size: number;
+}
+
+// 학습 세션
+export interface Session {
+  id: number;
+  topicId: number;
+  step: 1 | 2 | 3 | 4 | 5 | 6;
+  date: Date;
+  duration: number | null;
+  recordingPath: string | null;
+  createdAt: Date;
+}
+
+export interface CreateSessionDTO {
+  topicId: number;
+  step: 1 | 2 | 3 | 4 | 5 | 6;
+  date: Date;
+  duration?: number;
+  recordingPath?: string;
+}
+
+// 오디오 재생 상태
+export interface AudioPlaybackState {
+  isPlaying: boolean;
+  currentTime: number;
+  duration: number;
+  playbackRate: number;
+}

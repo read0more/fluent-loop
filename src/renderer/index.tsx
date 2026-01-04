@@ -1,14 +1,43 @@
 import React from 'react';
 import { createRoot } from 'react-dom/client';
+import { BrowserRouter, Routes, Route, Link } from 'react-router-dom';
 import { TopicCreationPage } from './pages/TopicCreationPage';
+import { ListeningPage } from './pages/ListeningPage';
+import { SettingsPage } from './pages/SettingsPage';
 import './styles.css';
+
+const App: React.FC = () => {
+  return (
+    <BrowserRouter>
+      {/* Navigation */}
+      <nav className="app-nav">
+        <Link to="/" className="nav-link">
+          단계 1: 토픽 선택
+        </Link>
+        <Link to="/listening" className="nav-link">
+          단계 2: 듣기 연습
+        </Link>
+        <Link to="/settings" className="nav-link">
+          설정
+        </Link>
+      </nav>
+
+      {/* Routes */}
+      <Routes>
+        <Route path="/" element={<TopicCreationPage />} />
+        <Route path="/listening" element={<ListeningPage />} />
+        <Route path="/settings" element={<SettingsPage />} />
+      </Routes>
+    </BrowserRouter>
+  );
+};
 
 const container = document.getElementById('root');
 if (container) {
   const root = createRoot(container);
   root.render(
     <React.StrictMode>
-      <TopicCreationPage />
+      <App />
     </React.StrictMode>
   );
 }
