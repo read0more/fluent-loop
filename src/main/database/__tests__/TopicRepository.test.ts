@@ -38,11 +38,11 @@ interface UpdateTopicDTO {
 
 // Mock the TopicRepository (will be implemented later)
 class TopicRepository {
-  async create(topic: CreateTopicDTO): Promise<number> {
+  async create(_topic: CreateTopicDTO): Promise<number> {
     throw new Error('Not implemented');
   }
 
-  async findById(id: number): Promise<Topic | null> {
+  async findById(_id: number): Promise<Topic | null> {
     throw new Error('Not implemented');
   }
 
@@ -50,11 +50,11 @@ class TopicRepository {
     throw new Error('Not implemented');
   }
 
-  async update(id: number, data: UpdateTopicDTO): Promise<void> {
+  async update(_id: number, _data: UpdateTopicDTO): Promise<void> {
     throw new Error('Not implemented');
   }
 
-  async setActive(id: number): Promise<void> {
+  async setActive(_id: number): Promise<void> {
     throw new Error('Not implemented');
   }
 

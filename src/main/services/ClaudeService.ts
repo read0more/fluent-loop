@@ -1,4 +1,7 @@
 import { spawn } from 'child_process';
+import * as fs from 'fs';
+import * as path from 'path';
+import * as os from 'os';
 import { TopicGenerationResult, CEFRLevel } from '../database/models';
 import { AppError, ErrorCode } from '../errors/AppError';
 
@@ -107,8 +110,14 @@ Please provide ONLY the JSON output, no additional explanation.`;
       let output = '';
       let errorOutput = '';
 
-      // Claude CLI 실행
-      const child = spawn('claude', ['-p', prompt, '--model', 'haiku'], {
+      // 임시 파일에 prompt 저장 (인코딩 문제 방지)
+      const tempFile = path.join(os.tmpdir(), `claude-prompt-${Date.now()}.txt`);
+      fs.writeFileSync(tempFile, prompt, 'utf8');
+
+      // PowerShell을 통해 파일 내용을 읽어서 Claude CLI에 전달
+      const psCommand = `$prompt = Get-Content -Path '${tempFile}' -Raw -Encoding UTF8; claude -p $prompt --model haiku`;
+
+      const child = spawn('powershell', ['-Command', psCommand], {
         stdio: ['ignore', 'pipe', 'pipe'],
       });
 
@@ -121,6 +130,13 @@ Please provide ONLY the JSON output, no additional explanation.`;
       });
 
       child.on('close', (code: number | null) => {
+        // 임시 파일 삭제
+        try {
+          fs.unlinkSync(tempFile);
+        } catch {
+          // ignore
+        }
+
         if (code === 0) {
           resolve(output);
         } else {

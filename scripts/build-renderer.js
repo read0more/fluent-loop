@@ -1,0 +1,41 @@
+const esbuild = require('esbuild');
+const path = require('path');
+
+const isWatch = process.argv.includes('--watch');
+
+const buildOptions = {
+  entryPoints: [path.join(__dirname, '../src/renderer/index.tsx')],
+  bundle: true,
+  outdir: path.join(__dirname, '../dist'),
+  entryNames: 'renderer',
+  platform: 'browser',
+  target: ['chrome110'],
+  loader: {
+    '.tsx': 'tsx',
+    '.ts': 'ts',
+    '.css': 'css',
+  },
+  define: {
+    'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV || 'development'),
+  },
+  sourcemap: true,
+  minify: process.env.NODE_ENV === 'production',
+};
+
+async function build() {
+  try {
+    if (isWatch) {
+      const ctx = await esbuild.context(buildOptions);
+      await ctx.watch();
+      console.log('Watching for renderer changes...');
+    } else {
+      await esbuild.build(buildOptions);
+      console.log('Renderer build completed!');
+    }
+  } catch (error) {
+    console.error('Build failed:', error);
+    process.exit(1);
+  }
+}
+
+build();

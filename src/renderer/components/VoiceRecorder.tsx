@@ -43,8 +43,8 @@ export const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
         setState('processing');
 
         try {
-          // IPC를 통해 Main Process에 전송
-          const response = await window.electron.invoke('stop-recording', Buffer.from(buffer));
+          // IPC를 통해 Main Process에 전송 (Uint8Array 사용 - 렌더러에서 Buffer 사용 불가)
+          const response = await window.electron.invoke('stop-recording', new Uint8Array(buffer));
 
           if (response.success && response.data) {
             setState('complete');
@@ -67,11 +67,8 @@ export const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
       setState('recording');
       setElapsedTime(0);
 
-      // IPC에 녹음 시작 알림
-      await window.electron.invoke('start-recording');
-
-      // 타이머 시작
-      timerRef.current = setInterval(() => {
+      // 타이머 시작 (IPC 호출 전에 시작해야 UI가 즉시 업데이트됨)
+      const intervalId = setInterval(() => {
         setElapsedTime((prev) => {
           const newTime = prev + 1;
 
@@ -84,6 +81,11 @@ export const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
           return newTime;
         });
       }, 1000);
+
+      timerRef.current = intervalId;
+
+      // IPC에 녹음 시작 알림
+      await window.electron.invoke('start-recording');
     } catch (error) {
       if (error instanceof Error) {
         if (error.name === 'NotAllowedError') {
@@ -116,17 +118,14 @@ export const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
     setElapsedTime(0);
   };
 
-  // 컴포넌트 언마운트 시 정리
+  // 컴포넌트 언마운트 시 정리 (빈 의존성 배열 - 언마운트 시에만 실행)
   useEffect(() => {
     return () => {
       if (timerRef.current) {
         clearInterval(timerRef.current);
       }
-      if (mediaRecorder && mediaRecorder.state !== 'inactive') {
-        mediaRecorder.stop();
-      }
     };
-  }, [mediaRecorder]);
+  }, []);
 
   // 시간 포맷팅 (mm:ss)
   const formatTime = (seconds: number): string => {
@@ -139,7 +138,6 @@ export const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
     <div className="voice-recorder">
       <div className="recorder-display">
         <div className="timer">{formatTime(elapsedTime)}</div>
-        <div className="max-time">/ {formatTime(maxDuration)}</div>
       </div>
 
       <div className="recorder-controls">

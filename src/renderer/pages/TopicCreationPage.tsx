@@ -47,7 +47,8 @@ export const TopicCreationPage: React.FC = () => {
         language: 'ko',
       });
 
-      if (response.success && response.data) {
+      // IPC 성공 + STT 성공 + 텍스트가 있는 경우만 진행
+      if (response.success && response.data && response.data.success && response.data.text) {
         setState((prev) => ({
           ...prev,
           koreanText: response.data.text,
@@ -57,10 +58,12 @@ export const TopicCreationPage: React.FC = () => {
         // 자동으로 AI 변환 시작
         await handleGenerateTopic(response.data.text);
       } else {
+        // STT 결과에서 에러 메시지 추출
+        const errorMessage = response.data?.error || response.error || '음성 인식에 실패했습니다.';
         setState((prev) => ({
           ...prev,
           isProcessing: false,
-          error: response.error || '음성 인식에 실패했습니다.',
+          error: errorMessage,
           step: 'recording',
         }));
       }
@@ -201,9 +204,14 @@ export const TopicCreationPage: React.FC = () => {
     });
   };
 
-  // 재생성
-  const handleRegenerate = () => {
-    handleGenerateTopic();
+  // 재생성 (수정된 한국어 텍스트로)
+  const handleRegenerate = (editedKoreanText: string) => {
+    // 수정된 텍스트로 상태 업데이트 후 재생성
+    setState((prev) => ({
+      ...prev,
+      koreanText: editedKoreanText,
+    }));
+    handleGenerateTopic(editedKoreanText);
   };
 
   return (

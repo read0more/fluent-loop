@@ -77,7 +77,7 @@ async function handleStartRecording(): Promise<IPCResponse<void>> {
 
 async function handleStopRecording(
   _event: IpcMainInvokeEvent,
-  audioBuffer: Buffer
+  audioData: Uint8Array | Buffer
 ): Promise<IPCResponse<RecordingResult>> {
   try {
     if (!isRecording) {
@@ -96,6 +96,9 @@ async function handleStopRecording(
         error: '최소 1초 이상 녹음해주세요.',
       };
     }
+
+    // Uint8Array를 Buffer로 변환 (렌더러에서 Uint8Array로 전송됨)
+    const audioBuffer = Buffer.isBuffer(audioData) ? audioData : Buffer.from(audioData);
 
     const filePath = await audioService.saveRecording(audioBuffer, 'recording.m4a');
 
