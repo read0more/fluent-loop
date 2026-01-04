@@ -244,7 +244,7 @@ export const TopicCreationPage: React.FC = () => {
           />
 
           <div className="instructions">
-            <p>관심 있는 토픽에 대해 한국어로 30초 동안 말씀해 주세요.</p>
+            <p>영어 1분 스피치를 하기 위한 관심있는 토픽에 대해 한국어로 40초 정도 말씀해 주세요. AI가 선택한 CEFR 레벨에 맞는 수준의 영어로 변환합니다.</p>
             <p>예: 최근 관심사, 취미, 배우고 싶은 것 등</p>
           </div>
         </div>
