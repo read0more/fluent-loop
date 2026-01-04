@@ -163,8 +163,8 @@ npm test
 
 ## 다음 단계
 
-- [ ] UI/UX 스타일링 (CSS)
-- [ ] index.html 파일 작성
+- [x] UI/UX 스타일링 (CSS) ✅ 완료 - `src/renderer/styles.css` 추가
+- [x] index.html 파일 작성 ✅ 완료 - React 앱 마운트 구조 완성
 - [ ] 통합 테스트 실행
 - [ ] Python 백엔드 자동 시작 스크립트
 - [ ] 에러 복구 로직 강화
