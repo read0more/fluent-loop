@@ -1,16 +1,18 @@
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, FileResponse
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
 import uvicorn
 import os
 import tempfile
 from datetime import datetime
 from stt import WhisperSTT
+from tts import EdgeTTSService
 
 # FastAPI 앱 생성
 app = FastAPI(
-    title="English Learning App - STT Service",
-    description="Whisper-based Speech-to-Text service for English learning app",
+    title="English Learning App - STT & TTS Service",
+    description="Whisper STT and Edge TTS service for English learning app",
     version="1.0.0"
 )
 
@@ -23,21 +25,33 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Whisper STT 인스턴스 (앱 시작 시 로드)
+# 서비스 인스턴스 (앱 시작 시 로드)
 whisper_stt: WhisperSTT | None = None
+edge_tts: EdgeTTSService | None = None
+
+# TTS 요청 모델
+class TTSRequest(BaseModel):
+    text: str
+    voice_id: str | None = None
 
 @app.on_event("startup")
 async def startup_event():
-    """앱 시작 시 Whisper 모델 로드"""
-    global whisper_stt
+    """앱 시작 시 Whisper 모델 및 TTS 서비스 로드"""
+    global whisper_stt, edge_tts
 
-    # 환경 변수에서 설정 읽기
+    # Whisper STT 초기화
     model_size = os.getenv("WHISPER_MODEL", "base")
     use_gpu = os.getenv("USE_GPU", "false").lower() == "true"
 
     print(f"Initializing Whisper STT (model: {model_size}, gpu: {use_gpu})...")
     whisper_stt = WhisperSTT(model_size=model_size, use_gpu=use_gpu)
     print("Whisper STT initialized successfully")
+
+    # Edge TTS 초기화
+    default_voice = os.getenv("TTS_VOICE", "en-US-AriaNeural")
+    print(f"Initializing Edge TTS (voice: {default_voice})...")
+    edge_tts = EdgeTTSService(voice_id=default_voice)
+    print("Edge TTS initialized successfully")
 
 @app.get("/health")
 async def health_check():
@@ -60,6 +74,7 @@ async def health_check():
         "whisper_model": model_info["model_size"],
         "device": model_info["device"],
         "gpu_available": model_info["gpu_available"],
+        "tts_loaded": edge_tts is not None,
         "timestamp": datetime.now().isoformat()
     }
 
@@ -159,6 +174,127 @@ async def transcribe_audio(
                 os.unlink(temp_path)
             except:
                 pass
+
+
+# ==================== TTS 엔드포인트 ====================
+
+@app.post("/tts/synthesize")
+async def synthesize_speech(request: TTSRequest):
+    """
+    텍스트를 음성으로 변환
+
+    Args:
+        request.text: 변환할 텍스트
+        request.voice_id: 사용할 음성 ID (선택사항)
+
+    Returns:
+        {
+            "success": bool,
+            "file_path": str,
+            "duration": float,
+            "voice_id": str
+        }
+    """
+    if edge_tts is None:
+        raise HTTPException(
+            status_code=503,
+            detail="TTS service not loaded"
+        )
+
+    # 텍스트 검증
+    if not request.text or not request.text.strip():
+        return JSONResponse(
+            status_code=400,
+            content={
+                "success": False,
+                "error": "Empty text provided",
+                "detail": "Text cannot be empty"
+            }
+        )
+
+    # 텍스트 길이 제한 (10,000자)
+    if len(request.text) > 10000:
+        return JSONResponse(
+            status_code=400,
+            content={
+                "success": False,
+                "error": "Text too long",
+                "detail": "Maximum text length is 10,000 characters"
+            }
+        )
+
+    try:
+        # 임시 파일 경로 생성
+        temp_dir = tempfile.gettempdir()
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        output_path = os.path.join(temp_dir, f"tts_{timestamp}.mp3")
+
+        # TTS 생성 (비동기)
+        result = await edge_tts.synthesize_async(
+            request.text,
+            output_path,
+            request.voice_id
+        )
+
+        if not result["success"]:
+            return JSONResponse(
+                status_code=400 if "voice" in result.get("error", "").lower() else 500,
+                content=result
+            )
+
+        return result
+
+    except Exception as e:
+        return JSONResponse(
+            status_code=500,
+            content={
+                "success": False,
+                "error": "TTS synthesis failed",
+                "detail": str(e)
+            }
+        )
+
+
+@app.get("/tts/voices")
+async def get_available_voices():
+    """
+    사용 가능한 음성 목록 조회
+
+    Returns:
+        {
+            "voices": [
+                {
+                    "id": str,
+                    "name": str,
+                    "language": str,
+                    "gender": str
+                }
+            ]
+        }
+    """
+    if edge_tts is None:
+        raise HTTPException(
+            status_code=503,
+            detail="TTS service not loaded"
+        )
+
+    try:
+        voices = await edge_tts.get_available_voices_async()
+
+        return {
+            "voices": voices
+        }
+
+    except Exception as e:
+        return JSONResponse(
+            status_code=500,
+            content={
+                "success": False,
+                "error": "Failed to get voices",
+                "detail": str(e)
+            }
+        )
+
 
 if __name__ == "__main__":
     # 서버 실행

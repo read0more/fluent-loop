@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { VoiceRecorder } from '../components/VoiceRecorder';
 import { CEFRSelector } from '../components/CEFRSelector';
 import { TopicPreview } from '../components/TopicPreview';
@@ -19,6 +20,7 @@ interface TopicCreationState {
 }
 
 export const TopicCreationPage: React.FC = () => {
+  const navigate = useNavigate();
   const [state, setState] = useState<TopicCreationState>({
     step: 'recording',
     recordingPath: null,
@@ -284,7 +286,7 @@ export const TopicCreationPage: React.FC = () => {
         <div className="completion-message">
           <h2>토픽 생성 완료!</h2>
           <p>1주일간 이 토픽으로 학습하게 됩니다.</p>
-          <button onClick={() => {/* 다음 단계로 이동 */}} className="btn-next">
+          <button onClick={() => navigate('/listening')} className="btn-next">
             다음 단계로
           </button>
           <button onClick={handleRetry} className="btn-new-topic">
