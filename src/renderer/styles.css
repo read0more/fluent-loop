@@ -1162,3 +1162,424 @@ body {
   opacity: 0.5;
   cursor: not-allowed;
 }
+
+/* Retelling Page */
+.retelling-page {
+  padding: 40px;
+  max-width: 900px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.retelling-page h1 {
+  color: #4da6ff;
+  margin-bottom: 30px;
+  font-size: 2em;
+  text-align: center;
+}
+
+.retelling-content {
+  display: flex;
+  flex-direction: column;
+  gap: 30px;
+}
+
+/* Progress Tracker */
+.progress-tracker {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  padding: 25px;
+}
+
+.progress-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.step-indicator {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 1.1em;
+  transition: all 0.3s;
+}
+
+.progress-step.pending .step-indicator {
+  background: rgba(255, 255, 255, 0.1);
+  color: #888;
+}
+
+.progress-step.active .step-indicator {
+  background: linear-gradient(135deg, #4da6ff 0%, #3d8cf0 100%);
+  color: white;
+  box-shadow: 0 4px 15px rgba(77, 166, 255, 0.4);
+}
+
+.progress-step.completed .step-indicator {
+  background: linear-gradient(135deg, #4caf50 0%, #43a047 100%);
+  color: white;
+}
+
+.check-icon {
+  color: #4caf50;
+}
+
+.step-number {
+  color: inherit;
+}
+
+.step-label {
+  font-size: 0.9em;
+  color: #a0a0a0;
+  text-align: center;
+}
+
+.progress-step.active .step-label {
+  color: #4da6ff;
+  font-weight: 600;
+}
+
+.progress-step.completed .step-label {
+  color: #4caf50;
+}
+
+.progress-line {
+  width: 60px;
+  height: 3px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 2px;
+  margin-bottom: 25px;
+}
+
+/* Keyword Display */
+.keyword-display {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  padding: 25px;
+}
+
+.keyword-display h3 {
+  color: #4da6ff;
+  margin-bottom: 20px;
+  font-size: 1.2em;
+  text-align: center;
+}
+
+.keyword-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: center;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.keyword-item {
+  background: rgba(77, 166, 255, 0.15);
+  color: #4da6ff;
+  padding: 10px 20px;
+  border-radius: 25px;
+  font-size: 1em;
+  font-weight: 500;
+  border: 1px solid rgba(77, 166, 255, 0.3);
+  transition: all 0.2s;
+}
+
+.keyword-item:hover {
+  background: rgba(77, 166, 255, 0.25);
+  transform: translateY(-2px);
+}
+
+.keyword-display.empty .empty-message {
+  color: #888;
+  text-align: center;
+}
+
+/* Timer Section */
+.timer-section {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  padding: 30px;
+  text-align: center;
+}
+
+.timer-component {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+}
+
+.timer-label {
+  color: #4da6ff;
+  font-size: 1.3em;
+  font-weight: 600;
+}
+
+.timer-display {
+  font-size: 5em;
+  font-weight: 200;
+  color: #fff;
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 0 30px rgba(77, 166, 255, 0.3);
+}
+
+.timer-display.completed {
+  color: #4caf50;
+  text-shadow: 0 0 30px rgba(76, 175, 80, 0.3);
+}
+
+.timer-controls {
+  display: flex;
+  gap: 15px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.btn-timer-start,
+.btn-timer-resume {
+  background: linear-gradient(135deg, #4da6ff 0%, #3d8cf0 100%);
+  color: white;
+  border: none;
+  padding: 15px 40px;
+  border-radius: 50px;
+  font-size: 1.1em;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 4px 15px rgba(77, 166, 255, 0.3);
+}
+
+.btn-timer-start:hover,
+.btn-timer-resume:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(77, 166, 255, 0.4);
+}
+
+.btn-timer-pause {
+  background: linear-gradient(135deg, #ffa726 0%, #ff9800 100%);
+  color: white;
+  border: none;
+  padding: 15px 30px;
+  border-radius: 50px;
+  font-size: 1.1em;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 4px 15px rgba(255, 152, 0, 0.3);
+}
+
+.btn-timer-pause:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(255, 152, 0, 0.4);
+}
+
+.btn-timer-stop {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  padding: 15px 30px;
+  border-radius: 50px;
+  font-size: 1.1em;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-timer-stop:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.btn-timer-reset {
+  background: linear-gradient(135deg, #4caf50 0%, #43a047 100%);
+  color: white;
+  border: none;
+  padding: 15px 40px;
+  border-radius: 50px;
+  font-size: 1.1em;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 4px 15px rgba(76, 175, 80, 0.3);
+}
+
+.btn-timer-reset:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(76, 175, 80, 0.4);
+}
+
+.btn-timer-complete {
+  background: linear-gradient(135deg, #4caf50 0%, #43a047 100%);
+  color: white;
+  border: none;
+  padding: 15px 30px;
+  border-radius: 50px;
+  font-size: 1.1em;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 4px 15px rgba(76, 175, 80, 0.3);
+}
+
+.btn-timer-complete:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(76, 175, 80, 0.4);
+}
+
+/* Retry Section */
+.retry-section {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  padding: 25px;
+  text-align: center;
+}
+
+.retry-section h3 {
+  color: #888;
+  font-size: 1em;
+  margin-bottom: 20px;
+  font-weight: 500;
+}
+
+.retry-buttons {
+  display: flex;
+  gap: 15px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.btn-retry-duration {
+  background: rgba(255, 255, 255, 0.1);
+  color: #e4e4e4;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  padding: 12px 25px;
+  border-radius: 8px;
+  font-size: 1em;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-retry-duration:hover {
+  background: rgba(77, 166, 255, 0.15);
+  border-color: #4da6ff;
+  color: #4da6ff;
+  transform: translateY(-2px);
+}
+
+/* Next Step Section */
+.next-step-section {
+  text-align: center;
+  padding: 10px 0;
+}
+
+/* Completion Actions */
+.completion-actions {
+  display: flex;
+  gap: 15px;
+  justify-content: center;
+  margin-top: 30px;
+}
+
+.btn-restart {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  padding: 15px 30px;
+  border-radius: 8px;
+  font-size: 1em;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-restart:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.btn-dismiss {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-dismiss:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+/* Timer Selection */
+.timer-selection {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  padding: 25px;
+  text-align: center;
+}
+
+.timer-selection h3 {
+  color: #4da6ff;
+  margin-bottom: 20px;
+  font-size: 1.2em;
+}
+
+.timer-buttons {
+  display: flex;
+  gap: 15px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.btn-timer-select {
+  background: rgba(255, 255, 255, 0.1);
+  color: #e4e4e4;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  padding: 15px 30px;
+  border-radius: 12px;
+  font-size: 1.1em;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  min-width: 100px;
+}
+
+.btn-timer-select:hover:not(:disabled) {
+  background: rgba(77, 166, 255, 0.15);
+  border-color: #4da6ff;
+  color: #4da6ff;
+  transform: translateY(-2px);
+}
+
+.btn-timer-select.active {
+  background: linear-gradient(135deg, #4da6ff 0%, #3d8cf0 100%);
+  border-color: #4da6ff;
+  color: white;
+  box-shadow: 0 4px 15px rgba(77, 166, 255, 0.3);
+}
+
+.btn-timer-select.completed {
+  background: rgba(76, 175, 80, 0.2);
+  border-color: #4caf50;
+  color: #4caf50;
+}
+
+.btn-timer-select.active.completed {
+  background: linear-gradient(135deg, #4caf50 0%, #43a047 100%);
+  color: white;
+}
+
+.btn-timer-select:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}

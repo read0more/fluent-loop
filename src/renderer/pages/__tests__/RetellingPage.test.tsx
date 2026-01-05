@@ -15,15 +15,15 @@ interface Topic {
   weekStartDate: Date | null;
 }
 
-type RetellingStep = 'loading' | 'no-topic' | 'ready' | 'timer-running' | 'recording' | 'complete';
+type RetellingStep = 'loading' | 'no-topic' | 'ready' | 'timer-running' | 'complete';
 
 interface RetellingPageState {
   step: RetellingStep;
   topic: Topic | null;
   currentTimerStep: 1 | 2 | 3;
   completedSteps: number[];
-  selectedRecording: string | null;
   error: string | null;
+  isTimerRunning: boolean;
 }
 
 interface IPCResponse<T> {
@@ -163,21 +163,18 @@ describe('RetellingPage Component', () => {
     });
   });
 
-  describe('TC-RETELLING-STATE-005: 녹음 완료 처리', () => {
-    it('should handle recording completion', () => {
-      // Arrange
-      const filePath = 'E:/recordings/step3/3min/test.m4a';
-
-      // Act & Assert
+  describe('TC-RETELLING-STATE-005: 타이머 선택 기능', () => {
+    it('should allow selecting different timer durations', () => {
+      // Arrange & Act & Assert
       expect(() => RetellingPage()).toThrow('RetellingPage not implemented');
     });
 
-    it('should save recording file path', () => {
+    it('should update currentTimerStep when timer is selected', () => {
       // Will be tested after implementation
       expect(true).toBe(true);
     });
 
-    it('should refresh RecordingList', () => {
+    it('should disable timer selection during active timer', () => {
       // Will be tested with React Testing Library
       expect(true).toBe(true);
     });
@@ -208,25 +205,6 @@ describe('RetellingPage Component', () => {
     });
   });
 
-  describe('TC-RETELLING-STATE-007: 녹음 선택 및 재생', () => {
-    it('should handle recording selection', () => {
-      // Arrange
-      const filePath = 'E:/recordings/test.m4a';
-
-      // Act & Assert
-      expect(() => RetellingPage()).toThrow('RetellingPage not implemented');
-    });
-
-    it('should update selectedRecording state', () => {
-      // Will be tested after implementation
-      expect(true).toBe(true);
-    });
-
-    it('should pass src to AudioPlayer', () => {
-      // Will be tested with React Testing Library
-      expect(true).toBe(true);
-    });
-  });
 });
 
 describe('RetellingPage Integration Tests', () => {
@@ -344,13 +322,14 @@ describe('RetellingPage State Management', () => {
       topic: null,
       currentTimerStep: 1,
       completedSteps: [],
-      selectedRecording: null,
       error: null,
+      isTimerRunning: false,
     };
 
     expect(initialState.step).toBe('loading');
     expect(initialState.currentTimerStep).toBe(1);
     expect(initialState.completedSteps).toEqual([]);
+    expect(initialState.isTimerRunning).toBe(false);
   });
 
   it('should prevent duplicate completedSteps entries', () => {
