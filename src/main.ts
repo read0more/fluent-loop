@@ -3,6 +3,7 @@ import path from 'path';
 import { registerTopicHandlers } from './main/ipc/topicHandlers';
 import { registerStep2Handlers } from './main/ipc/step2Handlers';
 import { registerStep3Handlers } from './main/ipc/step3Handlers';
+import { registerStep4Handlers } from './main/ipc/step4Handlers';
 import { closeDatabase } from './main/database/db';
 
 let mainWindow: BrowserWindow | null = null;
@@ -32,6 +33,7 @@ app.whenReady().then(() => {
   registerTopicHandlers();
   registerStep2Handlers();
   registerStep3Handlers();
+  registerStep4Handlers();
 
   createWindow();
 });

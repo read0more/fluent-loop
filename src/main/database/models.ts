@@ -160,3 +160,51 @@ export interface AudioPlaybackState {
   duration: number;
   playbackRate: number;
 }
+
+// ==================== Step 4: 첨삭 관련 타입 ====================
+
+// 첨삭 카테고리
+export type CorrectionCategory = 'grammar' | 'vocabulary' | 'naturalness';
+
+// 첨삭 결과 (AI 응답)
+export interface CorrectionResult {
+  original: string;
+  corrected: string;
+  explanation: string;
+  categories: CorrectionCategory[];
+}
+
+// 첨삭 엔티티 (DB 레코드)
+export interface Correction {
+  id: number;
+  sessionId: number | null;
+  topicId: number | null;
+  originalSentence: string;
+  correctedSentence: string;
+  explanation: string;
+  categories: CorrectionCategory[];
+  createdAt: Date;
+}
+
+// 첨삭 생성 DTO
+export interface CreateCorrectionDTO {
+  sessionId?: number;
+  topicId?: number;
+  originalSentence: string;
+  correctedSentence: string;
+  explanation: string;
+  categories: CorrectionCategory[];
+}
+
+// 첨삭 요청 (IPC)
+export interface CorrectSentenceRequest {
+  sentence: string;
+  cefrLevel: CEFRLevel;
+}
+
+// 첨삭 저장 요청 (IPC)
+export interface SaveCorrectionRequest {
+  corrections: CorrectionResult[];
+  sessionId: number;
+  topicId: number;
+}
