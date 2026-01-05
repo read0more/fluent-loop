@@ -1,10 +1,6 @@
 import Database from 'better-sqlite3';
 import { ClaudeService } from './ClaudeService';
-import {
-  CorrectionResult,
-  Correction,
-  CEFRLevel,
-} from '../database/models';
+import { CorrectionResult, Correction, CEFRLevel } from '../database/models';
 import { AppError, ErrorCode } from '../errors/AppError';
 
 export class CorrectionService {
@@ -16,8 +12,9 @@ export class CorrectionService {
     if (db) {
       this.db = db;
     } else {
-      // In production, get database from connection module
-      const { getDatabase } = require('../database/connection');
+      // In production, get database from db module (lazy load to avoid circular dependency in tests)
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const { getDatabase } = require('../database/db');
       this.db = getDatabase();
     }
     this.claudeService = new ClaudeService();
@@ -36,9 +33,27 @@ export class CorrectionService {
 
     // 약어 목록 (확장 가능)
     const abbreviations = [
-      'Mr', 'Mrs', 'Ms', 'Dr', 'Prof', 'Sr', 'Jr',
-      'U.S.A', 'U.S', 'U.K', 'Ph.D', 'M.D', 'B.A', 'M.A',
-      'etc', 'i.e', 'e.g', 'vs', 'Inc', 'Ltd', 'Co'
+      'Mr',
+      'Mrs',
+      'Ms',
+      'Dr',
+      'Prof',
+      'Sr',
+      'Jr',
+      'U.S.A',
+      'U.S',
+      'U.K',
+      'Ph.D',
+      'M.D',
+      'B.A',
+      'M.A',
+      'etc',
+      'i.e',
+      'e.g',
+      'vs',
+      'Inc',
+      'Ltd',
+      'Co',
     ];
 
     // 약어를 임시 플레이스홀더로 치환
@@ -48,10 +63,10 @@ export class CorrectionService {
     abbreviations.forEach((abbr, index) => {
       const patterns = [
         new RegExp(`\\b${abbr}\\.`, 'gi'),
-        new RegExp(`\\b${abbr.replace(/\./g, '\\.')}`, 'gi')
+        new RegExp(`\\b${abbr.replace(/\./g, '\\.')}`, 'gi'),
       ];
 
-      patterns.forEach(pattern => {
+      patterns.forEach((pattern) => {
         processed = processed.replace(pattern, (match) => {
           const placeholder = `__ABBR${index}__`;
           placeholders.set(placeholder, match);
@@ -75,9 +90,7 @@ export class CorrectionService {
       if (match) {
         const punctuation = match[0].trim();
         sentences.push(part.trim() + punctuation);
-        remaining = remaining.substring(
-          remaining.indexOf(part) + part.length + match[0].length
-        );
+        remaining = remaining.substring(remaining.indexOf(part) + part.length + match[0].length);
       } else if (index === parts.length - 1 && part.trim()) {
         // 마지막 부분 (구두점 없을 수 있음)
         sentences.push(part.trim());
@@ -85,13 +98,15 @@ export class CorrectionService {
     });
 
     // 플레이스홀더를 원래 약어로 복원
-    const restored = sentences.map(sentence => {
-      let result = sentence;
-      placeholders.forEach((original, placeholder) => {
-        result = result.replace(new RegExp(placeholder, 'g'), original);
-      });
-      return result.trim();
-    }).filter(s => s.length > 1); // 빈 문장 제거
+    const restored = sentences
+      .map((sentence) => {
+        let result = sentence;
+        placeholders.forEach((original, placeholder) => {
+          result = result.replace(new RegExp(placeholder, 'g'), original);
+        });
+        return result.trim();
+      })
+      .filter((s) => s.length > 1); // 빈 문장 제거
 
     return restored;
   }
@@ -201,11 +216,7 @@ export class CorrectionService {
   /**
    * TC-015: 첨삭 히스토리 조회
    */
-  getCorrectionsHistory(
-    topicId?: number,
-    sessionId?: number,
-    limit: number = 50
-  ): Correction[] {
+  getCorrectionsHistory(topicId?: number, sessionId?: number, limit: number = 50): Correction[] {
     let query = 'SELECT * FROM corrections WHERE 1=1';
     const params: any[] = [];
 
@@ -225,7 +236,7 @@ export class CorrectionService {
     const stmt = this.db.prepare(query);
     const rows = stmt.all(...params) as any[];
 
-    return rows.map(row => ({
+    return rows.map((row) => ({
       id: row.id,
       sessionId: row.session_id,
       topicId: row.topic_id,
@@ -241,6 +252,6 @@ export class CorrectionService {
    * Utility: 지연 함수
    */
   private delay(ms: number): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, ms));
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 }

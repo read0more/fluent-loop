@@ -8,9 +8,12 @@ import {
   SaveCorrectionRequest,
 } from '../database/models';
 
-const correctionService = new CorrectionService();
+// Service instance - initialized in registerStep4Handlers
+let correctionService: CorrectionService;
 
 export function registerStep4Handlers(): void {
+  // Service initialization (lazy loading to ensure DB is ready)
+  correctionService = new CorrectionService();
   /**
    * TC-012: 단일 문장 첨삭
    */
@@ -32,11 +35,7 @@ export function registerStep4Handlers(): void {
         }
 
         if (sentence.trim().length === 0) {
-          throw new AppError(
-            ErrorCode.VALIDATION_ERROR,
-            'Empty sentence',
-            '문장을 입력해주세요.'
-          );
+          throw new AppError(ErrorCode.VALIDATION_ERROR, 'Empty sentence', '문장을 입력해주세요.');
         }
 
         if (sentence.length > 500) {
@@ -102,7 +101,10 @@ export function registerStep4Handlers(): void {
         if (error instanceof AppError) {
           response.error = error.userMessage;
           response.errorCode = error.code;
-          console.error(`[SaveCorrectionError] ${error.code}: ${error.message}`, error.originalError);
+          console.error(
+            `[SaveCorrectionError] ${error.code}: ${error.message}`,
+            error.originalError
+          );
         } else {
           response.error = '저장 중 오류가 발생했습니다.';
           response.errorCode = ErrorCode.UNKNOWN_ERROR;
