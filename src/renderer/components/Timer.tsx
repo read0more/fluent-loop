@@ -183,7 +183,7 @@ export const Timer: React.FC<TimerProps> = ({
         intervalRef.current = null;
       }
     };
-  }, [state.state, state.startTime, state.remainingTime]);
+  }, [state.state, state.startTime]);
 
   // Auto start
   useEffect(() => {
