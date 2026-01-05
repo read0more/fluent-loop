@@ -1,81 +1,124 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { CorrectionService } from '../CorrectionService';
 import { CorrectionResult } from '../../database/models';
 import { AppError } from '../../errors/AppError';
-import Database from 'better-sqlite3';
-import * as path from 'path';
-import * as fs from 'fs';
-import * as os from 'os';
+
+// Mock better-sqlite3
+const createMockDb = () => {
+  const data: {
+    corrections: Array<{
+      id: number;
+      session_id: number;
+      topic_id: number;
+      original_sentence: string;
+      corrected_sentence: string;
+      explanation: string;
+      categories: string;
+      created_at: string;
+    }>;
+    sessions: Array<{ id: number; topic_id: number }>;
+    topics: Array<{ id: number }>;
+  } = {
+    corrections: [],
+    topics: [{ id: 1 }],
+    sessions: [{ id: 1, topic_id: 1 }],
+  };
+
+  let correctionId = 1;
+
+  const mockDb = {
+    prepare: vi.fn((sql: string) => {
+      if (sql.includes('INSERT INTO corrections')) {
+        return {
+          run: vi.fn(
+            (
+              sessionId: number,
+              topicId: number,
+              originalSentence: string,
+              correctedSentence: string,
+              explanation: string,
+              categories: string
+            ) => {
+              // Check foreign key constraints
+              if (!data.sessions.find((s) => s.id === sessionId)) {
+                throw new Error('FOREIGN KEY constraint failed');
+              }
+              if (!data.topics.find((t) => t.id === topicId)) {
+                throw new Error('FOREIGN KEY constraint failed');
+              }
+
+              data.corrections.push({
+                id: correctionId++,
+                session_id: sessionId,
+                topic_id: topicId,
+                original_sentence: originalSentence,
+                corrected_sentence: correctedSentence,
+                explanation,
+                categories,
+                created_at: new Date().toISOString(),
+              });
+              return { changes: 1 };
+            }
+          ),
+        };
+      }
+      if (sql.includes('SELECT * FROM corrections')) {
+        return {
+          all: vi.fn((...args: unknown[]) => {
+            let result = [...data.corrections];
+
+            // Parse WHERE conditions from SQL
+            if (sql.includes('topic_id = ?')) {
+              const topicId = args[0] as number;
+              result = result.filter((c) => c.topic_id === topicId);
+            }
+            if (sql.includes('session_id = ?')) {
+              const idx = sql.includes('topic_id = ?') ? 1 : 0;
+              const sessionId = args[idx] as number;
+              result = result.filter((c) => c.session_id === sessionId);
+            }
+
+            return result;
+          }),
+          get: vi.fn((...args: unknown[]) => {
+            const [filterValue] = args as [number];
+            return data.corrections.find(
+              (c) => c.session_id === filterValue || c.topic_id === filterValue
+            );
+          }),
+        };
+      }
+      return {
+        run: vi.fn(),
+        all: vi.fn(() => []),
+        get: vi.fn(),
+      };
+    }),
+    transaction: vi.fn(<T extends (...args: unknown[]) => unknown>(fn: T): T => {
+      // Return a function that wraps the original function
+      return ((...args: unknown[]) => {
+        return fn(...args);
+      }) as T;
+    }),
+    exec: vi.fn(),
+    close: vi.fn(),
+    getData: () => data,
+    clearCorrections: () => {
+      data.corrections = [];
+      correctionId = 1;
+    },
+  };
+
+  return mockDb;
+};
 
 describe('CorrectionService', () => {
   let service: CorrectionService;
-  let testDb: Database.Database;
-  let testDbPath: string;
+  let mockDb: ReturnType<typeof createMockDb>;
 
   beforeEach(() => {
-    // Create temporary test database
-    testDbPath = path.join(os.tmpdir(), `test-corrections-${Date.now()}.db`);
-    testDb = new Database(testDbPath);
-
-    // Create test tables
-    testDb.exec(`
-      CREATE TABLE IF NOT EXISTS topics (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        title TEXT NOT NULL,
-        korean_content TEXT NOT NULL,
-        english_content TEXT NOT NULL,
-        cefr_level TEXT NOT NULL,
-        keywords TEXT NOT NULL,
-        recording_path TEXT,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        status TEXT DEFAULT 'active',
-        week_start_date DATETIME
-      );
-
-      CREATE TABLE IF NOT EXISTS sessions (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        topic_id INTEGER NOT NULL,
-        step INTEGER NOT NULL,
-        date DATETIME NOT NULL,
-        duration INTEGER,
-        recording_path TEXT,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (topic_id) REFERENCES topics(id) ON DELETE CASCADE
-      );
-
-      CREATE TABLE IF NOT EXISTS corrections (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        session_id INTEGER,
-        topic_id INTEGER,
-        original_sentence TEXT NOT NULL,
-        corrected_sentence TEXT NOT NULL,
-        explanation TEXT NOT NULL,
-        categories TEXT NOT NULL,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE,
-        FOREIGN KEY (topic_id) REFERENCES topics(id) ON DELETE CASCADE
-      );
-    `);
-
-    // Insert test data
-    testDb.exec(`
-      INSERT INTO topics (id, title, korean_content, english_content, cefr_level, keywords)
-      VALUES (1, 'Test Topic', 'Korean content', 'English content', 'B1', '["test", "keywords"]');
-
-      INSERT INTO sessions (id, topic_id, step, date)
-      VALUES (1, 1, 4, datetime('now'));
-    `);
-
-    service = new CorrectionService(testDb);
-  });
-
-  afterEach(() => {
-    testDb.close();
-    // Clean up test database
-    if (fs.existsSync(testDbPath)) {
-      fs.unlinkSync(testDbPath);
-    }
+    mockDb = createMockDb();
+    service = new CorrectionService(mockDb as unknown as import('better-sqlite3').Database);
   });
 
   describe('TC-005: splitSentences() - Basic splitting', () => {
@@ -139,7 +182,7 @@ describe('CorrectionService', () => {
       const sentences = service.splitSentences(text);
 
       expect(sentences.length).toBeLessThanOrEqual(2);
-      expect(sentences.every(s => s.trim().length > 1)).toBe(true);
+      expect(sentences.every((s) => s.trim().length > 1)).toBe(true);
     });
   });
 
@@ -156,13 +199,13 @@ describe('CorrectionService', () => {
 
       await service.saveCorrections(corrections, 1, 1);
 
-      const saved = testDb.prepare('SELECT * FROM corrections WHERE session_id = 1').all();
-      expect(saved).toHaveLength(1);
-      expect(saved[0].original_sentence).toBe('I go yesterday.');
-      expect(saved[0].corrected_sentence).toBe('I went yesterday.');
-      expect(saved[0].explanation).toBe('시제 오류 수정');
+      const data = mockDb.getData();
+      expect(data.corrections).toHaveLength(1);
+      expect(data.corrections[0].original_sentence).toBe('I go yesterday.');
+      expect(data.corrections[0].corrected_sentence).toBe('I went yesterday.');
+      expect(data.corrections[0].explanation).toBe('시제 오류 수정');
 
-      const categories = JSON.parse(saved[0].categories);
+      const categories = JSON.parse(data.corrections[0].categories);
       expect(categories).toEqual(['grammar']);
     });
 
@@ -178,8 +221,8 @@ describe('CorrectionService', () => {
 
       await service.saveCorrections(corrections, 1, 1);
 
-      const saved = testDb.prepare('SELECT * FROM corrections WHERE session_id = 1').get() as any;
-      expect(saved.created_at).toBeTruthy();
+      const data = mockDb.getData();
+      expect(data.corrections[0].created_at).toBeTruthy();
     });
   });
 
@@ -208,15 +251,14 @@ describe('CorrectionService', () => {
 
       await service.saveCorrections(corrections, 1, 1);
 
-      const saved = testDb.prepare('SELECT * FROM corrections WHERE session_id = 1').all();
-      expect(saved).toHaveLength(3);
-      expect(saved.every((r: any) => r.session_id === 1)).toBe(true);
-      expect(saved.every((r: any) => r.topic_id === 1)).toBe(true);
+      const data = mockDb.getData();
+      expect(data.corrections).toHaveLength(3);
+      expect(data.corrections.every((r) => r.session_id === 1)).toBe(true);
+      expect(data.corrections.every((r) => r.topic_id === 1)).toBe(true);
     });
 
     it('should rollback if any correction fails (transaction atomicity)', async () => {
-      // This test would require intentionally causing a failure
-      // For now, we'll just verify normal operation
+      // This test verifies normal operation since mock doesn't fully support transaction rollback
       const corrections: CorrectionResult[] = [
         {
           original: 'Test 1.',
@@ -234,8 +276,8 @@ describe('CorrectionService', () => {
 
       await service.saveCorrections(corrections, 1, 1);
 
-      const saved = testDb.prepare('SELECT * FROM corrections WHERE session_id = 1').all();
-      expect(saved).toHaveLength(2);
+      const data = mockDb.getData();
+      expect(data.corrections).toHaveLength(2);
     });
   });
 
@@ -250,14 +292,12 @@ describe('CorrectionService', () => {
         },
       ];
 
-      await expect(
-        service.saveCorrections(corrections, 99999, 1)
-      ).rejects.toThrow(AppError);
+      await expect(service.saveCorrections(corrections, 99999, 1)).rejects.toThrow(AppError);
 
       // Check for either Korean or English error message
-      await expect(
-        service.saveCorrections(corrections, 99999, 1)
-      ).rejects.toThrow(/저장에 실패|Failed to save corrections/);
+      await expect(service.saveCorrections(corrections, 99999, 1)).rejects.toThrow(
+        /저장에 실패|Failed to save corrections/
+      );
     });
 
     it('should throw error for non-existent topic_id', async () => {
@@ -270,9 +310,7 @@ describe('CorrectionService', () => {
         },
       ];
 
-      await expect(
-        service.saveCorrections(corrections, 1, 99999)
-      ).rejects.toThrow(AppError);
+      await expect(service.saveCorrections(corrections, 1, 99999)).rejects.toThrow(AppError);
     });
   });
 
@@ -302,7 +340,7 @@ describe('CorrectionService', () => {
 
       expect(history).toBeInstanceOf(Array);
       expect(history.length).toBeGreaterThan(0);
-      expect(history.every(c => c.topicId === 1)).toBe(true);
+      expect(history.every((c) => c.topicId === 1)).toBe(true);
     });
 
     it('should retrieve corrections by session_id', () => {
@@ -310,7 +348,7 @@ describe('CorrectionService', () => {
 
       expect(history).toBeInstanceOf(Array);
       expect(history.length).toBeGreaterThan(0);
-      expect(history.every(c => c.sessionId === 1)).toBe(true);
+      expect(history.every((c) => c.sessionId === 1)).toBe(true);
     });
 
     it('should parse categories JSON correctly', () => {
@@ -335,8 +373,8 @@ describe('CorrectionService', () => {
       // Should not throw error, just do nothing
       await service.saveCorrections(corrections, 1, 1);
 
-      const saved = testDb.prepare('SELECT * FROM corrections WHERE session_id = 1').all();
-      expect(saved).toHaveLength(0);
+      const data = mockDb.getData();
+      expect(data.corrections).toHaveLength(0);
     });
 
     it('should handle very long explanation text', async () => {
@@ -352,8 +390,8 @@ describe('CorrectionService', () => {
 
       await service.saveCorrections(corrections, 1, 1);
 
-      const saved = testDb.prepare('SELECT * FROM corrections WHERE session_id = 1').get() as any;
-      expect(saved.explanation).toBe(longExplanation);
+      const data = mockDb.getData();
+      expect(data.corrections[0].explanation).toBe(longExplanation);
     });
   });
 });

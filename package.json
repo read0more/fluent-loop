@@ -9,6 +9,7 @@
     "dev:electron": "npm run build && electron .",
     "dev:python": "python python-backend/server.py",
     "build": "tsc && node scripts/build-renderer.js",
+    "postinstall": "electron-rebuild",
     "build:main": "tsc",
     "build:renderer": "node scripts/build-renderer.js",
     "lint": "eslint src/**/*.ts",
