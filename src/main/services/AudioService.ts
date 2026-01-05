@@ -15,6 +15,8 @@ export interface IAudioService {
   getRecordingPath(filename: string, step?: 1 | 2): string;
   saveRecording(buffer: Buffer, filename: string, step?: 1 | 2): Promise<string>;
   saveRecordingStep2(buffer: Buffer, filename: string, customPath?: string): Promise<string>;
+  saveRecordingStep3(buffer: Buffer, duration: 3 | 2 | 1, customPath?: string): Promise<string>;
+  listRecordingsStep3(duration?: 3 | 2 | 1): Promise<RecordingFile[]>;
   deleteRecording(filePath: string): Promise<void>;
   listRecordings(step: 1 | 2, customPath?: string): Promise<RecordingFile[]>;
   validateSavePath(path: string): Promise<boolean>;
@@ -24,11 +26,13 @@ export interface IAudioService {
 export class AudioService implements IAudioService {
   private readonly step1Dir: string;
   private readonly step2Dir: string;
+  private readonly step3Dir: string;
 
   constructor() {
     const userDataPath = app.getPath('userData');
     this.step1Dir = path.join(userDataPath, 'data', 'recordings', 'step1');
     this.step2Dir = path.join(userDataPath, 'data', 'recordings', 'step2');
+    this.step3Dir = path.join(userDataPath, 'data', 'recordings', 'step3');
 
     // 디렉토리 생성
     if (!fs.existsSync(this.step1Dir)) {
@@ -36,6 +40,9 @@ export class AudioService implements IAudioService {
     }
     if (!fs.existsSync(this.step2Dir)) {
       fs.mkdirSync(this.step2Dir, { recursive: true });
+    }
+    if (!fs.existsSync(this.step3Dir)) {
+      fs.mkdirSync(this.step3Dir, { recursive: true });
     }
   }
 
@@ -218,10 +225,132 @@ export class AudioService implements IAudioService {
     }
   }
 
+  async saveRecordingStep3(
+    buffer: Buffer,
+    duration: 3 | 2 | 1,
+    customPath?: string
+  ): Promise<string> {
+    try {
+      const subFolder = `${duration}min`;
+      const timestamp = new Date()
+        .toISOString()
+        .replace(/:/g, '-')
+        .replace(/\..+/, '')
+        .replace('T', '_');
+
+      const filename = `${timestamp}_${duration}min.m4a`;
+
+      // 저장 경로 결정
+      const basePath = customPath || this.step3Dir;
+      const fullPath = path.join(basePath, subFolder);
+
+      // 디렉토리 생성
+      await fs.promises.mkdir(fullPath, { recursive: true });
+
+      const filePath = path.join(fullPath, filename);
+
+      // 파일 저장
+      await fs.promises.writeFile(filePath, buffer);
+
+      // 파일 크기 검증
+      const stats = await fs.promises.stat(filePath);
+      if (stats.size === 0) {
+        throw new Error('File size is 0');
+      }
+
+      return filePath;
+    } catch (error: unknown) {
+      const nodeError = error as NodeJS.ErrnoException;
+
+      if (nodeError.code === 'EACCES') {
+        throw new AppError(
+          ErrorCode.RECORDING_PATH_INVALID,
+          'Permission denied',
+          '저장 경로에 접근할 수 없습니다. 권한을 확인하거나 다른 경로를 선택해주세요.'
+        );
+      }
+
+      if (nodeError.code === 'ENOSPC') {
+        throw new AppError(
+          ErrorCode.RECORDING_SAVE_FAILED,
+          'No disk space',
+          '디스크 공간이 부족합니다.'
+        );
+      }
+
+      throw new AppError(
+        ErrorCode.RECORDING_SAVE_FAILED,
+        'Failed to save step3 recording',
+        '녹음 파일 저장에 실패했습니다.',
+        error instanceof Error ? error : undefined
+      );
+    }
+  }
+
+  async listRecordingsStep3(duration?: 3 | 2 | 1): Promise<RecordingFile[]> {
+    try {
+      const recordings: RecordingFile[] = [];
+
+      if (duration) {
+        // 특정 단계만 조회
+        const subFolder = `${duration}min`;
+        const targetDir = path.join(this.step3Dir, subFolder);
+
+        if (fs.existsSync(targetDir)) {
+          const files = await fs.promises.readdir(targetDir);
+          for (const file of files) {
+            const filePath = path.join(targetDir, file);
+            const stats = await fs.promises.stat(filePath);
+
+            if (stats.isFile()) {
+              recordings.push({
+                fileName: file,
+                filePath,
+                createdAt: stats.birthtime,
+                size: stats.size,
+              });
+            }
+          }
+        }
+      } else {
+        // 모든 단계 조회
+        for (const dur of [3, 2, 1] as const) {
+          const subFolder = `${dur}min`;
+          const targetDir = path.join(this.step3Dir, subFolder);
+
+          if (fs.existsSync(targetDir)) {
+            const files = await fs.promises.readdir(targetDir);
+            for (const file of files) {
+              const filePath = path.join(targetDir, file);
+              const stats = await fs.promises.stat(filePath);
+
+              if (stats.isFile()) {
+                recordings.push({
+                  fileName: file,
+                  filePath,
+                  createdAt: stats.birthtime,
+                  size: stats.size,
+                });
+              }
+            }
+          }
+        }
+      }
+
+      // 최신순 정렬
+      recordings.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+
+      return recordings;
+    } catch (error) {
+      console.error('Failed to list step3 recordings:', error);
+      return [];
+    }
+  }
+
   async cleanupTempFiles(olderThanDays: number): Promise<void> {
     try {
-      // step1과 step2 모두 정리
-      const dirs = [this.step1Dir, this.step2Dir];
+      // step1, step2, step3 모두 정리
+      const dirs = [this.step1Dir, this.step2Dir, this.step3Dir];
       const now = Date.now();
       const maxAge = olderThanDays * 24 * 60 * 60 * 1000;
 
