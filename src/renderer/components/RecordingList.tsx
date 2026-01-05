@@ -30,10 +30,12 @@ export const RecordingList: React.FC<RecordingListProps> = ({
       const response = await window.electron.invoke(channel, customPath);
 
       if (response.success && response.data) {
-        // 날짜 역순 정렬 (최신순)
-        const sortedRecordings = (response.data as RecordingFile[]).sort((a, b) => {
-          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-        });
+        // m4a 파일만 필터링 후 날짜 역순 정렬 (최신순)
+        const sortedRecordings = (response.data as RecordingFile[])
+          .filter((rec) => rec.fileName.toLowerCase().endsWith('.m4a'))
+          .sort((a, b) => {
+            return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+          });
         setRecordings(sortedRecordings);
         setLoadingState('loaded');
       } else {

@@ -68,7 +68,7 @@ describe('TTSService', () => {
 
       // Assert
       expect(result.success).toBe(true);
-      expect(result.file_path).toBeDefined();
+      expect(result.filePath).toBeDefined();
       expect(result.duration).toBeGreaterThan(0);
     });
 

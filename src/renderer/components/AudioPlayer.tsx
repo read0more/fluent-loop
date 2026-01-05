@@ -4,6 +4,7 @@ export interface AudioPlayerProps {
   src: string;
   autoPlay?: boolean;
   showControls?: boolean;
+  showSpeedControl?: boolean;
   playbackRate?: number;
   onEnded?: () => void;
   onError?: (error: string) => void;
@@ -13,6 +14,7 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
   src,
   autoPlay = false,
   showControls = true,
+  showSpeedControl = true,
   playbackRate = 1.0,
   onEnded,
   onError,
@@ -180,20 +182,22 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
           </div>
 
           {/* Speed Control */}
-          <div className="speed-control">
-            <label>속도:</label>
-            <select
-              value={speed}
-              onChange={(e) => changeSpeed(parseFloat(e.target.value))}
-              className="speed-selector"
-            >
-              <option value="0.5">0.5x</option>
-              <option value="0.75">0.75x</option>
-              <option value="1.0">1.0x</option>
-              <option value="1.25">1.25x</option>
-              <option value="1.5">1.5x</option>
-            </select>
-          </div>
+          {showSpeedControl && (
+            <div className="speed-control">
+              <label>속도:</label>
+              <select
+                value={speed}
+                onChange={(e) => changeSpeed(parseFloat(e.target.value))}
+                className="speed-selector"
+              >
+                <option value="0.5">0.5x</option>
+                <option value="0.75">0.75x</option>
+                <option value="1.0">1.0x</option>
+                <option value="1.25">1.25x</option>
+                <option value="1.5">1.5x</option>
+              </select>
+            </div>
+          )}
         </div>
       )}
     </div>

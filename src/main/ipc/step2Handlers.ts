@@ -11,6 +11,10 @@ let ttsService: TTSService;
 let audioService: AudioService;
 let settingsService: SettingsService;
 
+// Step2 녹음 상태 관리
+let isRecordingStep2 = false;
+let recordingStartTimeStep2: number | null = null;
+
 export function registerStep2Handlers(): void {
   // 서비스 초기화
   ttsService = new TTSService();
@@ -22,6 +26,8 @@ export function registerStep2Handlers(): void {
   ipcMain.handle('get-tts-voices', handleGetTTSVoices);
 
   // 녹음 관련 핸들러
+  ipcMain.handle('start-recording-step2', handleStartRecordingStep2);
+  ipcMain.handle('stop-recording-step2', handleStopRecordingStep2);
   ipcMain.handle('save-recording-step2', handleSaveRecordingStep2);
   ipcMain.handle('list-recordings-step2', handleListRecordingsStep2);
   ipcMain.handle('delete-recording', handleDeleteRecording);
@@ -95,6 +101,93 @@ async function handleGetTTSVoices(): Promise<IPCResponse<Voice[]>> {
 }
 
 // ==================== 녹음 핸들러 ====================
+
+async function handleStartRecordingStep2(): Promise<IPCResponse<void>> {
+  try {
+    if (isRecordingStep2) {
+      return {
+        success: false,
+        error: '이미 녹음 중입니다.',
+      };
+    }
+
+    isRecordingStep2 = true;
+    recordingStartTimeStep2 = Date.now();
+
+    return { success: true };
+  } catch {
+    isRecordingStep2 = false;
+    recordingStartTimeStep2 = null;
+
+    return {
+      success: false,
+      error: '녹음 시작에 실패했습니다.',
+    };
+  }
+}
+
+async function handleStopRecordingStep2(
+  _event: IpcMainInvokeEvent,
+  audioData: Uint8Array | Buffer
+): Promise<IPCResponse<{ filePath: string; duration: number }>> {
+  try {
+    if (!isRecordingStep2) {
+      return {
+        success: false,
+        error: '녹음 중이 아닙니다.',
+      };
+    }
+
+    const duration = recordingStartTimeStep2 ? (Date.now() - recordingStartTimeStep2) / 1000 : 0;
+
+    // 최소 1초 이상 녹음 확인
+    if (duration < 1) {
+      isRecordingStep2 = false;
+      recordingStartTimeStep2 = null;
+      return {
+        success: false,
+        error: '최소 1초 이상 녹음해주세요.',
+      };
+    }
+
+    // 사용자 지정 경로 가져오기
+    const settings = await settingsService.getAllSettings();
+    const customPath = settings.recordingSavePath;
+
+    // Uint8Array를 Buffer로 변환
+    const audioBuffer = Buffer.isBuffer(audioData) ? audioData : Buffer.from(audioData);
+
+    const filePath = await audioService.saveRecordingStep2(
+      audioBuffer,
+      'recording.m4a',
+      customPath || undefined
+    );
+
+    isRecordingStep2 = false;
+    recordingStartTimeStep2 = null;
+
+    return {
+      success: true,
+      data: { filePath, duration },
+    };
+  } catch (error) {
+    isRecordingStep2 = false;
+    recordingStartTimeStep2 = null;
+
+    if (error instanceof AppError) {
+      return {
+        success: false,
+        error: error.userMessage,
+        errorCode: error.code,
+      };
+    }
+
+    return {
+      success: false,
+      error: '녹음 저장에 실패했습니다.',
+    };
+  }
+}
 
 async function handleSaveRecordingStep2(
   _event: IpcMainInvokeEvent,

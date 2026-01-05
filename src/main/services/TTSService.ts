@@ -2,6 +2,14 @@ import axios from 'axios';
 import { TTSResult, Voice } from '../database/models';
 import { AppError, ErrorCode } from '../errors/AppError';
 
+interface AxiosLikeError {
+  code?: string;
+  response?: {
+    status?: number;
+    data?: unknown;
+  };
+}
+
 export interface ITTSService {
   checkHealth(): Promise<boolean>;
   synthesizeSpeech(text: string, voiceId?: string): Promise<TTSResult>;
@@ -44,7 +52,15 @@ export class TTSService implements ITTSService {
         );
       }
 
-      const response = await axios.post<TTSResult>(
+      interface PythonTTSResponse {
+        success: boolean;
+        file_path?: string;
+        duration?: number;
+        voice_id?: string;
+        error?: string;
+      }
+
+      const response = await axios.post<PythonTTSResponse>(
         `${this.baseUrl}/tts/synthesize`,
         {
           text,
@@ -74,7 +90,14 @@ export class TTSService implements ITTSService {
         );
       }
 
-      return response.data;
+      // snake_case → camelCase 변환
+      return {
+        success: response.data.success,
+        filePath: response.data.file_path,
+        duration: response.data.duration,
+        voiceId: response.data.voice_id,
+        error: response.data.error,
+      };
     } catch (error: unknown) {
       // AppError는 그대로 throw
       if (error instanceof AppError) {
@@ -82,7 +105,9 @@ export class TTSService implements ITTSService {
       }
 
       // Axios 에러 처리
-      if (error.code === 'ECONNREFUSED') {
+      const axiosError = error as AxiosLikeError;
+
+      if (axiosError.code === 'ECONNREFUSED') {
         throw new AppError(
           ErrorCode.TTS_SERVICE_UNAVAILABLE,
           'Python backend is not running',
@@ -90,8 +115,9 @@ export class TTSService implements ITTSService {
         );
       }
 
-      if (error.response?.status === 400) {
-        const errorMsg = error.response?.data?.error || 'Invalid request';
+      if (axiosError.response?.status === 400) {
+        const responseData = axiosError.response?.data as { error?: string } | undefined;
+        const errorMsg = responseData?.error || 'Invalid request';
 
         if (errorMsg.toLowerCase().includes('voice')) {
           throw new AppError(
@@ -104,7 +130,7 @@ export class TTSService implements ITTSService {
         throw new AppError(ErrorCode.TTS_INVALID_REQUEST, errorMsg, '잘못된 요청입니다.');
       }
 
-      if (error.response?.status === 503) {
+      if (axiosError.response?.status === 503) {
         throw new AppError(
           ErrorCode.TTS_SERVICE_UNAVAILABLE,
           'TTS service not loaded',
@@ -112,7 +138,7 @@ export class TTSService implements ITTSService {
         );
       }
 
-      if (error.code === 'ETIMEDOUT' || error.code === 'ECONNABORTED') {
+      if (axiosError.code === 'ETIMEDOUT' || axiosError.code === 'ECONNABORTED') {
         throw new AppError(
           ErrorCode.TTS_SYNTHESIS_FAILED,
           'TTS request timeout',
@@ -125,7 +151,7 @@ export class TTSService implements ITTSService {
         ErrorCode.TTS_SYNTHESIS_FAILED,
         'TTS synthesis failed',
         '음성 생성에 실패했습니다. 다시 시도해주세요.',
-        error as Error
+        error instanceof Error ? error : undefined
       );
     }
   }
@@ -138,7 +164,9 @@ export class TTSService implements ITTSService {
 
       return response.data.voices || [];
     } catch (error: unknown) {
-      if (error.code === 'ECONNREFUSED') {
+      const axiosError = error as AxiosLikeError;
+
+      if (axiosError.code === 'ECONNREFUSED') {
         throw new AppError(
           ErrorCode.TTS_SERVICE_UNAVAILABLE,
           'Python backend is not running',
@@ -150,7 +178,7 @@ export class TTSService implements ITTSService {
         ErrorCode.TTS_SERVICE_UNAVAILABLE,
         'Failed to get voices',
         '음성 목록을 가져오는데 실패했습니다.',
-        error as Error
+        error instanceof Error ? error : undefined
       );
     }
   }

@@ -3,6 +3,13 @@ import path from 'path';
 import { app } from 'electron';
 import { AppError, ErrorCode } from '../errors/AppError';
 import { RecordingFile } from '../database/models';
+import ffmpeg from 'fluent-ffmpeg';
+import ffmpegStatic from 'ffmpeg-static';
+
+// ffmpeg 경로 설정
+if (ffmpegStatic) {
+  ffmpeg.setFfmpegPath(ffmpegStatic);
+}
 
 export interface IAudioService {
   getRecordingPath(filename: string, step?: 1 | 2): string;
@@ -94,22 +101,31 @@ export class AudioService implements IAudioService {
         .replace(/\..+/, '')
         .replace('T', '_');
 
-      const ext = path.extname(filename) || '.m4a';
-      const finalFilename = `${timestamp}${ext}`;
-      const filePath = path.join(targetDir, finalFilename);
+      const tempFilename = `${timestamp}_temp.webm`;
+      const finalFilename = `${timestamp}.m4a`;
+      const tempFilePath = path.join(targetDir, tempFilename);
+      const finalFilePath = path.join(targetDir, finalFilename);
 
-      // 파일 저장
-      await fs.promises.writeFile(filePath, buffer);
+      // 임시 파일 저장
+      await fs.promises.writeFile(tempFilePath, buffer);
 
       // 파일 생성 확인
-      const stats = await fs.promises.stat(filePath);
+      const stats = await fs.promises.stat(tempFilePath);
       if (stats.size === 0) {
         throw new Error('File size is 0');
       }
 
-      return filePath;
+      // ffmpeg로 변환 (duration 메타데이터 수정)
+      await this.convertWithFfmpeg(tempFilePath, finalFilePath);
+
+      // 임시 파일 삭제
+      await fs.promises.unlink(tempFilePath).catch(() => {});
+
+      return finalFilePath;
     } catch (error: unknown) {
-      if (error.code === 'EACCES') {
+      const nodeError = error as NodeJS.ErrnoException;
+
+      if (nodeError.code === 'EACCES') {
         throw new AppError(
           ErrorCode.RECORDING_PATH_INVALID,
           'Permission denied',
@@ -117,7 +133,7 @@ export class AudioService implements IAudioService {
         );
       }
 
-      if (error.code === 'ENOSPC') {
+      if (nodeError.code === 'ENOSPC') {
         throw new AppError(
           ErrorCode.RECORDING_SAVE_FAILED,
           'No disk space',
@@ -129,7 +145,7 @@ export class AudioService implements IAudioService {
         ErrorCode.RECORDING_SAVE_FAILED,
         'Failed to save recording',
         '녹음 파일 저장에 실패했습니다.',
-        error as Error
+        error instanceof Error ? error : undefined
       );
     }
   }
@@ -227,5 +243,31 @@ export class AudioService implements IAudioService {
       console.error('Failed to cleanup temp files:', error);
       // 정리 실패는 치명적이지 않으므로 에러를 던지지 않음
     }
+  }
+
+  private convertWithFfmpeg(inputPath: string, outputPath: string): Promise<void> {
+    return new Promise((resolve, reject) => {
+      ffmpeg(inputPath)
+        .audioCodec('aac')
+        .audioBitrate('128k')
+        .audioChannels(1)
+        .audioFrequency(44100)
+        .output(outputPath)
+        .on('end', () => {
+          resolve();
+        })
+        .on('error', (err: Error) => {
+          console.error('FFmpeg error:', err);
+          reject(
+            new AppError(
+              ErrorCode.RECORDING_SAVE_FAILED,
+              'FFmpeg conversion failed',
+              '녹음 파일 변환에 실패했습니다.',
+              err
+            )
+          );
+        })
+        .run();
+    });
   }
 }

@@ -1,6 +1,6 @@
 import React from 'react';
 import { createRoot } from 'react-dom/client';
-import { BrowserRouter, Routes, Route, Link } from 'react-router-dom';
+import { HashRouter, Routes, Route, Link } from 'react-router-dom';
 import { TopicCreationPage } from './pages/TopicCreationPage';
 import { ListeningPage } from './pages/ListeningPage';
 import { SettingsPage } from './pages/SettingsPage';
@@ -8,7 +8,7 @@ import './styles.css';
 
 const App: React.FC = () => {
   return (
-    <BrowserRouter>
+    <HashRouter>
       {/* Navigation */}
       <nav className="app-nav">
         <Link to="/" className="nav-link">
@@ -28,7 +28,7 @@ const App: React.FC = () => {
         <Route path="/listening" element={<ListeningPage />} />
         <Route path="/settings" element={<SettingsPage />} />
       </Routes>
-    </BrowserRouter>
+    </HashRouter>
   );
 };
 
