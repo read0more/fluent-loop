@@ -6,9 +6,11 @@ export interface TimerProps {
   duration: number;
   autoStart?: boolean;
   onComplete?: () => void;
+  onManualComplete?: () => void;
   onTick?: (remaining: number) => void;
   label?: string;
   showControls?: boolean;
+  showCompleteButton?: boolean;
 }
 
 export interface TimerRef {
@@ -30,9 +32,11 @@ export const Timer: React.FC<TimerProps> = ({
   duration,
   autoStart = false,
   onComplete,
+  onManualComplete,
   onTick,
   label,
   showControls = true,
+  showCompleteButton = false,
 }) => {
   const [state, setState] = useState<TimerInternalState>({
     state: 'idle',
@@ -128,6 +132,24 @@ export const Timer: React.FC<TimerProps> = ({
       pausedTime: 0,
     });
   }, [duration]);
+
+  // Manual complete - user clicks complete button
+  const manualComplete = useCallback(() => {
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+
+    setState((prev) => ({
+      ...prev,
+      state: 'completed',
+      remainingTime: 0,
+    }));
+
+    if (onManualComplete) {
+      onManualComplete();
+    }
+  }, [onManualComplete]);
 
   // Timer effect
   useEffect(() => {
@@ -228,6 +250,11 @@ export const Timer: React.FC<TimerProps> = ({
               <button onClick={stop} className="btn-timer-stop">
                 중지
               </button>
+              {showCompleteButton && (
+                <button onClick={manualComplete} className="btn-timer-complete">
+                  완료
+                </button>
+              )}
             </>
           )}
 
@@ -239,6 +266,11 @@ export const Timer: React.FC<TimerProps> = ({
               <button onClick={stop} className="btn-timer-stop">
                 중지
               </button>
+              {showCompleteButton && (
+                <button onClick={manualComplete} className="btn-timer-complete">
+                  완료
+                </button>
+              )}
             </>
           )}
 
