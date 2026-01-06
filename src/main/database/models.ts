@@ -208,3 +208,46 @@ export interface SaveCorrectionRequest {
   sessionId: number;
   topicId: number;
 }
+
+// ==================== Step 3: 리텔링 관련 타입 ====================
+
+// 리텔링 엔티티 (DB 레코드)
+export interface Retelling {
+  id: number;
+  topicId: number;
+  duration: 3 | 2 | 1;
+  audioPath: string | null;
+  transcribedText: string | null;
+  createdAt: Date;
+}
+
+// 리텔링 생성 DTO
+export interface CreateRetellingDTO {
+  topicId: number;
+  duration: 3 | 2 | 1;
+  audioPath?: string;
+  transcribedText?: string;
+}
+
+// 리텔링 녹음 및 STT 변환 요청 (IPC)
+export interface TranscribeRetellingRequest {
+  duration: 3 | 2 | 1;
+  audioData: Uint8Array;
+}
+
+// 리텔링 녹음 및 STT 변환 결과 (IPC)
+export interface TranscribeRetellingResult {
+  filePath: string;
+  duration: 3 | 2 | 1;
+  actualDuration: number;
+  transcribedText: string;
+  retellingId: number;
+}
+
+// 토픽의 리텔링 텍스트 조회 결과 (IPC)
+export interface RetellingTextsResult {
+  threeMin: string | null;
+  twoMin: string | null;
+  oneMin: string | null;
+  formattedText: string;
+}

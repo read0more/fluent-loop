@@ -5,6 +5,7 @@ export type TimerState = 'idle' | 'running' | 'paused' | 'completed';
 export interface TimerProps {
   duration: number;
   autoStart?: boolean;
+  onStart?: () => void;
   onComplete?: () => void;
   onManualComplete?: () => void;
   onTick?: (remaining: number) => void;
@@ -31,6 +32,7 @@ interface TimerInternalState {
 export const Timer: React.FC<TimerProps> = ({
   duration,
   autoStart = false,
+  onStart,
   onComplete,
   onManualComplete,
   onTick,
@@ -81,7 +83,12 @@ export const Timer: React.FC<TimerProps> = ({
       startTime: now,
       remainingTime: duration,
     }));
-  }, [state.state, duration]);
+
+    // Call onStart callback
+    if (onStart) {
+      onStart();
+    }
+  }, [state.state, duration, onStart]);
 
   // Pause timer
   const pause = useCallback(() => {

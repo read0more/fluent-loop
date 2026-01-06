@@ -212,17 +212,10 @@ Please provide ONLY the JSON output, no additional explanation.`;
   /**
    * Step 4: 문장 첨삭 기능
    */
-  async correctSentence(
-    sentence: string,
-    cefrLevel: CEFRLevel
-  ): Promise<CorrectionResult> {
+  async correctSentence(sentence: string, cefrLevel: CEFRLevel): Promise<CorrectionResult> {
     // Validation
     if (!sentence || sentence.trim().length === 0) {
-      throw new AppError(
-        ErrorCode.VALIDATION_ERROR,
-        'Empty sentence',
-        '문장을 입력해주세요.'
-      );
+      throw new AppError(ErrorCode.VALIDATION_ERROR, 'Empty sentence', '문장을 입력해주세요.');
     }
 
     const trimmedSentence = sentence.trim();
@@ -256,14 +249,18 @@ Please provide ONLY the JSON output, no additional explanation.`;
   /**
    * 첨삭 전용 프롬프트 생성
    */
-  private buildCorrectionPrompt(
-    sentence: string,
-    cefrLevel: CEFRLevel
-  ): string {
+  private buildCorrectionPrompt(sentence: string, cefrLevel: CEFRLevel): string {
     return `You are an English teacher correcting a CEFR ${cefrLevel} student's sentence.
 
 Original sentence:
 "${sentence}"
+
+**IMPORTANT - Section Markers**:
+The text may contain section markers like "----3분 리텔링 시 내용----", "----2분 리텔링 시 내용----", or "----1분 리텔링 시 내용----".
+These markers indicate different retelling attempts (3-minute, 2-minute, 1-minute).
+- If the sentence is just a section marker (starts with "----" and ends with "----"), return it as-is without correction.
+- DO NOT correct or modify these section markers.
+- If a sentence contains only a section marker, set "corrected" to the same as "original" and "explanation" to "섹션 구분자입니다." with "categories": []
 
 Analyze and correct this sentence based on:
 1. **Grammar**: Fix grammatical errors (tense, subject-verb agreement, articles, prepositions, word order, etc.)

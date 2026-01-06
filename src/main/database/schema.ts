@@ -57,6 +57,20 @@ CREATE TABLE IF NOT EXISTS corrections (
 CREATE INDEX IF NOT EXISTS idx_corrections_session_id ON corrections(session_id);
 CREATE INDEX IF NOT EXISTS idx_corrections_topic_id ON corrections(topic_id);
 CREATE INDEX IF NOT EXISTS idx_corrections_created_at ON corrections(created_at);
+
+CREATE TABLE IF NOT EXISTS retellings (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  topic_id INTEGER NOT NULL,
+  duration INTEGER NOT NULL CHECK (duration IN (3, 2, 1)),
+  audio_path TEXT,
+  transcribed_text TEXT,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (topic_id) REFERENCES topics(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_retellings_topic_id ON retellings(topic_id);
+CREATE INDEX IF NOT EXISTS idx_retellings_duration ON retellings(duration);
+CREATE INDEX IF NOT EXISTS idx_retellings_created_at ON retellings(created_at);
 `;
 
 export const createTriggersSQL = `
