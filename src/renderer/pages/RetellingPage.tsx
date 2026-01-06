@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Timer } from '../components/Timer';
 import { KeywordDisplay } from '../components/KeywordDisplay';
 import { ProgressTracker } from '../components/ProgressTracker';
 import { LoadingSpinner } from '../components/LoadingSpinner';
-import { Topic } from '../../main/database/models';
+import { Topic, TranscribeRetellingResult } from '../../main/database/models';
 
 export type RetellingStep = 'loading' | 'no-topic' | 'ready' | 'timer-running' | 'complete';
 
@@ -14,6 +15,9 @@ export interface RetellingPageState {
   completedSteps: number[];
   error: string | null;
   isTimerRunning: boolean;
+  isRecording: boolean;
+  isProcessingSTT: boolean;
+  transcribedTexts: Record<1 | 2 | 3, string | null>;
 }
 
 export const DURATIONS: Record<1 | 2 | 3, number> = {
@@ -23,6 +27,7 @@ export const DURATIONS: Record<1 | 2 | 3, number> = {
 };
 
 export const RetellingPage: React.FC = () => {
+  const navigate = useNavigate();
   const [state, setState] = useState<RetellingPageState>({
     step: 'loading',
     topic: null,
@@ -30,7 +35,14 @@ export const RetellingPage: React.FC = () => {
     completedSteps: [],
     error: null,
     isTimerRunning: false,
+    isRecording: false,
+    isProcessingSTT: false,
+    transcribedTexts: { 1: null, 2: null, 3: null },
   });
+
+  // 녹음 관련 refs
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
 
   // Load active topic
   const loadActiveTopic = async () => {
@@ -51,6 +63,9 @@ export const RetellingPage: React.FC = () => {
           completedSteps: [],
           error: '활성 토픽이 없습니다. 먼저 토픽을 생성해주세요.',
           isTimerRunning: false,
+          isRecording: false,
+          isProcessingSTT: false,
+          transcribedTexts: { 1: null, 2: null, 3: null },
         });
         return;
       }
@@ -62,6 +77,9 @@ export const RetellingPage: React.FC = () => {
         completedSteps: [],
         error: null,
         isTimerRunning: false,
+        isRecording: false,
+        isProcessingSTT: false,
+        transcribedTexts: { 1: null, 2: null, 3: null },
       });
     } catch {
       setState((prev) => ({
@@ -81,8 +99,106 @@ export const RetellingPage: React.FC = () => {
     }));
   };
 
+  // 녹음 시작
+  const startRecording = useCallback(async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream, {
+        mimeType: 'audio/webm;codecs=opus',
+      });
+
+      audioChunksRef.current = [];
+
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
+      };
+
+      mediaRecorderRef.current = mediaRecorder;
+      mediaRecorder.start(1000); // 1초마다 데이터 수집
+
+      setState((prev) => ({ ...prev, isRecording: true }));
+    } catch (error) {
+      console.error('녹음 시작 실패:', error);
+      setState((prev) => ({
+        ...prev,
+        error: '마이크 접근 권한이 필요합니다.',
+      }));
+    }
+  }, []);
+
+  // 녹음 중지 및 STT 변환
+  const stopRecordingAndTranscribe = useCallback(async () => {
+    if (!mediaRecorderRef.current || !state.topic) return;
+
+    const currentStep = state.currentTimerStep;
+    const duration = currentStep === 1 ? 3 : currentStep === 2 ? 2 : 1;
+
+    return new Promise<void>((resolve) => {
+      const mediaRecorder = mediaRecorderRef.current!;
+
+      mediaRecorder.onstop = async () => {
+        // 스트림 정리
+        mediaRecorder.stream.getTracks().forEach((track) => track.stop());
+
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        const arrayBuffer = await audioBlob.arrayBuffer();
+        const audioData = new Uint8Array(arrayBuffer);
+
+        setState((prev) => ({
+          ...prev,
+          isRecording: false,
+          isProcessingSTT: true,
+        }));
+
+        try {
+          const response = await window.electron.invoke('transcribe-retelling', {
+            topicId: state.topic!.id,
+            duration,
+            audioData,
+          });
+
+          if (response.success && response.data) {
+            const result = response.data as TranscribeRetellingResult;
+            setState((prev) => ({
+              ...prev,
+              isProcessingSTT: false,
+              transcribedTexts: {
+                ...prev.transcribedTexts,
+                [currentStep]: result.transcribedText,
+              },
+            }));
+          } else {
+            setState((prev) => ({
+              ...prev,
+              isProcessingSTT: false,
+              error: response.error || 'STT 변환에 실패했습니다.',
+            }));
+          }
+        } catch (error) {
+          console.error('STT 변환 오류:', error);
+          setState((prev) => ({
+            ...prev,
+            isProcessingSTT: false,
+            error: 'STT 변환 중 오류가 발생했습니다.',
+          }));
+        }
+
+        resolve();
+      };
+
+      mediaRecorder.stop();
+    });
+  }, [state.topic, state.currentTimerStep]);
+
   // Handle timer complete
-  const handleTimerComplete = () => {
+  const handleTimerComplete = async () => {
+    // 녹음 중지 및 STT 변환
+    if (state.isRecording) {
+      await stopRecordingAndTranscribe();
+    }
+
     setState((prev) => {
       const newCompletedSteps = [...prev.completedSteps];
       if (!newCompletedSteps.includes(prev.currentTimerStep)) {
@@ -204,11 +320,18 @@ export const RetellingPage: React.FC = () => {
           )}
 
           {/* Timer section */}
-          {state.step !== 'complete' && (
+          {state.step !== 'complete' && !state.isProcessingSTT && (
             <div className="timer-section">
+              {state.isRecording && (
+                <div className="recording-indicator">
+                  <span className="recording-dot"></span>
+                  녹음 중...
+                </div>
+              )}
               <Timer
                 duration={DURATIONS[state.currentTimerStep]}
                 label={`${state.currentTimerStep === 1 ? '3분' : state.currentTimerStep === 2 ? '2분' : '1분'} 타이머`}
+                onStart={startRecording}
                 onComplete={handleTimerComplete}
                 onManualComplete={handleTimerComplete}
                 showCompleteButton={true}
@@ -219,24 +342,36 @@ export const RetellingPage: React.FC = () => {
             </div>
           )}
 
+          {/* STT Processing */}
+          {state.isProcessingSTT && (
+            <div className="stt-processing">
+              <LoadingSpinner message="음성을 텍스트로 변환 중..." fullScreen={false} />
+            </div>
+          )}
+
           {/* Completion message */}
           {state.step === 'complete' && (
             <div className="completion-message">
               <h2>모든 단계를 완료했습니다!</h2>
               <p>3분, 2분, 1분 리텔링을 모두 완료하셨습니다.</p>
-              <button
-                onClick={() =>
-                  setState((prev) => ({
-                    ...prev,
-                    currentTimerStep: 1,
-                    completedSteps: [],
-                    step: 'ready',
-                  }))
-                }
-                className="btn-restart"
-              >
-                다시 시작
-              </button>
+              <div className="completion-buttons">
+                <button
+                  onClick={() =>
+                    setState((prev) => ({
+                      ...prev,
+                      currentTimerStep: 1,
+                      completedSteps: [],
+                      step: 'ready',
+                    }))
+                  }
+                  className="btn-restart"
+                >
+                  다시 시작
+                </button>
+                <button onClick={() => navigate('/correction')} className="btn-next-step">
+                  다음 단계로 (첨삭)
+                </button>
+              </div>
             </div>
           )}
         </div>
