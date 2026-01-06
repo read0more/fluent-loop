@@ -2,27 +2,39 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { TextInputArea } from '../components/TextInputArea';
 import { CorrectionDisplay } from '../components/CorrectionDisplay';
 import { LoadingSpinner } from '../components/LoadingSpinner';
-import { CorrectionResult, Topic, CEFRLevel } from '../../main/database/models';
+import { CorrectionResult, Topic, CEFRLevel, RetellingTextsResult } from '../../main/database/models';
+
+interface SectionInfo {
+  name: string;
+  startIndex: number;
+  endIndex: number;
+}
 
 interface CorrectionPageState {
   inputText: string;
   corrections: CorrectionResult[];
+  sections: SectionInfo[];
   currentSentenceIndex: number;
   isLoading: boolean;
+  isLoadingRetellings: boolean;
   error: string | null;
   activeTopic: Topic | null;
   isSaving: boolean;
+  retellingTexts: RetellingTextsResult | null;
 }
 
 export const CorrectionPage: React.FC = () => {
   const [state, setState] = useState<CorrectionPageState>({
     inputText: '',
     corrections: [],
+    sections: [],
     currentSentenceIndex: -1,
     isLoading: false,
+    isLoadingRetellings: false,
     error: null,
     activeTopic: null,
     isSaving: false,
+    retellingTexts: null,
   });
 
   // 활성 토픽 로드
@@ -34,7 +46,11 @@ export const CorrectionPage: React.FC = () => {
     try {
       const response = await window.electron.invoke('get-active-topic', {});
       if (response.success && response.data) {
-        setState((prev) => ({ ...prev, activeTopic: response.data! }));
+        const topic = response.data;
+        setState((prev) => ({ ...prev, activeTopic: topic }));
+
+        // 리텔링 텍스트 로드
+        loadRetellingTexts(topic.id);
       } else {
         setState((prev) => ({
           ...prev,
@@ -49,13 +65,105 @@ export const CorrectionPage: React.FC = () => {
     }
   };
 
+  // 리텔링 텍스트 로드
+  const loadRetellingTexts = async (topicId: number) => {
+    setState((prev) => ({ ...prev, isLoadingRetellings: true }));
+
+    try {
+      const response = await window.electron.invoke('get-retelling-texts', { topicId });
+      if (response.success && response.data) {
+        const retellingData = response.data as RetellingTextsResult;
+        setState((prev) => ({
+          ...prev,
+          isLoadingRetellings: false,
+          retellingTexts: retellingData,
+          // 리텔링 텍스트가 있으면 자동으로 입력 필드에 설정
+          inputText: retellingData.formattedText || prev.inputText,
+        }));
+      } else {
+        setState((prev) => ({
+          ...prev,
+          isLoadingRetellings: false,
+        }));
+      }
+    } catch (error) {
+      console.error('리텔링 텍스트 로드 실패:', error);
+      setState((prev) => ({
+        ...prev,
+        isLoadingRetellings: false,
+      }));
+    }
+  };
+
   // 텍스트 변경 처리
   const handleTextChange = (text: string) => {
     setState((prev) => ({ ...prev, inputText: text, error: null }));
   };
 
-  // 문장 분리 (간단한 로직)
-  const splitSentences = (text: string): string[] => {
+  // 구분자 패턴 (----로 시작하고 ----로 끝나는 줄)
+  const SECTION_MARKER_PATTERN = /^-{2,}.*-{2,}$/;
+
+  // 문장 분리 (구분자 처리 포함) - 섹션 정보도 함께 반환
+  const splitSentencesWithSections = (
+    text: string
+  ): { sentences: string[]; sections: SectionInfo[] } => {
+    if (!text || text.trim().length === 0) {
+      return { sentences: [], sections: [] };
+    }
+
+    const sentences: string[] = [];
+    const sections: SectionInfo[] = [];
+    const lines = text.split('\n');
+
+    let currentSection = '';
+    let currentSectionName = '';
+    let sectionStartIndex = 0;
+
+    for (const line of lines) {
+      const trimmedLine = line.trim();
+
+      // 구분자인 경우
+      if (SECTION_MARKER_PATTERN.test(trimmedLine)) {
+        // 이전 섹션의 문장들이 있으면 처리
+        if (currentSection.trim()) {
+          const sectionSentences = splitTextIntoSentences(currentSection);
+          if (sectionSentences.length > 0 && currentSectionName) {
+            sections.push({
+              name: currentSectionName,
+              startIndex: sectionStartIndex,
+              endIndex: sectionStartIndex + sectionSentences.length - 1,
+            });
+          }
+          sentences.push(...sectionSentences);
+          sectionStartIndex = sentences.length;
+          currentSection = '';
+        }
+        // 새 섹션 시작
+        currentSectionName = trimmedLine.replace(/-/g, '').trim();
+      } else {
+        // 일반 텍스트는 모아둠
+        currentSection += ' ' + trimmedLine;
+      }
+    }
+
+    // 마지막 섹션 처리
+    if (currentSection.trim()) {
+      const sectionSentences = splitTextIntoSentences(currentSection);
+      if (sectionSentences.length > 0 && currentSectionName) {
+        sections.push({
+          name: currentSectionName,
+          startIndex: sectionStartIndex,
+          endIndex: sectionStartIndex + sectionSentences.length - 1,
+        });
+      }
+      sentences.push(...sectionSentences);
+    }
+
+    return { sentences: sentences.filter((s) => s.length > 0), sections };
+  };
+
+  // 텍스트를 문장으로 분리하는 헬퍼 함수
+  const splitTextIntoSentences = (text: string): string[] => {
     if (!text || text.trim().length === 0) {
       return [];
     }
@@ -85,7 +193,7 @@ export const CorrectionPage: React.FC = () => {
       return;
     }
 
-    const sentences = splitSentences(state.inputText);
+    const { sentences, sections } = splitSentencesWithSections(state.inputText);
 
     if (sentences.length === 0) {
       setState((prev) => ({
@@ -99,6 +207,7 @@ export const CorrectionPage: React.FC = () => {
       ...prev,
       isLoading: true,
       corrections: [],
+      sections,
       currentSentenceIndex: 0,
       error: null,
     }));
@@ -151,12 +260,9 @@ export const CorrectionPage: React.FC = () => {
   // TTS 재생
   const handleTTSPlay = useCallback(async (text: string, index: number) => {
     try {
-      const response = await window.electron.invoke('synthesize-speech', {
-        text,
-      });
+      const response = await window.electron.invoke('synthesize-tts', text);
 
       if (response.success && response.data?.filePath) {
-        // TTSPlayer 컴포넌트가 있다면 사용, 없으면 기본 오디오 재생
         const audio = new Audio(`file://${response.data.filePath}`);
         audio.play();
       } else {
@@ -221,13 +327,25 @@ export const CorrectionPage: React.FC = () => {
 
       <div className="correction-content">
         <section className="input-section">
-          <h2>리텔링 입력</h2>
-          <TextInputArea
-            value={state.inputText}
-            onChange={handleTextChange}
-            onSubmit={handleCorrectRequest}
-            disabled={state.isLoading}
-          />
+          <div className="input-header">
+            <h2>리텔링 입력</h2>
+            {state.retellingTexts && state.retellingTexts.formattedText && (
+              <span className="retelling-loaded-badge">
+                Step 3 리텔링 텍스트 로드됨
+              </span>
+            )}
+          </div>
+          {state.isLoadingRetellings ? (
+            <LoadingSpinner message="리텔링 텍스트 불러오는 중..." fullScreen={false} />
+          ) : (
+            <TextInputArea
+              value={state.inputText}
+              onChange={handleTextChange}
+              onSubmit={handleCorrectRequest}
+              disabled={state.isLoading}
+              placeholder="3단계에서 녹음한 리텔링이 자동으로 로드됩니다. 또는 직접 입력해주세요."
+            />
+          )}
         </section>
 
         <section className="results-section">
@@ -246,6 +364,7 @@ export const CorrectionPage: React.FC = () => {
 
           <CorrectionDisplay
             corrections={state.corrections}
+            sections={state.sections}
             onPlayTTS={handleTTSPlay}
             isLoading={state.isLoading}
             currentProcessingIndex={state.currentSentenceIndex}

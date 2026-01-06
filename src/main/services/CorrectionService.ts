@@ -31,6 +31,15 @@ export class CorrectionService {
       return [];
     }
 
+    // 섹션 마커 라인 제거 (예: "----2분 리텔링 시 내용----")
+    const lines = text.split('\n');
+    const filteredLines = lines.filter((line) => !this.isSectionMarker(line));
+    const cleanedText = filteredLines.join('\n');
+
+    if (!cleanedText.trim()) {
+      return [];
+    }
+
     // 약어 목록 (확장 가능)
     const abbreviations = [
       'Mr',
@@ -57,7 +66,7 @@ export class CorrectionService {
     ];
 
     // 약어를 임시 플레이스홀더로 치환
-    let processed = text;
+    let processed = cleanedText;
     const placeholders: Map<string, string> = new Map();
 
     abbreviations.forEach((abbr, index) => {
@@ -109,6 +118,15 @@ export class CorrectionService {
       .filter((s) => s.length > 1); // 빈 문장 제거
 
     return restored;
+  }
+
+  /**
+   * 섹션 마커인지 확인 (예: "----2분 리텔링 시 내용----")
+   */
+  private isSectionMarker(text: string): boolean {
+    // "----"로 시작하고 끝나는 패턴
+    const sectionMarkerPattern = /^-{2,}.*-{2,}$/;
+    return sectionMarkerPattern.test(text.trim());
   }
 
   /**

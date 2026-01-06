@@ -186,6 +186,39 @@ describe('CorrectionService', () => {
     });
   });
 
+  describe('splitSentences() - Section marker filtering', () => {
+    it('should filter out section markers like "----2분 리텔링 시 내용----"', () => {
+      const text = `----2분 리텔링 시 내용----
+I'm working now, you know?
+Please keep it down. I can't focus my work.
+
+----1분 리텔링 시 내용----
+You need to check correctly. Are you okay?`;
+
+      const sentences = service.splitSentences(text);
+
+      expect(sentences).not.toContain('----2분 리텔링 시 내용----');
+      expect(sentences).not.toContain('----1분 리텔링 시 내용----');
+      expect(sentences.every((s) => !s.includes('----'))).toBe(true);
+    });
+
+    it('should filter markers with varying dash counts', () => {
+      const text = '--Section A-- First sentence. ---Section B--- Second sentence.';
+      const sentences = service.splitSentences(text);
+
+      expect(sentences.every((s) => !s.match(/^-{2,}.*-{2,}$/))).toBe(true);
+    });
+
+    it('should keep normal sentences with dashes', () => {
+      const text = 'This is a well-known fact. She is twenty-five years old.';
+      const sentences = service.splitSentences(text);
+
+      expect(sentences).toHaveLength(2);
+      expect(sentences[0]).toContain('well-known');
+      expect(sentences[1]).toContain('twenty-five');
+    });
+  });
+
   describe('TC-008: saveCorrections() - Single correction', () => {
     it('should save single correction to database', async () => {
       const corrections: CorrectionResult[] = [

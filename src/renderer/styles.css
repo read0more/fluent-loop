@@ -1807,6 +1807,62 @@ body {
   background: rgba(255, 255, 255, 0.05);
 }
 
+/* Section Summaries */
+.section-summaries {
+  margin-top: 40px;
+  padding-top: 30px;
+  border-top: 2px solid rgba(77, 166, 255, 0.3);
+}
+
+.section-summaries-title {
+  color: #4da6ff;
+  font-size: 1.3em;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.section-summaries-title::before {
+  content: '';
+  display: inline-block;
+  width: 4px;
+  height: 20px;
+  background: #4da6ff;
+  border-radius: 2px;
+}
+
+.section-summary-item {
+  background: rgba(77, 166, 255, 0.08);
+  border: 1px solid rgba(77, 166, 255, 0.2);
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 16px;
+}
+
+.section-summary-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.section-name {
+  font-weight: 600;
+  color: #4da6ff;
+  font-size: 1.1em;
+}
+
+.section-summary-text {
+  color: #e0e0e0;
+  line-height: 1.8;
+  font-size: 1.05em;
+  margin: 0;
+  padding: 15px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 8px;
+}
+
 /* Sentence Comparison */
 .sentence-comparison {
   border: 1px solid rgba(255, 255, 255, 0.1);
@@ -1993,4 +2049,30 @@ body {
 
 .correction-page .error-icon {
   font-size: 1.5em;
+}
+
+/* Completion Buttons */
+.completion-buttons {
+  display: flex;
+  gap: 15px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.btn-next-step {
+  background: linear-gradient(135deg, #4da6ff 0%, #3d8cf0 100%);
+  color: white;
+  border: none;
+  padding: 15px 30px;
+  border-radius: 8px;
+  font-size: 1em;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 4px 15px rgba(77, 166, 255, 0.3);
+}
+
+.btn-next-step:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(77, 166, 255, 0.4);
 }
