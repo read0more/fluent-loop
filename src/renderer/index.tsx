@@ -4,6 +4,7 @@ import { HashRouter, Routes, Route, Link } from 'react-router-dom';
 import { TopicCreationPage } from './pages/TopicCreationPage';
 import { ListeningPage } from './pages/ListeningPage';
 import { RetellingPage } from './pages/RetellingPage';
+import { CorrectionPage } from './pages/CorrectionPage';
 import { SettingsPage } from './pages/SettingsPage';
 import './styles.css';
 
@@ -21,6 +22,9 @@ const App: React.FC = () => {
         <Link to="/retelling" className="nav-link">
           단계 3: 리텔링
         </Link>
+        <Link to="/correction" className="nav-link">
+          단계 4: 첨삭
+        </Link>
         <Link to="/settings" className="nav-link">
           설정
         </Link>
@@ -31,6 +35,7 @@ const App: React.FC = () => {
         <Route path="/" element={<TopicCreationPage />} />
         <Route path="/listening" element={<ListeningPage />} />
         <Route path="/retelling" element={<RetellingPage />} />
+        <Route path="/correction" element={<CorrectionPage />} />
         <Route path="/settings" element={<SettingsPage />} />
       </Routes>
     </HashRouter>

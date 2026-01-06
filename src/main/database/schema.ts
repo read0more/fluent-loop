@@ -40,6 +40,23 @@ CREATE TABLE IF NOT EXISTS sessions (
 CREATE INDEX IF NOT EXISTS idx_sessions_topic_id ON sessions(topic_id);
 CREATE INDEX IF NOT EXISTS idx_sessions_step ON sessions(step);
 CREATE INDEX IF NOT EXISTS idx_sessions_date ON sessions(date);
+
+CREATE TABLE IF NOT EXISTS corrections (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  session_id INTEGER,
+  topic_id INTEGER,
+  original_sentence TEXT NOT NULL,
+  corrected_sentence TEXT NOT NULL,
+  explanation TEXT NOT NULL,
+  categories TEXT NOT NULL,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE,
+  FOREIGN KEY (topic_id) REFERENCES topics(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_corrections_session_id ON corrections(session_id);
+CREATE INDEX IF NOT EXISTS idx_corrections_topic_id ON corrections(topic_id);
+CREATE INDEX IF NOT EXISTS idx_corrections_created_at ON corrections(created_at);
 `;
 
 export const createTriggersSQL = `

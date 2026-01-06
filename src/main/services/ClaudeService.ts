@@ -2,12 +2,13 @@ import { spawn } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
-import { TopicGenerationResult, CEFRLevel } from '../database/models';
+import { TopicGenerationResult, CEFRLevel, CorrectionResult } from '../database/models';
 import { AppError, ErrorCode } from '../errors/AppError';
 
 export interface IClaudeService {
   generateEnglishScript(koreanText: string, cefrLevel: CEFRLevel): Promise<TopicGenerationResult>;
   extractKeywords(englishText: string): Promise<string[]>;
+  correctSentence(sentence: string, cefrLevel: CEFRLevel): Promise<CorrectionResult>;
 }
 
 const CEFR_DESCRIPTIONS: Record<CEFRLevel, string> = {
@@ -115,7 +116,8 @@ Please provide ONLY the JSON output, no additional explanation.`;
       fs.writeFileSync(tempFile, prompt, 'utf8');
 
       // PowerShell을 통해 파일 내용을 읽어서 Claude CLI에 전달
-      const psCommand = `$prompt = Get-Content -Path '${tempFile}' -Raw -Encoding UTF8; claude -p $prompt --model haiku`;
+      // -p 플래그는 "print mode"를 의미하고, 프롬프트는 stdin으로 전달
+      const psCommand = `Get-Content -Path '${tempFile}' -Raw -Encoding UTF8 | claude -p --output-format text`;
 
       const child = spawn('powershell', ['-Command', psCommand], {
         stdio: ['ignore', 'pipe', 'pipe'],
@@ -202,6 +204,128 @@ Please provide ONLY the JSON output, no additional explanation.`;
         ErrorCode.CLAUDE_PARSING_ERROR,
         'Failed to parse Claude response',
         'AI 응답 파싱에 실패했습니다. 다시 시도해주세요.',
+        error as Error
+      );
+    }
+  }
+
+  /**
+   * Step 4: 문장 첨삭 기능
+   */
+  async correctSentence(
+    sentence: string,
+    cefrLevel: CEFRLevel
+  ): Promise<CorrectionResult> {
+    // Validation
+    if (!sentence || sentence.trim().length === 0) {
+      throw new AppError(
+        ErrorCode.VALIDATION_ERROR,
+        'Empty sentence',
+        '문장을 입력해주세요.'
+      );
+    }
+
+    const trimmedSentence = sentence.trim();
+
+    if (trimmedSentence.length > 500) {
+      throw new AppError(
+        ErrorCode.VALIDATION_ERROR,
+        'Sentence too long',
+        '문장이 너무 깁니다. (최대 500자)'
+      );
+    }
+
+    const prompt = this.buildCorrectionPrompt(trimmedSentence, cefrLevel);
+
+    try {
+      const output = await this.executeClaude(prompt);
+      return this.parseCorrectionResponse(output);
+    } catch (error) {
+      if (error instanceof AppError) {
+        throw error;
+      }
+      throw new AppError(
+        ErrorCode.CLAUDE_API_ERROR,
+        'Failed to correct sentence',
+        '첨삭 처리 중 오류가 발생했습니다. 다시 시도해주세요.',
+        error as Error
+      );
+    }
+  }
+
+  /**
+   * 첨삭 전용 프롬프트 생성
+   */
+  private buildCorrectionPrompt(
+    sentence: string,
+    cefrLevel: CEFRLevel
+  ): string {
+    return `You are an English teacher correcting a CEFR ${cefrLevel} student's sentence.
+
+Original sentence:
+"${sentence}"
+
+Analyze and correct this sentence based on:
+1. **Grammar**: Fix grammatical errors (tense, subject-verb agreement, articles, prepositions, word order, etc.)
+2. **Vocabulary**: Suggest better word choices appropriate for ${cefrLevel} level
+3. **Naturalness**: Make the sentence sound more natural and fluent
+
+Return ONLY a JSON object in this exact format:
+{
+  "original": "${sentence}",
+  "corrected": "...",
+  "explanation": "...",
+  "categories": ["grammar", "vocabulary", "naturalness"]
+}
+
+Guidelines:
+- If the sentence is already correct, set "corrected" to the same as "original" and "explanation" to "No correction needed." or "수정이 필요하지 않습니다."
+- "categories" should include only relevant correction types (e.g., only ["grammar"] if no vocabulary/naturalness issues)
+- "explanation" should be concise, educational, and in Korean (for ${cefrLevel} learners to understand easily)
+- Focus on the most important errors first
+- For ${cefrLevel} level:
+  - A1/A2: Use very simple explanations, focus on basic grammar
+  - B1/B2: Provide intermediate-level explanations, introduce synonyms
+  - C1/C2: Offer advanced explanations, discuss nuances and idiomatic usage
+
+Provide ONLY the JSON output, no additional text.`;
+  }
+
+  /**
+   * 첨삭 응답 파싱
+   */
+  private parseCorrectionResponse(output: string): CorrectionResult {
+    try {
+      let jsonStr = output.trim();
+
+      // ```json ... ``` 제거
+      const jsonMatch = jsonStr.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+      if (jsonMatch) {
+        jsonStr = jsonMatch[1];
+      }
+
+      const parsed = JSON.parse(jsonStr);
+
+      // 검증
+      if (!parsed.original || !parsed.corrected || !parsed.explanation) {
+        throw new Error('Missing required fields in correction response');
+      }
+
+      if (!Array.isArray(parsed.categories)) {
+        throw new Error('Categories must be an array');
+      }
+
+      return {
+        original: parsed.original,
+        corrected: parsed.corrected,
+        explanation: parsed.explanation,
+        categories: parsed.categories,
+      };
+    } catch (error) {
+      throw new AppError(
+        ErrorCode.CLAUDE_PARSING_ERROR,
+        'Failed to parse correction response',
+        '첨삭 결과 파싱에 실패했습니다. 다시 시도해주세요.',
         error as Error
       );
     }
