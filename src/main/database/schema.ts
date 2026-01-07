@@ -71,6 +71,36 @@ CREATE TABLE IF NOT EXISTS retellings (
 CREATE INDEX IF NOT EXISTS idx_retellings_topic_id ON retellings(topic_id);
 CREATE INDEX IF NOT EXISTS idx_retellings_duration ON retellings(duration);
 CREATE INDEX IF NOT EXISTS idx_retellings_created_at ON retellings(created_at);
+
+CREATE TABLE IF NOT EXISTS conversations (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  topic_id INTEGER NOT NULL,
+  session_id INTEGER,
+  started_at DATETIME NOT NULL,
+  ended_at DATETIME,
+  duration INTEGER,
+  message_count INTEGER DEFAULT 0,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (topic_id) REFERENCES topics(id) ON DELETE CASCADE,
+  FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE SET NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_conversations_topic_id ON conversations(topic_id);
+CREATE INDEX IF NOT EXISTS idx_conversations_started_at ON conversations(started_at);
+
+CREATE TABLE IF NOT EXISTS conversation_messages (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  conversation_id INTEGER NOT NULL,
+  speaker TEXT NOT NULL CHECK (speaker IN ('user', 'ai')),
+  content TEXT NOT NULL,
+  audio_path TEXT,
+  timestamp INTEGER NOT NULL,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_messages_conversation_id ON conversation_messages(conversation_id);
+CREATE INDEX IF NOT EXISTS idx_messages_timestamp ON conversation_messages(timestamp);
 `;
 
 export const createTriggersSQL = `
