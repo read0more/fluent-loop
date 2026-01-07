@@ -16,6 +16,7 @@ export interface IAudioService {
   saveRecording(buffer: Buffer, filename: string, step?: 1 | 2): Promise<string>;
   saveRecordingStep2(buffer: Buffer, filename: string, customPath?: string): Promise<string>;
   saveRecordingStep3(buffer: Buffer, duration: 3 | 2 | 1, customPath?: string): Promise<string>;
+  saveRecordingStep5(buffer: Buffer): Promise<string>;
   listRecordingsStep3(duration?: 3 | 2 | 1): Promise<RecordingFile[]>;
   deleteRecording(filePath: string): Promise<void>;
   listRecordings(step: 1 | 2, customPath?: string): Promise<RecordingFile[]>;
@@ -27,12 +28,14 @@ export class AudioService implements IAudioService {
   private readonly step1Dir: string;
   private readonly step2Dir: string;
   private readonly step3Dir: string;
+  private readonly step5Dir: string;
 
   constructor() {
     const userDataPath = app.getPath('userData');
     this.step1Dir = path.join(userDataPath, 'data', 'recordings', 'step1');
     this.step2Dir = path.join(userDataPath, 'data', 'recordings', 'step2');
     this.step3Dir = path.join(userDataPath, 'data', 'recordings', 'step3');
+    this.step5Dir = path.join(userDataPath, 'data', 'recordings', 'step5');
 
     // 디렉토리 생성
     if (!fs.existsSync(this.step1Dir)) {
@@ -43,6 +46,9 @@ export class AudioService implements IAudioService {
     }
     if (!fs.existsSync(this.step3Dir)) {
       fs.mkdirSync(this.step3Dir, { recursive: true });
+    }
+    if (!fs.existsSync(this.step5Dir)) {
+      fs.mkdirSync(this.step5Dir, { recursive: true });
     }
   }
 
@@ -347,10 +353,85 @@ export class AudioService implements IAudioService {
     }
   }
 
+  async saveRecordingStep5(buffer: Buffer): Promise<string> {
+    try {
+      const timestamp = new Date()
+        .toISOString()
+        .replace(/:/g, '-')
+        .replace(/\..+/, '')
+        .replace('T', '_');
+
+      const webmFilename = `${timestamp}.webm`;
+      const m4aFilename = `${timestamp}.m4a`;
+      const webmPath = path.join(this.step5Dir, webmFilename);
+      const m4aPath = path.join(this.step5Dir, m4aFilename);
+
+      // 1. 먼저 webm으로 저장
+      await fs.promises.writeFile(webmPath, buffer);
+
+      // 파일 크기 검증
+      const webmStats = await fs.promises.stat(webmPath);
+      if (webmStats.size === 0) {
+        throw new Error('File size is 0');
+      }
+
+      // 2. ffmpeg로 m4a로 변환
+      await new Promise<void>((resolve, reject) => {
+        ffmpeg(webmPath)
+          .toFormat('ipod') // m4a format
+          .audioCodec('aac')
+          .audioBitrate('128k')
+          .on('end', () => {
+            resolve();
+          })
+          .on('error', (err) => {
+            reject(err);
+          })
+          .save(m4aPath);
+      });
+
+      // 3. 변환 후 webm 파일 삭제
+      await fs.promises.unlink(webmPath);
+
+      // 4. m4a 파일 크기 검증
+      const m4aStats = await fs.promises.stat(m4aPath);
+      if (m4aStats.size === 0) {
+        throw new Error('Converted file size is 0');
+      }
+
+      return m4aPath;
+    } catch (error: unknown) {
+      const nodeError = error as NodeJS.ErrnoException;
+
+      if (nodeError.code === 'EACCES') {
+        throw new AppError(
+          ErrorCode.RECORDING_PATH_INVALID,
+          'Permission denied',
+          '저장 경로에 접근할 수 없습니다.'
+        );
+      }
+
+      if (nodeError.code === 'ENOSPC') {
+        throw new AppError(
+          ErrorCode.RECORDING_SAVE_FAILED,
+          'No disk space',
+          '디스크 공간이 부족합니다.'
+        );
+      }
+
+      throw new AppError(
+        ErrorCode.RECORDING_SAVE_FAILED,
+        'Failed to save step5 recording',
+        '녹음 파일 저장에 실패했습니다.',
+        error instanceof Error ? error : undefined
+      );
+    }
+  }
+
   async cleanupTempFiles(olderThanDays: number): Promise<void> {
     try {
-      // step1, step2, step3 모두 정리
-      const dirs = [this.step1Dir, this.step2Dir, this.step3Dir];
+      // step1, step2, step3, step5 모두 정리
+      const dirs = [this.step1Dir, this.step2Dir, this.step3Dir, this.step5Dir];
       const now = Date.now();
       const maxAge = olderThanDays * 24 * 60 * 60 * 1000;
 

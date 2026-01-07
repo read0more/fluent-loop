@@ -76,6 +76,12 @@ export interface TranscribeArgs {
   language?: string;
 }
 
+// Step5 STT 요청 (audioData 직접 전송)
+export interface TranscribeStep5Args {
+  audioData: Uint8Array;
+  language?: string;
+}
+
 export interface GenerateTopicArgs {
   koreanText: string;
   cefrLevel: CEFRLevel;
@@ -250,4 +256,113 @@ export interface RetellingTextsResult {
   twoMin: string | null;
   oneMin: string | null;
   formattedText: string;
+}
+
+// ==================== Step 5: AI 롤플레잉 관련 타입 ====================
+
+// 대화 세션 엔티티 (DB 레코드)
+export interface Conversation {
+  id: number;
+  topicId: number;
+  sessionId: number | null;
+  startedAt: Date;
+  endedAt: Date | null;
+  duration: number | null; // 초
+  messageCount: number;
+  createdAt: Date;
+}
+
+// 대화 메시지 엔티티 (DB 레코드)
+export interface Message {
+  id: number;
+  conversationId: number;
+  speaker: 'user' | 'ai';
+  content: string;
+  audioPath: string | null;
+  timestamp: number; // 대화 시작 후 경과 초
+  createdAt: Date;
+}
+
+// 대화 생성 DTO
+export interface CreateConversationDTO {
+  topicId: number;
+  sessionId?: number;
+  startedAt: Date;
+}
+
+// 메시지 생성 DTO
+export interface CreateMessageDTO {
+  conversationId: number;
+  speaker: 'user' | 'ai';
+  content: string;
+  audioPath?: string;
+  timestamp: number;
+}
+
+// 대화 컨텍스트 (Claude API용)
+export interface TopicContext {
+  englishContent: string;
+  cefrLevel: CEFRLevel;
+  keywords: string[];
+}
+
+// 대화 메시지 (Claude API용 - 간소화 버전)
+export interface ConversationMessage {
+  speaker: 'user' | 'ai';
+  content: string;
+}
+
+// 대화 시작 결과 (IPC)
+export interface ConversationStartResult {
+  conversationId: number;
+  firstMessage: {
+    id: number;
+    content: string;
+    timestamp: number;
+    ttsPath: string;
+  };
+}
+
+// 메시지 교환 결과 (IPC)
+export interface MessageExchangeResult {
+  userMessageId: number;
+  aiMessage: {
+    id: number;
+    content: string;
+    timestamp: number;
+    ttsPath: string;
+  };
+}
+
+// 대화 종료 결과 (IPC)
+export interface ConversationEndResult {
+  totalDuration: number; // 초
+  messageCount: number;
+}
+
+// 대화 시작 요청 (IPC)
+export interface StartConversationRequest {
+  topicId: number;
+}
+
+// 사용자 메시지 전송 요청 (IPC)
+export interface SendUserMessageRequest {
+  conversationId: number;
+  content: string;
+  timestamp: number;
+}
+
+// 대화 종료 요청 (IPC)
+export interface EndConversationRequest {
+  conversationId: number;
+}
+
+// 대화 히스토리 조회 요청 (IPC)
+export interface GetConversationHistoryRequest {
+  conversationId: number;
+}
+
+// TTS 재생 요청 (IPC)
+export interface ReplayTTSRequest {
+  messageId: number;
 }

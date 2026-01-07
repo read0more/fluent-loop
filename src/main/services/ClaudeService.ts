@@ -5,10 +5,26 @@ import * as os from 'os';
 import { TopicGenerationResult, CEFRLevel, CorrectionResult } from '../database/models';
 import { AppError, ErrorCode } from '../errors/AppError';
 
+export interface TopicContext {
+  englishContent: string;
+  cefrLevel: CEFRLevel;
+  keywords: string[];
+}
+
+export interface ConversationMessage {
+  speaker: 'user' | 'ai';
+  content: string;
+}
+
 export interface IClaudeService {
   generateEnglishScript(koreanText: string, cefrLevel: CEFRLevel): Promise<TopicGenerationResult>;
   extractKeywords(englishText: string): Promise<string[]>;
   correctSentence(sentence: string, cefrLevel: CEFRLevel): Promise<CorrectionResult>;
+  generateConversationResponse(
+    topicContext: TopicContext,
+    conversationHistory: ConversationMessage[],
+    isFirstMessage?: boolean
+  ): Promise<string>;
 }
 
 const CEFR_DESCRIPTIONS: Record<CEFRLevel, string> = {
@@ -326,5 +342,119 @@ Provide ONLY the JSON output, no additional text.`;
         error as Error
       );
     }
+  }
+
+  /**
+   * Step 5: AI 대화 응답 생성
+   */
+  async generateConversationResponse(
+    topicContext: TopicContext,
+    conversationHistory: ConversationMessage[],
+    isFirstMessage: boolean = false
+  ): Promise<string> {
+    // Validation
+    if (!topicContext.englishContent || !topicContext.cefrLevel) {
+      throw new AppError(
+        ErrorCode.VALIDATION_ERROR,
+        'Missing topic context',
+        '토픽 정보가 필요합니다.'
+      );
+    }
+
+    const prompt = isFirstMessage
+      ? this.buildFirstMessagePrompt(topicContext)
+      : this.buildConversationPrompt(topicContext, conversationHistory);
+
+    try {
+      const output = await this.executeClaude(prompt);
+      return output.trim();
+    } catch (error) {
+      if (error instanceof AppError) {
+        throw error;
+      }
+      throw new AppError(
+        ErrorCode.CLAUDE_API_ERROR,
+        'Failed to generate conversation response',
+        'AI 응답 생성에 실패했습니다. 다시 시도해주세요.',
+        error as Error
+      );
+    }
+  }
+
+  /**
+   * 첫 대화 메시지 프롬프트
+   */
+  private buildFirstMessagePrompt(topicContext: TopicContext): string {
+    const { englishContent, cefrLevel, keywords } = topicContext;
+
+    return `You are a friendly and supportive English conversation partner.
+
+**Context**:
+- Student CEFR Level: ${cefrLevel}
+- Topic: ${englishContent}
+- Key Vocabulary: ${keywords.join(', ')}
+
+**Your Role**:
+- Start the conversation naturally by asking an engaging question related to the topic
+- Use vocabulary and grammar appropriate for ${cefrLevel} level
+- Keep your first message brief (1-2 sentences)
+- Be encouraging and friendly
+
+**Important Rules**:
+- DO NOT correct the student's mistakes during the conversation
+- If the student struggles, help them with hints or rephrase your question
+- Stay on the topic as much as possible
+- Keep the conversation natural and flowing
+
+**Level Guidelines**:
+${CEFR_DESCRIPTIONS[cefrLevel]}
+
+Now, start the conversation by introducing the topic and asking the student a question.
+Provide ONLY your message, no additional text or formatting.`;
+  }
+
+  /**
+   * 대화 계속 프롬프트
+   */
+  private buildConversationPrompt(
+    topicContext: TopicContext,
+    conversationHistory: ConversationMessage[]
+  ): string {
+    const { englishContent, cefrLevel, keywords } = topicContext;
+
+    // 최근 10개 메시지만 사용 (컨텍스트 제한)
+    const recentHistory = conversationHistory.slice(-10);
+
+    const historyText = recentHistory
+      .map((msg) => `${msg.speaker.toUpperCase()}: ${msg.content}`)
+      .join('\n');
+
+    return `You are a friendly and supportive English conversation partner.
+
+**Context**:
+- Student CEFR Level: ${cefrLevel}
+- Topic: ${englishContent}
+- Key Vocabulary: ${keywords.join(', ')}
+
+**Conversation History**:
+${historyText}
+
+**Your Role**:
+- Respond naturally to the student's last message
+- Ask follow-up questions to keep the conversation going
+- Use vocabulary and grammar appropriate for ${cefrLevel} level
+- Keep your response brief (1-3 sentences)
+
+**Important Rules**:
+- DO NOT correct the student's mistakes
+- If the student's message is unclear, gently rephrase or ask for clarification
+- Stay on the topic
+- Be encouraging and supportive
+
+**Level Guidelines**:
+${CEFR_DESCRIPTIONS[cefrLevel]}
+
+Now, respond to the student's last message.
+Provide ONLY your message, no additional text or formatting.`;
   }
 }
