@@ -2639,6 +2639,25 @@ body {
   animation: blink 1s infinite;
 }
 
+/* Auto Listen Toggle */
+.auto-listen-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+}
+
+.auto-listen-toggle .toggle-label {
+  color: #4da6ff;
+  font-size: 0.85em;
+}
+
+.auto-listen-toggle.active .toggle-label {
+  text-shadow: 0 0 8px rgba(77, 166, 255, 0.5);
+}
+
 /* Auto Send Toggle */
 .auto-send-toggle {
   display: flex;

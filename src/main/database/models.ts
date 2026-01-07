@@ -76,6 +76,12 @@ export interface TranscribeArgs {
   language?: string;
 }
 
+// Step5 STT 요청 (audioData 직접 전송)
+export interface TranscribeStep5Args {
+  audioData: Uint8Array;
+  language?: string;
+}
+
 export interface GenerateTopicArgs {
   koreanText: string;
   cefrLevel: CEFRLevel;

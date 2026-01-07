@@ -14,6 +14,7 @@ interface RolePlayPageState {
   elapsedTime: number;
   autoSendEnabled: boolean;
   autoSendDelay: number;
+  autoListenEnabled: boolean;
   showEndConfirmation: boolean;
 }
 
@@ -27,6 +28,7 @@ export const RolePlayPage: React.FC = () => {
     elapsedTime: 0,
     autoSendEnabled: true,
     autoSendDelay: 2,
+    autoListenEnabled: false, // 수동 테스트를 위해 기본값 false
     showEndConfirmation: false,
   });
 
@@ -164,7 +166,7 @@ export const RolePlayPage: React.FC = () => {
           <div className="warning-icon">⚠️</div>
           <div className="warning-content">
             <h3>중요 안내</h3>
-            <p>이 단계에서는 첨삭 없이 대화를 끝까지 이어가는 연습을 합니다.</p>
+            <p>이 단계에서는 중간에 단어를 찾거나 첨삭 하려 하지말고 현재 가진 지식으로 최대한 대화를 끝까지 이어가는 연습을 합니다.</p>
             <p>실수를 두려워하지 말고 자신있게 대화해보세요!</p>
             <p>권장 대화 시간: 5분 이내</p>
           </div>
@@ -217,11 +219,6 @@ export const RolePlayPage: React.FC = () => {
         </button>
       </header>
 
-      {/* Warning banner */}
-      <div className="conversation-banner">
-        💬 첨삭 없이 어떻게든 대화 이어가기
-      </div>
-
       {/* Error message */}
       {error && (
         <div className="error-message">
@@ -251,6 +248,10 @@ export const RolePlayPage: React.FC = () => {
         }
         onChangeAutoSendDelay={(delay) =>
           setState((prev) => ({ ...prev, autoSendDelay: delay }))
+        }
+        autoListenEnabled={state.autoListenEnabled}
+        onToggleAutoListen={(enabled) =>
+          setState((prev) => ({ ...prev, autoListenEnabled: enabled }))
         }
       />
 

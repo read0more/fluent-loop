@@ -1,6 +1,8 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { AutoSendToggle } from './AutoSendToggle';
+import { AutoListenToggle } from './AutoListenToggle';
 import { useAutoSend } from '../../hooks/useAutoSend';
+import { useSilenceDetection } from '../../hooks/useSilenceDetection';
 
 export interface ChatInputProps {
   onSendMessage: (content: string) => void;
@@ -9,6 +11,8 @@ export interface ChatInputProps {
   autoSendDelay: number;
   onToggleAutoSend: (enabled: boolean) => void;
   onChangeAutoSendDelay: (delay: number) => void;
+  autoListenEnabled: boolean;
+  onToggleAutoListen: (enabled: boolean) => void;
   disabled?: boolean;
 }
 
@@ -25,6 +29,8 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   autoSendDelay,
   onToggleAutoSend,
   onChangeAutoSendDelay,
+  autoListenEnabled,
+  onToggleAutoListen,
   disabled = false,
 }) => {
   const [inputText, setInputText] = useState('');
@@ -33,9 +39,31 @@ export const ChatInput: React.FC<ChatInputProps> = ({
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
+  const streamRef = useRef<MediaStream | null>(null);
+  const autoSendOnCompleteRef = useRef(false); // 침묵 감지로 인한 자동 전송 플래그
 
-  // 자동 전송 훅
+  // 자동 전송 훅 (텍스트 입력 후 자동 전송용 - 기존 로직)
   const { startTimer, stopTimer } = useAutoSend(autoSendEnabled, autoSendDelay);
+
+  // stopRecording 함수를 ref로 저장 (침묵 감지 콜백에서 사용)
+  const stopRecordingRef = useRef<(() => void) | null>(null);
+
+  // 침묵 감지 훅 (자동전송 ON일 때만 활성화)
+  const { startDetection, stopDetection } = useSilenceDetection(
+    {
+      enabled: autoSendEnabled,
+      silenceDelay: autoSendDelay,
+      threshold: 15, // 고정 임계값
+    },
+    // 침묵 감지 시 콜백
+    useCallback(() => {
+      console.log('[ChatInput] Silence detected, auto stopping recording');
+      autoSendOnCompleteRef.current = true; // 자동 전송 플래그 설정
+      if (stopRecordingRef.current) {
+        stopRecordingRef.current();
+      }
+    }, [])
+  );
 
   // 메시지 전송 핸들러
   const handleSend = useCallback(() => {
@@ -54,77 +82,142 @@ export const ChatInput: React.FC<ChatInputProps> = ({
     }
   }, [inputText, autoSendEnabled, recordingState, startTimer, handleSend]);
 
-  // 녹음 시작
-  const startRecording = async () => {
+  // 자동 듣기 모드: 페이지 진입 시 및 STT 완료 후 자동 녹음 시작
+  useEffect(() => {
+    // 조건: autoListen 활성화, idle 상태, 비활성화 아님, 전송 중 아님
+    if (autoListenEnabled && recordingState === 'idle' && !disabled && !isSending) {
+      // 약간의 딜레이 후 녹음 시작 (STT 완료 직후 바로 시작하지 않도록)
+      const timer = setTimeout(() => {
+        startRecording();
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [autoListenEnabled, recordingState, disabled, isSending]);
+
+  // 녹음 시작 (Step3 RetellingPage와 동일한 방식)
+  const startRecording = useCallback(async () => {
+    console.log('[ChatInput] startRecording called');
+
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      console.log('[ChatInput] Microphone access granted');
+
+      // stream 저장 (침묵 감지용)
+      streamRef.current = stream;
+
       const mediaRecorder = new MediaRecorder(stream, {
         mimeType: 'audio/webm;codecs=opus',
       });
+      console.log('[ChatInput] MediaRecorder created');
 
       audioChunksRef.current = [];
 
       mediaRecorder.ondataavailable = (event) => {
+        console.log('[ChatInput] ondataavailable, size:', event.data.size);
         if (event.data.size > 0) {
           audioChunksRef.current.push(event.data);
         }
       };
 
-      mediaRecorder.onstop = async () => {
-        // 스트림 정리
-        stream.getTracks().forEach((track) => track.stop());
-
-        // STT 변환
-        await transcribeAudio();
-      };
-
       mediaRecorderRef.current = mediaRecorder;
-      mediaRecorder.start(1000);
+      mediaRecorder.start(1000); // Step3과 동일하게 1초마다 데이터 수집
 
       setRecordingState('recording');
       setError(null);
-    } catch (error) {
-      console.error('녹음 시작 실패:', error);
-      setError('마이크 접근 권한이 필요합니다.');
-      setRecordingState('idle');
-    }
-  };
+      console.log('[ChatInput] Recording started');
 
-  // 녹음 중지
-  const stopRecording = () => {
-    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
-      mediaRecorderRef.current.stop();
-    }
-  };
-
-  // STT 변환
-  const transcribeAudio = async () => {
-    setRecordingState('transcribing');
-
-    try {
-      const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
-      const arrayBuffer = await audioBlob.arrayBuffer();
-      const audioData = new Uint8Array(arrayBuffer);
-
-      // 임시 파일로 저장 후 STT 변환
-      const response = await window.electron.invoke('transcribe-audio', {
-        audioData,
-      });
-
-      if (response.success && response.data?.text) {
-        const transcribedText = response.data.text;
-        setInputText((prev) => (prev ? prev + ' ' + transcribedText : transcribedText));
-        setError(null);
-      } else {
-        setError(response.error || 'STT 변환에 실패했습니다.');
+      // 자동전송 ON이면 침묵 감지 시작
+      if (autoSendEnabled) {
+        console.log('[ChatInput] Starting silence detection');
+        startDetection(stream);
       }
     } catch (error) {
-      console.error('STT 변환 오류:', error);
-      setError('음성 인식 중 오류가 발생했습니다.');
-    } finally {
-      setRecordingState('idle');
+      console.error('[ChatInput] 녹음 시작 실패:', error);
+      setError('마이크 접근 권한이 필요합니다.');
     }
-  };
+  }, [autoSendEnabled, startDetection]);
+
+  // 녹음 중지 및 STT 변환 (Step3 RetellingPage와 동일한 방식)
+  const stopRecording = useCallback(() => {
+    console.log('[ChatInput] stopRecording called, state:', mediaRecorderRef.current?.state);
+
+    // 침묵 감지 중지
+    stopDetection();
+
+    if (!mediaRecorderRef.current) {
+      console.log('[ChatInput] No mediaRecorder');
+      return;
+    }
+
+    const mediaRecorder = mediaRecorderRef.current;
+    const shouldAutoSend = autoSendOnCompleteRef.current; // 자동 전송 플래그 캡처
+
+    mediaRecorder.onstop = async () => {
+      console.log('[ChatInput] onstop triggered, chunks:', audioChunksRef.current.length);
+
+      // 스트림 정리
+      mediaRecorder.stream.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
+
+      if (audioChunksRef.current.length === 0) {
+        console.log('[ChatInput] No audio data');
+        setRecordingState('idle');
+        autoSendOnCompleteRef.current = false;
+        return;
+      }
+
+      // STT 변환 (Step3과 동일하게 직접 처리)
+      console.log('[ChatInput] Starting STT conversion...');
+      setRecordingState('transcribing');
+
+      try {
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        const arrayBuffer = await audioBlob.arrayBuffer();
+        const audioData = new Uint8Array(arrayBuffer);
+
+        console.log('[ChatInput] audioData size:', audioData.length);
+
+        // Step5 전용 STT 핸들러 호출
+        const response = await window.electron.invoke('transcribe-step5-audio', {
+          audioData,
+          language: 'en',
+        });
+
+        console.log('[ChatInput] STT response:', response);
+
+        if (response.success && response.data?.text) {
+          const transcribedText = response.data.text;
+
+          // 침묵 감지로 인한 자동 전송인 경우 바로 전송
+          if (shouldAutoSend) {
+            console.log('[ChatInput] Auto sending after silence detection');
+            onSendMessage(transcribedText);
+            setInputText('');
+          } else {
+            setInputText((prev) => (prev ? prev + ' ' + transcribedText : transcribedText));
+          }
+          setError(null);
+        } else {
+          console.error('[ChatInput] STT failed:', response.error);
+          setError(response.error || 'STT 변환에 실패했습니다.');
+        }
+      } catch (error) {
+        console.error('[ChatInput] STT 변환 오류:', error);
+        setError('음성 인식 중 오류가 발생했습니다.');
+      } finally {
+        setRecordingState('idle');
+        autoSendOnCompleteRef.current = false; // 플래그 리셋
+      }
+    };
+
+    mediaRecorder.stop();
+    console.log('[ChatInput] MediaRecorder stop() called');
+  }, [stopDetection, onSendMessage]);
+
+  // stopRecording을 ref에 저장 (침묵 감지 콜백에서 참조)
+  useEffect(() => {
+    stopRecordingRef.current = stopRecording;
+  }, [stopRecording]);
 
   // 엔터키로 전송 (Shift+Enter는 줄바꿈)
   const handleKeyPress = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -136,7 +229,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
     }
   };
 
-  const isDisabled = disabled || isSending || (recordingState !== 'idle' && recordingState !== 'transcribing');
+  const isDisabled = disabled || isSending;
 
   return (
     <div className="chat-input">
@@ -151,10 +244,20 @@ export const ChatInput: React.FC<ChatInputProps> = ({
       )}
 
       <div className="input-controls">
+        {/* 자동 듣기 토글 */}
+        <AutoListenToggle enabled={autoListenEnabled} onToggle={onToggleAutoListen} />
+
         {/* 녹음 버튼 */}
         <button
           className={`record-button ${recordingState === 'recording' ? 'recording' : ''}`}
-          onClick={recordingState === 'idle' ? startRecording : stopRecording}
+          onClick={() => {
+            console.log('[ChatInput] Button clicked, recordingState:', recordingState);
+            if (recordingState === 'idle') {
+              startRecording();
+            } else {
+              stopRecording();
+            }
+          }}
           disabled={isDisabled || recordingState === 'transcribing'}
           title={recordingState === 'idle' ? '음성 녹음' : '녹음 중지'}
         >
@@ -179,7 +282,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
               ? '음성을 텍스트로 변환 중...'
               : '메시지를 입력하거나 음성으로 녹음하세요'
           }
-          disabled={isDisabled}
+          disabled={isDisabled || recordingState === 'recording'}
           rows={2}
         />
 
@@ -195,7 +298,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
         <button
           className="send-button"
           onClick={handleSend}
-          disabled={!inputText.trim() || isDisabled}
+          disabled={!inputText.trim() || isDisabled || recordingState !== 'idle'}
           title="메시지 전송"
         >
           {isSending ? '전송 중...' : '보내기 ➤'}

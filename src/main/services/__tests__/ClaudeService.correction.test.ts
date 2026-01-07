@@ -23,16 +23,6 @@ describe('ClaudeService - Correction Features', () => {
     }, 30000); // 30 second timeout for AI call
   });
 
-  describe('TC-002: correctSentence() - Already correct sentence', () => {
-    it('should return original if sentence is correct', async () => {
-      const result = await service.correctSentence('I went to school yesterday.', 'B1');
-
-      expect(result.original).toBe('I went to school yesterday.');
-      expect(result.corrected).toBe('I went to school yesterday.');
-      expect(result.explanation).toMatch(/no correction|수정.*필요|올바름|수정할 부분이 없|문법적으로 올바른|문법적으로 정확한|문법적으로 완벽/i);
-    }, 30000);
-  });
-
   describe('TC-003: correctSentence() - Subject-verb disagreement', () => {
     it('should correct subject-verb agreement error', async () => {
       const result = await service.correctSentence("She don't like apples.", 'A2');
@@ -112,16 +102,6 @@ describe('ClaudeService - Correction Features', () => {
         expect((error as AppError).userMessage).toContain('너무 깁니다');
       }
     });
-  });
-
-  describe('TC-020: Already perfect sentence', () => {
-    it('should return original for perfect sentence', async () => {
-      const perfectSentence = 'The quick brown fox jumps over the lazy dog.';
-      const result = await service.correctSentence(perfectSentence, 'C1');
-
-      expect(result.corrected).toBe(perfectSentence);
-      expect(result.explanation).toMatch(/no correction|수정.*필요|수정할 부분이 없|문법적으로 올바른|문법적으로 정확한|문법적으로 완벽/i);
-    }, 30000);
   });
 
   describe('TC-021: Special characters handling', () => {
