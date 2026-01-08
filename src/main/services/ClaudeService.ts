@@ -95,31 +95,38 @@ Output format: ["word1", "word2", ...]`;
   }
 
   private buildPrompt(koreanText: string, cefrLevel: CEFRLevel): string {
-    return `You are an English learning content creator for CEFR ${cefrLevel} level learners.
+    return `You are an English translator for Korean language learners.
 
-Convert the following Korean text into English suitable for a ${cefrLevel} learner.
+**CRITICAL INSTRUCTION**: You MUST translate the Korean text below into English.
+DO NOT create new content. DO NOT change the topic or meaning.
+The English output MUST convey the SAME message, ideas, and emotions as the Korean original.
 
-Level Guide: ${CEFR_DESCRIPTIONS[cefrLevel]}
+Your task:
+1. Translate the Korean text to English accurately
+2. Adjust ONLY the vocabulary and grammar complexity to match CEFR ${cefrLevel} level
+3. Preserve the original meaning, intent, and emotional tone
 
-Requirements:
-1. Use vocabulary and grammar appropriate for CEFR ${cefrLevel} level
-2. Maintain the original meaning and intent
-3. Use natural, conversational English
-4. Keep the length similar to the original
-5. Extract 5-10 key learning keywords from the English script
+CEFR ${cefrLevel} Level Guide: ${CEFR_DESCRIPTIONS[cefrLevel]}
 
-Korean Text:
+Korean Text to Translate:
 ---
 ${koreanText}
 ---
 
-Output Format (JSON):
+Translation Requirements:
+1. The English MUST be a faithful translation of the Korean text above
+2. Use vocabulary appropriate for CEFR ${cefrLevel} level
+3. Maintain natural, conversational English
+4. Keep similar length to the original
+5. Extract 5-10 key vocabulary words from your English translation
+
+Output Format (JSON only):
 {
-  "english_script": "...",
+  "english_script": "Your English translation here",
   "keywords": ["word1", "word2", ...]
 }
 
-Please provide ONLY the JSON output, no additional explanation.`;
+Provide ONLY the JSON output.`;
   }
 
   private executeClaude(prompt: string): Promise<string> {

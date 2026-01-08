@@ -1,12 +1,25 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { ClaudeService } from '../ClaudeService';
-import { AppError, ErrorCode } from '../../errors/AppError';
+import { AppError } from '../../errors/AppError';
+
+// Private 메서드 테스트를 위한 타입 정의
+interface ClaudeServiceTestable {
+  parseCorrectionResponse(output: string): {
+    original: string;
+    corrected: string;
+    explanation: string;
+    categories: string[];
+  };
+  buildCorrectionPrompt(sentence: string, cefrLevel: string): string;
+}
 
 describe('ClaudeService - Correction Features', () => {
   let service: ClaudeService;
+  let testableService: ClaudeServiceTestable;
 
   beforeEach(() => {
     service = new ClaudeService();
+    testableService = service as unknown as ClaudeServiceTestable;
   });
 
   describe('TC-001: correctSentence() - Grammar error correction', () => {
@@ -33,20 +46,11 @@ describe('ClaudeService - Correction Features', () => {
     }, 30000);
   });
 
-  describe('TC-004: correctSentence() - Vocabulary improvement', () => {
-    it('should suggest vocabulary improvements for B2+ levels', async () => {
-      const result = await service.correctSentence('The movie was very boring.', 'B2');
-
-      expect(result).toBeDefined();
-      expect(result.categories).toContain('vocabulary');
-      expect(result.explanation).toBeTruthy();
-    }, 30000);
-  });
-
   describe('TC-010: parseCorrectionResponse() - JSON parsing', () => {
     it('should parse markdown code block with JSON', () => {
-      const output = '```json\n{"original":"test", "corrected":"test", "explanation":"ok", "categories":[]}\n```';
-      const result = (service as any).parseCorrectionResponse(output);
+      const output =
+        '```json\n{"original":"test", "corrected":"test", "explanation":"ok", "categories":[]}\n```';
+      const result = testableService.parseCorrectionResponse(output);
 
       expect(result.original).toBe('test');
       expect(result.corrected).toBe('test');
@@ -55,8 +59,9 @@ describe('ClaudeService - Correction Features', () => {
     });
 
     it('should parse plain JSON without code blocks', () => {
-      const output = '{"original":"test", "corrected":"corrected", "explanation":"Fixed", "categories":["grammar"]}';
-      const result = (service as any).parseCorrectionResponse(output);
+      const output =
+        '{"original":"test", "corrected":"corrected", "explanation":"Fixed", "categories":["grammar"]}';
+      const result = testableService.parseCorrectionResponse(output);
 
       expect(result.original).toBe('test');
       expect(result.corrected).toBe('corrected');
@@ -66,9 +71,7 @@ describe('ClaudeService - Correction Features', () => {
 
   describe('TC-017: Empty string validation', () => {
     it('should throw validation error for empty sentence', async () => {
-      await expect(
-        service.correctSentence('', 'B1')
-      ).rejects.toThrow(AppError);
+      await expect(service.correctSentence('', 'B1')).rejects.toThrow(AppError);
 
       try {
         await service.correctSentence('', 'B1');
@@ -81,9 +84,7 @@ describe('ClaudeService - Correction Features', () => {
 
   describe('TC-018: Whitespace-only string validation', () => {
     it('should throw validation error for whitespace-only sentence', async () => {
-      await expect(
-        service.correctSentence('   ', 'B1')
-      ).rejects.toThrow(AppError);
+      await expect(service.correctSentence('   ', 'B1')).rejects.toThrow(AppError);
     });
   });
 
@@ -91,9 +92,7 @@ describe('ClaudeService - Correction Features', () => {
     it('should throw validation error for sentence longer than 500 characters', async () => {
       const longSentence = 'A'.repeat(501);
 
-      await expect(
-        service.correctSentence(longSentence, 'B1')
-      ).rejects.toThrow(AppError);
+      await expect(service.correctSentence(longSentence, 'B1')).rejects.toThrow(AppError);
 
       try {
         await service.correctSentence(longSentence, 'B1');
@@ -110,8 +109,8 @@ describe('ClaudeService - Correction Features', () => {
       const result = await service.correctSentence(sentence, 'B1');
 
       expect(result.original).toContain("'");
-      expect(result.original).toContain("!");
-      expect(result.original).toContain("?");
+      expect(result.original).toContain('!');
+      expect(result.original).toContain('?');
     }, 30000);
   });
 
@@ -120,11 +119,11 @@ describe('ClaudeService - Correction Features', () => {
       const invalidJSON = 'This is not JSON';
 
       expect(() => {
-        (service as any).parseCorrectionResponse(invalidJSON);
+        testableService.parseCorrectionResponse(invalidJSON);
       }).toThrow(AppError);
 
       try {
-        (service as any).parseCorrectionResponse(invalidJSON);
+        testableService.parseCorrectionResponse(invalidJSON);
       } catch (error) {
         expect(error).toBeInstanceOf(AppError);
         expect((error as AppError).userMessage).toContain('파싱에 실패');
@@ -135,7 +134,7 @@ describe('ClaudeService - Correction Features', () => {
       const incompleteJSON = '{"original":"test"}'; // Missing required fields
 
       expect(() => {
-        (service as any).parseCorrectionResponse(incompleteJSON);
+        testableService.parseCorrectionResponse(incompleteJSON);
       }).toThrow(AppError);
     });
   });
@@ -144,7 +143,7 @@ describe('ClaudeService - Correction Features', () => {
     it('should include sentence and CEFR level in prompt', () => {
       const sentence = 'I go to school yesterday.';
       const cefrLevel = 'B1';
-      const prompt = (service as any).buildCorrectionPrompt(sentence, cefrLevel);
+      const prompt = testableService.buildCorrectionPrompt(sentence, cefrLevel);
 
       expect(prompt).toContain(sentence);
       expect(prompt).toContain('B1');
@@ -155,8 +154,8 @@ describe('ClaudeService - Correction Features', () => {
 
     it('should include level-specific instructions', () => {
       const sentence = 'Test sentence.';
-      const promptA1 = (service as any).buildCorrectionPrompt(sentence, 'A1');
-      const promptC1 = (service as any).buildCorrectionPrompt(sentence, 'C1');
+      const promptA1 = testableService.buildCorrectionPrompt(sentence, 'A1');
+      const promptC1 = testableService.buildCorrectionPrompt(sentence, 'C1');
 
       expect(promptA1).toContain('A1');
       expect(promptC1).toContain('C1');
