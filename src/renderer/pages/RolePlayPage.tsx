@@ -95,16 +95,27 @@ export const RolePlayPage: React.FC = () => {
   );
 
   // 대화 종료
-  const handleEndConversation = async () => {
+  const handleEndConversation = async (goToCorrection: boolean) => {
     await endConversation();
+
+    // conversationId 저장 (Step 6에서 사용)
+    if (goToCorrection && conversation?.id && state.topic?.id) {
+      localStorage.setItem('lastConversationId', String(conversation.id));
+      localStorage.setItem('lastTopicId', String(state.topic.id));
+    }
+
     setState((prev) => ({
       ...prev,
       showEndConfirmation: false,
       isConversationStarted: false,
     }));
 
-    // 홈으로 이동 또는 다른 단계로 이동
-    navigate('/');
+    // 첨삭 페이지로 이동 또는 홈으로 이동
+    if (goToCorrection) {
+      navigate('/conversation-correction');
+    } else {
+      navigate('/');
+    }
   };
 
   // 타이머 업데이트
@@ -284,11 +295,18 @@ export const RolePlayPage: React.FC = () => {
                 취소
               </button>
               <button
-                onClick={handleEndConversation}
+                onClick={() => handleEndConversation(false)}
+                className="btn-secondary"
+                disabled={isLoading}
+              >
+                {isLoading ? '종료 중...' : '홈으로'}
+              </button>
+              <button
+                onClick={() => handleEndConversation(true)}
                 className="btn-confirm"
                 disabled={isLoading}
               >
-                {isLoading ? '종료 중...' : '종료하기'}
+                {isLoading ? '종료 중...' : '첨삭하러 가기'}
               </button>
             </div>
           </div>
