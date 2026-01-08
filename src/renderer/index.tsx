@@ -6,6 +6,7 @@ import { ListeningPage } from './pages/ListeningPage';
 import { RetellingPage } from './pages/RetellingPage';
 import { CorrectionPage } from './pages/CorrectionPage';
 import { RolePlayPage } from './pages/RolePlayPage';
+import { ConversationCorrectionPage } from './pages/ConversationCorrectionPage';
 import { SettingsPage } from './pages/SettingsPage';
 import './styles.css';
 
@@ -29,6 +30,9 @@ const App: React.FC = () => {
         <Link to="/roleplay" className="nav-link">
           단계 5: AI 롤플레잉
         </Link>
+        <Link to="/conversation-correction" className="nav-link">
+          단계 6: 대화 첨삭
+        </Link>
         <Link to="/settings" className="nav-link">
           설정
         </Link>
@@ -41,6 +45,7 @@ const App: React.FC = () => {
         <Route path="/retelling" element={<RetellingPage />} />
         <Route path="/correction" element={<CorrectionPage />} />
         <Route path="/roleplay" element={<RolePlayPage />} />
+        <Route path="/conversation-correction" element={<ConversationCorrectionPage />} />
         <Route path="/settings" element={<SettingsPage />} />
       </Routes>
     </HashRouter>

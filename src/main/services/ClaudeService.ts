@@ -2,8 +2,18 @@ import { spawn } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
-import { TopicGenerationResult, CEFRLevel, CorrectionResult } from '../database/models';
+import {
+  TopicGenerationResult,
+  CEFRLevel,
+  CorrectionResult,
+  ConversationCorrectionResult,
+  Message,
+} from '../database/models';
 import { AppError, ErrorCode } from '../errors/AppError';
+import { ConversationRepository } from '../database/repositories/ConversationRepository';
+import { MessageRepository } from '../database/repositories/MessageRepository';
+import { TopicRepository } from '../database/repositories/TopicRepository';
+import { getDatabase } from '../database/db';
 
 export interface TopicContext {
   englishContent: string;
@@ -25,6 +35,7 @@ export interface IClaudeService {
     conversationHistory: ConversationMessage[],
     isFirstMessage?: boolean
   ): Promise<string>;
+  correctConversation(conversationId: number): Promise<ConversationCorrectionResult[]>;
 }
 
 const CEFR_DESCRIPTIONS: Record<CEFRLevel, string> = {
@@ -456,5 +467,223 @@ ${CEFR_DESCRIPTIONS[cefrLevel]}
 
 Now, respond to the student's last message.
 Provide ONLY your message, no additional text or formatting.`;
+  }
+
+  /**
+   * Step 6: 대화 전체 첨삭 (배치 처리)
+   */
+  async correctConversation(conversationId: number): Promise<ConversationCorrectionResult[]> {
+    // Repositories 초기화
+    const db = getDatabase();
+    const conversationRepo = new ConversationRepository(db);
+    const messageRepo = new MessageRepository(db);
+    const topicRepo = new TopicRepository(db);
+
+    // 1. 대화 데이터 조회
+    const conversation = conversationRepo.findById(conversationId);
+    if (!conversation) {
+      throw new AppError(ErrorCode.NOT_FOUND, 'Conversation not found', '대화를 찾을 수 없습니다.');
+    }
+
+    const messages = messageRepo.findByConversationId(conversationId);
+    if (!messages || messages.length === 0) {
+      throw new AppError(
+        ErrorCode.VALIDATION_ERROR,
+        'No messages in conversation',
+        '대화 내용이 없습니다.'
+      );
+    }
+
+    const topic = await topicRepo.findById(conversation.topicId);
+    if (!topic) {
+      throw new AppError(ErrorCode.NOT_FOUND, 'Topic not found', '토픽을 찾을 수 없습니다.');
+    }
+
+    // 2. 배치 첨삭 프롬프트 생성
+    const prompt = this.buildConversationCorrectionPrompt(
+      messages,
+      topic.cefrLevel,
+      topic.englishContent
+    );
+
+    // 3. Claude CLI 호출
+    try {
+      const output = await this.executeClaude(prompt);
+
+      // 4. JSON 배열 응답 파싱
+      return this.parseConversationCorrectionResponse(output, messages);
+    } catch (error) {
+      if (error instanceof AppError) {
+        throw error;
+      }
+      throw new AppError(
+        ErrorCode.CLAUDE_API_ERROR,
+        'Failed to correct conversation',
+        '대화 첨삭 처리 중 오류가 발생했습니다. 다시 시도해주세요.',
+        error as Error
+      );
+    }
+  }
+
+  /**
+   * 대화 첨삭 전용 프롬프트 생성
+   */
+  private buildConversationCorrectionPrompt(
+    messages: Message[],
+    cefrLevel: CEFRLevel,
+    topicContent: string
+  ): string {
+    // 대화 히스토리 포맷팅
+    const conversationHistory = messages
+      .map((msg, i) => {
+        const speaker = msg.speaker === 'user' ? 'Student' : 'AI';
+        return `${i + 1}. [${speaker}] (${msg.timestamp}s): ${msg.content}`;
+      })
+      .join('\n');
+
+    // user 메시지만 추출
+    const userMessages = messages.filter((msg) => msg.speaker === 'user');
+
+    return `You are an English teacher reviewing a CEFR ${cefrLevel} student's conversation practice.
+
+**Topic**: ${topicContent}
+
+**Full Conversation**:
+${conversationHistory}
+
+Analyze and correct ONLY the student's messages (marked as [Student]) based on:
+1. **Grammar**: Fix grammatical errors (tense, subject-verb agreement, articles, prepositions, etc.)
+2. **Vocabulary**: Suggest better word choices appropriate for ${cefrLevel} level
+3. **Naturalness**: Make the sentences sound more natural in the conversation context
+4. **Conversation Flow**: Consider the context of the AI's questions when correcting
+
+Return ONLY a JSON array with corrections for each student message:
+[
+  {
+    "messageId": <message_id>,
+    "speaker": "user",
+    "original": "...",
+    "corrected": "...",
+    "explanation": "...",
+    "categories": ["grammar", "vocabulary", "naturalness"],
+    "timestamp": <timestamp>
+  },
+  ...
+]
+
+**Guidelines**:
+- If a sentence is already correct, set "corrected" = "original" and "explanation" = "수정이 필요하지 않습니다."
+- "categories" should include only relevant correction types (e.g., only ["grammar"] if no vocabulary/naturalness issues)
+- "explanation" should be concise and in Korean (for ${cefrLevel} learners)
+- Consider the conversation context: responses should make sense in the flow of the dialogue
+- Focus on helping the student improve conversational skills
+- For ${cefrLevel} level:
+  - A1/A2: Use very simple explanations, focus on basic grammar
+  - B1/B2: Provide intermediate-level explanations, introduce better phrases
+  - C1/C2: Offer advanced explanations, discuss nuances and idiomatic usage
+
+**Important**: Provide ONLY the JSON array, no additional text or markdown formatting.
+
+Student Messages to Correct:
+${userMessages.map((msg, i) => `${i + 1}. (messageId: ${msg.id}, timestamp: ${msg.timestamp}s) "${msg.content}"`).join('\n')}
+
+JSON Array Output:`;
+  }
+
+  /**
+   * 대화 첨삭 응답 파싱
+   */
+  private parseConversationCorrectionResponse(
+    output: string,
+    allMessages: Message[]
+  ): ConversationCorrectionResult[] {
+    try {
+      let jsonStr = output.trim();
+
+      // ```json ... ``` 제거
+      const jsonMatch = jsonStr.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+      if (jsonMatch) {
+        jsonStr = jsonMatch[1];
+      }
+
+      // JSON 배열 파싱
+      const parsed = JSON.parse(jsonStr);
+
+      if (!Array.isArray(parsed)) {
+        throw new Error('Response must be an array');
+      }
+
+      // 검증
+      for (const item of parsed) {
+        if (
+          !item.messageId ||
+          !item.original ||
+          !item.corrected ||
+          item.explanation === undefined
+        ) {
+          throw new AppError(
+            ErrorCode.CLAUDE_PARSING_ERROR,
+            'Missing required fields in correction item',
+            'Missing required fields'
+          );
+        }
+        if (!Array.isArray(item.categories)) {
+          throw new AppError(
+            ErrorCode.CLAUDE_PARSING_ERROR,
+            'Categories must be an array',
+            'Categories must be an array'
+          );
+        }
+      }
+
+      // user 메시지 첨삭 결과 + ai 메시지 원문 결합
+      const results: ConversationCorrectionResult[] = [];
+
+      for (const message of allMessages) {
+        if (message.speaker === 'ai') {
+          // AI 메시지는 첨삭 없이 원문만
+          results.push({
+            messageId: message.id,
+            speaker: 'ai',
+            original: message.content,
+            corrected: message.content,
+            explanation: '',
+            categories: [],
+            timestamp: message.timestamp,
+          });
+        } else {
+          // user 메시지는 첨삭 결과 사용
+          const correction = parsed.find(
+            (c: ConversationCorrectionResult) => c.messageId === message.id
+          );
+          if (correction) {
+            results.push({
+              messageId: message.id,
+              speaker: 'user',
+              original: correction.original,
+              corrected: correction.corrected,
+              explanation: correction.explanation,
+              categories: correction.categories,
+              timestamp: correction.timestamp,
+            });
+          }
+        }
+      }
+
+      return results;
+    } catch (error) {
+      // AppError는 그대로 재throw
+      if (error instanceof AppError) {
+        throw error;
+      }
+
+      // 기타 에러는 AppError로 감싸서 throw
+      throw new AppError(
+        ErrorCode.CLAUDE_PARSING_ERROR,
+        'Failed to parse conversation correction response',
+        '대화 첨삭 결과 파싱에 실패했습니다. 다시 시도해주세요.',
+        error as Error
+      );
+    }
   }
 }

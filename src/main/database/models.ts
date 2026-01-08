@@ -366,3 +366,44 @@ export interface GetConversationHistoryRequest {
 export interface ReplayTTSRequest {
   messageId: number;
 }
+
+// ==================== Step 6: 대화 첨삭 관련 타입 ====================
+
+// 대화 첨삭 결과 (AI 응답 - 화자 정보 포함)
+export interface ConversationCorrectionResult {
+  messageId: number; // conversation_messages.id
+  speaker: 'user' | 'ai';
+  original: string;
+  corrected: string; // AI 메시지는 original과 동일
+  explanation: string; // AI 메시지는 빈 문자열
+  categories: CorrectionCategory[]; // AI 메시지는 빈 배열
+  timestamp: number; // 대화 내 시간 (초)
+}
+
+// 대화 첨삭 요청 (IPC)
+export interface CorrectConversationRequest {
+  conversationId: number;
+}
+
+// 대화 첨삭 응답 (IPC)
+export interface CorrectConversationResponse extends IPCResponse<ConversationCorrectionResult[]> {
+  success: boolean;
+  data?: ConversationCorrectionResult[];
+  error?: string;
+  errorCode?: string;
+}
+
+// 대화 첨삭 저장 요청 (IPC)
+export interface SaveConversationCorrectionsRequest {
+  conversationId: number;
+  corrections: ConversationCorrectionResult[]; // user 메시지만 저장
+  sessionId?: number;
+  topicId: number;
+}
+
+// 대화 정보 조회 응답 (선택적)
+export interface ConversationInfo {
+  conversation: Conversation;
+  messages: Message[];
+  topic: Topic;
+}
