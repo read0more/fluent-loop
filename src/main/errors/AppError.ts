@@ -40,6 +40,7 @@ export enum ErrorCode {
   // 일반 에러
   NETWORK_ERROR = 'NETWORK_ERROR',
   UNKNOWN_ERROR = 'UNKNOWN_ERROR',
+  NOT_IMPLEMENTED = 'NOT_IMPLEMENTED',
 }
 
 export class AppError extends Error {
