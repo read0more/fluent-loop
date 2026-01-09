@@ -95,7 +95,11 @@ Output format: ["word1", "word2", ...]`;
   }
 
   private buildPrompt(koreanText: string, cefrLevel: CEFRLevel): string {
-    return `You are an English translator for Korean language learners.
+    return `
+<response_format>
+You MUST respond with ONLY a JSON object. No explanatory text, no markdown code blocks, no additional commentary.
+Respond with ONLY the pure JSON object, nothing else.
+</response_format>
 
 **CRITICAL INSTRUCTION**: You MUST translate the Korean text below into English.
 DO NOT create new content. DO NOT change the topic or meaning.
@@ -120,13 +124,20 @@ Translation Requirements:
 4. Keep similar length to the original
 5. Extract 5-10 key vocabulary words from your English translation
 
-Output Format (JSON only):
+<output_format>
+CRITICAL - Output ONLY this JSON structure, nothing else:
 {
   "english_script": "Your English translation here",
-  "keywords": ["word1", "word2", ...]
+  "keywords": ["word1", "word2", "word3"]
 }
 
-Provide ONLY the JSON output.`;
+Do NOT include:
+- Markdown code blocks (\`\`\`json...\`\`\`)
+- Explanatory text before or after the JSON
+- Comments or notes
+- Any text that is not the JSON object itself
+- Any text outside the JSON braces
+</output_format>`;
   }
 
   private executeClaude(prompt: string): Promise<string> {
@@ -140,7 +151,9 @@ Provide ONLY the JSON output.`;
 
       // PowerShell을 통해 파일 내용을 읽어서 Claude CLI에 전달
       // -p 플래그는 "print mode"를 의미하고, 프롬프트는 stdin으로 전달
-      const psCommand = `Get-Content -Path '${tempFile}' -Raw -Encoding UTF8 | claude -p --output-format text`;
+      // --output-format json으로 구조화된 JSON 출력 강제
+      // PowerShell의 출력 인코딩을 UTF-8로 명시적으로 설정하여 한글 처리
+      const psCommand = `$OutputEncoding = [System.Text.Encoding]::UTF8; Get-Content -Path '${tempFile}' -Raw -Encoding UTF8 | claude -p --output-format json`;
 
       const child = spawn('powershell', ['-Command', psCommand], {
         stdio: ['ignore', 'pipe', 'pipe'],
@@ -163,6 +176,7 @@ Provide ONLY the JSON output.`;
         }
 
         if (code === 0) {
+          console.log(`[ClaudeService] Claude CLI successful. Output length: ${output.length}`);
           resolve(output);
         } else {
           reject(
@@ -201,35 +215,160 @@ Provide ONLY the JSON output.`;
     });
   }
 
-  private parseClaudeResponse(output: string): TopicGenerationResult {
+  private logClaudeInteraction(context: string, response: string, error?: Error): void {
+    // Save logs to project directory instead of temp folder
+    const logDir = path.join(process.cwd(), '.claude', 'logs');
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const logFile = path.join(logDir, `claude-${context}-${timestamp}.log`);
+
+    const logContent = {
+      timestamp: new Date().toISOString(),
+      context,
+      responseLength: response?.length || 0,
+      response: response,
+      error: error
+        ? {
+            message: error.message,
+            stack: error.stack,
+          }
+        : null,
+    };
+
     try {
-      // JSON 블록 추출 (마크다운 코드 블록 제거)
+      if (!fs.existsSync(logDir)) {
+        fs.mkdirSync(logDir, { recursive: true });
+      }
+      fs.writeFileSync(logFile, JSON.stringify(logContent, null, 2), 'utf8');
+      console.log(`[ClaudeService] Log saved: ${logFile}`);
+    } catch (err) {
+      console.error('[ClaudeService] Failed to save log:', err);
+    }
+  }
+
+  private parseClaudeResponse(output: string): TopicGenerationResult {
+    const originalOutput = output; // Keep for logging
+
+    try {
       let jsonStr = output.trim();
 
-      // ```json ... ``` 형식 제거
-      const jsonMatch = jsonStr.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
-      if (jsonMatch) {
-        jsonStr = jsonMatch[1];
+      // Strategy 0: Handle Claude CLI JSON wrapper format
+      // When using --output-format json, Claude CLI wraps the response
+      if (jsonStr.includes('"result"') && jsonStr.includes('"type"')) {
+        try {
+          console.log('[ClaudeService] Detecting Claude CLI wrapper format...');
+          const cliResponse = JSON.parse(jsonStr);
+          if (cliResponse.result && typeof cliResponse.result === 'string') {
+            console.log('[ClaudeService] Extracting result from CLI wrapper...');
+            jsonStr = cliResponse.result;
+          }
+        } catch {
+          console.log(
+            '[ClaudeService] Failed to parse CLI wrapper, continuing with other strategies...'
+          );
+        }
       }
 
-      const parsed = JSON.parse(jsonStr);
-
-      if (!parsed.english_script || !parsed.keywords) {
-        throw new Error('Missing required fields in Claude response');
+      // Strategy 1: Try direct JSON parse if starts and ends with braces
+      if (jsonStr.startsWith('{') && jsonStr.endsWith('}')) {
+        try {
+          console.log('[ClaudeService] Trying direct JSON parse...');
+          return this.validateAndExtractResult(JSON.parse(jsonStr));
+        } catch {
+          console.log('[ClaudeService] Direct parse failed, trying extraction strategies...');
+        }
       }
 
-      return {
-        englishText: parsed.english_script,
-        keywords: parsed.keywords,
-      };
+      // Strategy 2: Extract from markdown code block
+      const codeBlockMatch = jsonStr.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+      if (codeBlockMatch) {
+        try {
+          console.log('[ClaudeService] Trying code block extraction...');
+          return this.validateAndExtractResult(JSON.parse(codeBlockMatch[1]));
+        } catch {
+          console.log('[ClaudeService] Code block parse failed');
+        }
+      }
+
+      // Strategy 3: Find JSON object pattern with required fields
+      const jsonObjectMatch = jsonStr.match(/\{[^{}]*"english_script"[^{}]*"keywords"[^{}]*\}/s);
+      if (jsonObjectMatch) {
+        try {
+          console.log('[ClaudeService] Trying pattern match extraction...');
+          return this.validateAndExtractResult(JSON.parse(jsonObjectMatch[0]));
+        } catch {
+          console.log('[ClaudeService] Pattern match parse failed');
+        }
+      }
+
+      // Strategy 4: Aggressive extraction - find any valid JSON object
+      const allBraceMatches = this.extractJsonObjects(jsonStr);
+      for (const match of allBraceMatches) {
+        try {
+          console.log('[ClaudeService] Trying aggressive JSON extraction...');
+          const result = this.validateAndExtractResult(JSON.parse(match));
+          console.log('[ClaudeService] Successfully extracted JSON from mixed content');
+          return result;
+        } catch {
+          // Try next match
+          continue;
+        }
+      }
+
+      // All strategies failed
+      throw new Error(
+        `No valid JSON found in response (length: ${output.length}). All extraction strategies failed.`
+      );
     } catch (error) {
+      console.log('[ClaudeService] Parsing error:', error);
+
+      // Log the Claude response for debugging
+      this.logClaudeInteraction('generateScript-FAILED', originalOutput, error as Error);
+
       throw new AppError(
         ErrorCode.CLAUDE_PARSING_ERROR,
         'Failed to parse Claude response',
-        'AI 응답 파싱에 실패했습니다. 다시 시도해주세요.',
+        `AI 응답 파싱 실패. 로그: .claude/logs/ 폴더 확인하세요. 에러: ${(error as Error).message}`,
         error as Error
       );
     }
+  }
+
+  private validateAndExtractResult(parsed: any): TopicGenerationResult {
+    if (!parsed.english_script || !parsed.keywords) {
+      throw new Error('Missing required fields: english_script or keywords');
+    }
+
+    if (!Array.isArray(parsed.keywords)) {
+      throw new Error('keywords must be an array');
+    }
+
+    return {
+      englishText: parsed.english_script,
+      keywords: parsed.keywords,
+    };
+  }
+
+  private extractJsonObjects(text: string): string[] {
+    const results: string[] = [];
+    let braceCount = 0;
+    let startIndex = -1;
+
+    for (let i = 0; i < text.length; i++) {
+      if (text[i] === '{') {
+        if (braceCount === 0) {
+          startIndex = i;
+        }
+        braceCount++;
+      } else if (text[i] === '}') {
+        braceCount--;
+        if (braceCount === 0 && startIndex !== -1) {
+          results.push(text.substring(startIndex, i + 1));
+          startIndex = -1;
+        }
+      }
+    }
+
+    return results;
   }
 
   /**
