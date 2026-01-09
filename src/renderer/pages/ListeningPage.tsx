@@ -27,6 +27,11 @@ export const ListeningPage: React.FC = () => {
   const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
   const [recordingListKey, setRecordingListKey] = useState(0);
 
+  // 제목 편집 상태
+  const [isTitleEditing, setIsTitleEditing] = useState(false);
+  const [editedTitle, setEditedTitle] = useState('');
+  const [isSavingTitle, setIsSavingTitle] = useState(false);
+
   const audioChunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -214,6 +219,63 @@ export const ListeningPage: React.FC = () => {
     loadActiveTopic();
   }, []);
 
+  // topic이 변경되면 editedTitle 동기화
+  useEffect(() => {
+    if (state.topic) {
+      setEditedTitle(state.topic.title);
+    }
+  }, [state.topic]);
+
+  // 제목 저장
+  const handleTitleSave = async () => {
+    if (!state.topic || editedTitle === state.topic.title) {
+      setIsTitleEditing(false);
+      return;
+    }
+
+    setIsSavingTitle(true);
+    try {
+      const response = await window.electron.invoke('update-topic-title', {
+        topicId: state.topic.id,
+        title: editedTitle,
+      });
+
+      if (response.success) {
+        // 로컬 상태 업데이트
+        setState((prev) => ({
+          ...prev,
+          topic: prev.topic ? { ...prev.topic, title: editedTitle } : null,
+        }));
+      } else {
+        // 실패 시 원래 제목으로 복원
+        setEditedTitle(state.topic.title);
+        setState((prev) => ({
+          ...prev,
+          error: response.error || '제목 저장에 실패했습니다.',
+        }));
+      }
+    } catch {
+      setEditedTitle(state.topic.title);
+      setState((prev) => ({
+        ...prev,
+        error: '제목 저장 중 오류가 발생했습니다.',
+      }));
+    } finally {
+      setIsSavingTitle(false);
+      setIsTitleEditing(false);
+    }
+  };
+
+  const handleTitleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      handleTitleSave();
+    }
+    if (e.key === 'Escape') {
+      setEditedTitle(state.topic?.title || '');
+      setIsTitleEditing(false);
+    }
+  };
+
   // 컴포넌트 언마운트 시 정리
   useEffect(() => {
     return () => {
@@ -266,7 +328,33 @@ export const ListeningPage: React.FC = () => {
           <div className="listening-content">
             {/* 토픽 정보 */}
             <div className="topic-info">
-              <h2>{state.topic.title}</h2>
+              {isTitleEditing ? (
+                <div className="title-edit-container">
+                  <input
+                    type="text"
+                    className="title-input"
+                    value={editedTitle}
+                    onChange={(e) => setEditedTitle(e.target.value)}
+                    onBlur={handleTitleSave}
+                    onKeyDown={handleTitleKeyDown}
+                    autoFocus
+                    maxLength={100}
+                    disabled={isSavingTitle}
+                  />
+                  {isSavingTitle && <span className="saving-indicator">저장 중...</span>}
+                </div>
+              ) : (
+                <div className="title-display">
+                  <h2>{state.topic.title}</h2>
+                  <button
+                    className="btn-edit-title"
+                    onClick={() => setIsTitleEditing(true)}
+                    title="제목 편집"
+                  >
+                    ✏️
+                  </button>
+                </div>
+              )}
               <div className="topic-level">CEFR Level: {state.topic.cefrLevel}</div>
             </div>
 
