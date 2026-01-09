@@ -25,7 +25,7 @@ const App: React.FC = () => {
           단계 3: 리텔링
         </Link>
         <Link to="/correction" className="nav-link">
-          단계 4: 첨삭
+          단계 4: 리텔링 첨삭
         </Link>
         <Link to="/roleplay" className="nav-link">
           단계 5: AI 롤플레잉

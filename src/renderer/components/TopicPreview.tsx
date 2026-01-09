@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { CEFRLevel } from '../../main/database/models';
 
 export interface TopicPreviewProps {
+  title: string;
   koreanText: string;
   englishText: string;
   keywords: string[];
@@ -9,26 +10,62 @@ export interface TopicPreviewProps {
   recordingPath: string | null;
   onConfirm: () => void;
   onRegenerate: (editedKoreanText: string) => void;
+  onTitleChange: (newTitle: string) => void;
   onCancel?: () => void;
 }
 
 export const TopicPreview: React.FC<TopicPreviewProps> = ({
+  title,
   koreanText,
   englishText,
   keywords,
   cefrLevel,
   onConfirm,
   onRegenerate,
+  onTitleChange,
   onCancel,
 }) => {
   const [editedKoreanText, setEditedKoreanText] = useState(koreanText);
   const [isModified, setIsModified] = useState(false);
+  const [editedTitle, setEditedTitle] = useState(title);
+  const [isTitleEditing, setIsTitleEditing] = useState(false);
+  const [isTitleModified, setIsTitleModified] = useState(false);
 
   // koreanText가 변경되면 (재생성 후) 상태 초기화
   useEffect(() => {
     setEditedKoreanText(koreanText);
     setIsModified(false);
   }, [koreanText]);
+
+  // title이 변경되면 상태 초기화
+  useEffect(() => {
+    setEditedTitle(title);
+    setIsTitleModified(false);
+  }, [title]);
+
+  const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newTitle = e.target.value;
+    setEditedTitle(newTitle);
+    setIsTitleModified(newTitle !== title);
+  };
+
+  const handleTitleEditComplete = () => {
+    setIsTitleEditing(false);
+    if (isTitleModified) {
+      onTitleChange(editedTitle);
+    }
+  };
+
+  const handleTitleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      handleTitleEditComplete();
+    }
+    if (e.key === 'Escape') {
+      setEditedTitle(title);
+      setIsTitleModified(false);
+      setIsTitleEditing(false);
+    }
+  };
 
   const handleKoreanTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const newText = e.target.value;
@@ -43,6 +80,39 @@ export const TopicPreview: React.FC<TopicPreviewProps> = ({
   return (
     <div className="topic-preview">
       <h2>토픽 미리보기</h2>
+
+      <div className="preview-section title-section">
+        <h3>
+          토픽 제목 {isTitleModified && <span className="modified-badge">(수정됨)</span>}
+        </h3>
+        {isTitleEditing ? (
+          <div className="title-edit-container">
+            <input
+              type="text"
+              className="title-input"
+              value={editedTitle}
+              onChange={handleTitleChange}
+              onBlur={handleTitleEditComplete}
+              onKeyDown={handleTitleKeyDown}
+              autoFocus
+              maxLength={100}
+            />
+          </div>
+        ) : (
+          <div className="title-display" onClick={() => setIsTitleEditing(true)}>
+            <span className="title-text">{editedTitle || '(제목 없음)'}</span>
+            <button
+              className="btn-edit-title"
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsTitleEditing(true);
+              }}
+            >
+              ✏️
+            </button>
+          </div>
+        )}
+      </div>
 
       <div className="preview-section">
         <h3>한국어 원문 {isModified && <span className="modified-badge">(수정됨)</span>}</h3>

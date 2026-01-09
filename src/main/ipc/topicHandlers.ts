@@ -41,6 +41,7 @@ export function registerTopicHandlers(): void {
   ipcMain.handle('generate-topic', handleGenerateTopic);
   ipcMain.handle('save-topic', handleSaveTopic);
   ipcMain.handle('get-active-topic', handleGetActiveTopic);
+  ipcMain.handle('update-topic-title', handleUpdateTopicTitle);
 }
 
 async function handleStartRecording(): Promise<IPCResponse<void>> {
@@ -243,6 +244,30 @@ async function handleGetActiveTopic(): Promise<IPCResponse<Topic | null>> {
     return {
       success: false,
       error: '활성 토픽 조회에 실패했습니다.',
+    };
+  }
+}
+
+async function handleUpdateTopicTitle(
+  _event: IpcMainInvokeEvent,
+  args: { topicId: number; title: string }
+): Promise<IPCResponse<void>> {
+  try {
+    await topicRepository.update(args.topicId, { title: args.title });
+
+    return { success: true };
+  } catch (error) {
+    if (error instanceof AppError) {
+      return {
+        success: false,
+        error: error.userMessage,
+        errorCode: error.code,
+      };
+    }
+
+    return {
+      success: false,
+      error: '제목 업데이트에 실패했습니다.',
     };
   }
 }

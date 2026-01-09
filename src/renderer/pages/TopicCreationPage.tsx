@@ -15,6 +15,7 @@ interface TopicCreationState {
   englishText: string;
   keywords: string[];
   cefrLevel: CEFRLevel;
+  title: string;
   isProcessing: boolean;
   error: string | null;
 }
@@ -28,6 +29,7 @@ export const TopicCreationPage: React.FC = () => {
     englishText: '',
     keywords: [],
     cefrLevel: 'B1',
+    title: '',
     isProcessing: false,
     error: null,
   });
@@ -121,10 +123,15 @@ export const TopicCreationPage: React.FC = () => {
       });
 
       if (response.success && response.data) {
+        // 자동 제목 생성 (한국어 텍스트 첫 50자)
+        const autoTitle =
+          textToTranslate.substring(0, 50).trim() + (textToTranslate.length > 50 ? '...' : '');
+
         setState((prev) => ({
           ...prev,
           englishText: response.data.englishText,
           keywords: response.data.keywords,
+          title: autoTitle,
           step: 'preview',
           isProcessing: false,
         }));
@@ -156,11 +163,8 @@ export const TopicCreationPage: React.FC = () => {
     }));
 
     try {
-      // 제목 생성 (첫 문장의 처음 50자)
-      const title = state.koreanText.substring(0, 50).trim() + (state.koreanText.length > 50 ? '...' : '');
-
       const response = await window.electron.invoke('save-topic', {
-        title,
+        title: state.title,
         koreanContent: state.koreanText,
         englishContent: state.englishText,
         cefrLevel: state.cefrLevel,
@@ -201,9 +205,15 @@ export const TopicCreationPage: React.FC = () => {
       englishText: '',
       keywords: [],
       cefrLevel: state.cefrLevel,
+      title: '',
       isProcessing: false,
       error: null,
     });
+  };
+
+  // 제목 변경
+  const handleTitleChange = (newTitle: string) => {
+    setState((prev) => ({ ...prev, title: newTitle }));
   };
 
   // 재생성 (수정된 한국어 텍스트로)
@@ -265,6 +275,7 @@ export const TopicCreationPage: React.FC = () => {
       {/* 미리보기 */}
       {state.step === 'preview' && (
         <TopicPreview
+          title={state.title}
           koreanText={state.koreanText}
           englishText={state.englishText}
           keywords={state.keywords}
@@ -272,6 +283,7 @@ export const TopicCreationPage: React.FC = () => {
           recordingPath={state.recordingPath}
           onConfirm={handleTopicSave}
           onRegenerate={handleRegenerate}
+          onTitleChange={handleTitleChange}
           onCancel={handleRetry}
         />
       )}
