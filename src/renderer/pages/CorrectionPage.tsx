@@ -51,6 +51,9 @@ export const CorrectionPage: React.FC = () => {
 
         // 리텔링 텍스트 로드
         loadRetellingTexts(topic.id);
+
+        // FR-001: 최근 첨삭 결과 복원
+        loadLatestCorrections(topic.id);
       } else {
         setState((prev) => ({
           ...prev,
@@ -62,6 +65,41 @@ export const CorrectionPage: React.FC = () => {
         ...prev,
         error: '토픽 정보를 불러오는데 실패했습니다.',
       }));
+    }
+  };
+
+  /**
+   * FR-001: 최근 첨삭 결과 복원
+   * TC-007: CorrectionPage - useEffect 최근 결과 복원
+   * TC-014: 페이지 재진입 시나리오 (상태 복원)
+   */
+  const loadLatestCorrections = async (topicId: number) => {
+    try {
+      setState((prev) => ({ ...prev, isLoading: true }));
+
+      // 임시로 sessionId 1 사용 (실제로는 현재 세션 가져와야 함)
+      const sessionId = 1;
+
+      const response = await window.electron.invoke('correction:get-latest', {
+        sessionId,
+        topicId,
+      });
+
+      if (response.success && response.data && response.data.length > 0) {
+        setState((prev) => ({
+          ...prev,
+          corrections: response.data,
+          isLoading: false,
+        }));
+        console.log(`Loaded ${response.data.length} previous correction results`);
+      } else {
+        // 첨삭 결과가 없는 경우 조용히 넘어감 (에러 표시 안 함)
+        setState((prev) => ({ ...prev, isLoading: false }));
+      }
+    } catch (error) {
+      // 최근 결과 조회 실패 시 무시 (사용자에게 에러 표시 안 함)
+      console.error('Failed to load latest corrections:', error);
+      setState((prev) => ({ ...prev, isLoading: false }));
     }
   };
 
@@ -183,7 +221,10 @@ export const CorrectionPage: React.FC = () => {
     return sentences;
   };
 
-  // 첨삭 요청 처리
+  /**
+   * FR-001: 첨삭 요청 처리 (기존 결과 초기화)
+   * TC-008: CorrectionPage - 첨삭 요청 시 기존 결과 초기화
+   */
   const handleCorrectRequest = async () => {
     if (!state.activeTopic) {
       setState((prev) => ({
@@ -203,6 +244,7 @@ export const CorrectionPage: React.FC = () => {
       return;
     }
 
+    // TC-008: 기존 첨삭 결과 초기화
     setState((prev) => ({
       ...prev,
       isLoading: true,

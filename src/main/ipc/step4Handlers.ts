@@ -186,4 +186,51 @@ export function registerStep4Handlers(): void {
       return response;
     }
   );
+
+  /**
+   * FR-001: 최근 첨삭 결과 조회
+   * TC-005: correction:get-latest 정상 조회
+   * TC-006: correction:get-latest DB 에러 처리
+   */
+  ipcMain.handle(
+    'correction:get-latest',
+    async (event, args: { sessionId?: number; topicId?: number }) => {
+      const response: IPCResponse<CorrectionResult[]> = {
+        success: false,
+      };
+
+      try {
+        const { sessionId, topicId } = args;
+
+        // DB에서 최근 첨삭 결과 조회 (최대 50개)
+        const corrections = correctionService.getCorrectionsHistory(topicId, sessionId, 50);
+
+        // Correction[] -> CorrectionResult[] 변환
+        const correctionResults: CorrectionResult[] = corrections.map((c) => ({
+          original: c.originalSentence,
+          corrected: c.correctedSentence,
+          explanation: c.explanation,
+          categories: c.categories,
+        }));
+
+        response.success = true;
+        response.data = correctionResults;
+      } catch (error) {
+        if (error instanceof AppError) {
+          response.error = error.userMessage;
+          response.errorCode = error.code;
+          console.error(
+            `[GetLatestCorrectionsError] ${error.code}: ${error.message}`,
+            error.originalError
+          );
+        } else {
+          response.error = '첨삭 결과 조회 중 오류가 발생했습니다.';
+          response.errorCode = ErrorCode.UNKNOWN_ERROR;
+          console.error('[GetLatestCorrectionsError]', error);
+        }
+      }
+
+      return response;
+    }
+  );
 }

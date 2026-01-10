@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { CorrectionResult } from '../../main/database/models';
 import { SentenceComparison } from './SentenceComparison';
 import { LoadingSpinner } from './LoadingSpinner';
@@ -24,6 +24,37 @@ export const CorrectionDisplay: React.FC<CorrectionDisplayProps> = ({
   isLoading = false,
   currentProcessingIndex = -1,
 }) => {
+  /**
+   * FR-002: TTS 중복 재생 방지
+   * TC-009: CorrectionDisplay - playingId 상태 관리
+   * TC-010: CorrectionDisplay - 중복 재생 방지
+   */
+  const [playingId, setPlayingId] = useState<number | null>(null);
+
+  /**
+   * FR-002: TTS 재생 핸들러 (중복 재생 방지)
+   * TC-016: TTS 재생 전체 플로우
+   * TC-020: TTS 에러 발생 시 상태 복원
+   */
+  const handlePlayTTS = async (text: string, index: number) => {
+    // TC-010: 중복 재생 방지
+    if (playingId !== null) {
+      console.log('TTS already playing');
+      return;
+    }
+
+    try {
+      setPlayingId(index);
+      await onPlayTTS(text, index);
+    } catch (error) {
+      console.error('TTS playback failed:', error);
+      // 에러 발생 시에도 상태는 복원해야 함
+    } finally {
+      // TC-020: 에러 발생 시에도 반드시 재생 상태 해제
+      setPlayingId(null);
+    }
+  };
+
   // 섹션별 첨삭 완료 문장 생성
   const getSectionSummaries = (): { name: string; text: string }[] => {
     if (sections.length === 0 || corrections.length === 0) {
@@ -73,7 +104,7 @@ export const CorrectionDisplay: React.FC<CorrectionDisplayProps> = ({
 
       <div className="corrections-list">
         {corrections.map((correction, index) => (
-          <div key={index} className="correction-item">
+          <div key={index} className="correction-item" data-testid="correction-result">
             <SentenceComparison
               correction={correction}
               index={index}
@@ -83,11 +114,13 @@ export const CorrectionDisplay: React.FC<CorrectionDisplayProps> = ({
             <div className="correction-actions">
               <button
                 className="tts-button"
-                onClick={() => onPlayTTS(correction.corrected, index)}
+                onClick={() => handlePlayTTS(correction.corrected, index)}
+                disabled={playingId !== null}
                 title="수정된 문장 듣기"
                 aria-label="TTS 재생"
+                data-testid={`play-tts-${index}`}
               >
-                🔊 듣기
+                {playingId === index ? '⏸️ 재생 중...' : '🔊 듣기'}
               </button>
             </div>
           </div>
@@ -104,11 +137,13 @@ export const CorrectionDisplay: React.FC<CorrectionDisplayProps> = ({
                 <span className="section-name">{summary.name}</span>
                 <button
                   className="tts-button"
-                  onClick={() => onPlayTTS(summary.text, -1)}
+                  onClick={() => handlePlayTTS(summary.text, -1 - index)}
+                  disabled={playingId !== null}
                   title="전체 문장 듣기"
                   aria-label="TTS 재생"
+                  data-testid={`tts-button-section-${index}`}
                 >
-                  🔊 전체 듣기
+                  {playingId === -1 - index ? '⏸️ 재생 중...' : '🔊 전체 듣기'}
                 </button>
               </div>
               <p className="section-summary-text">{summary.text}</p>
