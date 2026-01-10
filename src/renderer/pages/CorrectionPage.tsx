@@ -49,8 +49,11 @@ export const CorrectionPage: React.FC = () => {
         const topic = response.data;
         setState((prev) => ({ ...prev, activeTopic: topic }));
 
-        // 리텔링 텍스트 로드
-        loadRetellingTexts(topic.id);
+        // 리텔링 텍스트 먼저 로드 (await로 완료 대기)
+        const inputText = await loadRetellingTexts(topic.id);
+
+        // FR-001: 최근 첨삭 결과 복원 (inputText 전달하여 섹션 재추출)
+        loadLatestCorrections(topic.id, inputText);
       } else {
         setState((prev) => ({
           ...prev,
@@ -65,26 +68,65 @@ export const CorrectionPage: React.FC = () => {
     }
   };
 
-  // 리텔링 텍스트 로드
-  const loadRetellingTexts = async (topicId: number) => {
+  /**
+   * FR-001: 최근 첨삭 결과 복원
+   * TC-007: CorrectionPage - useEffect 최근 결과 복원
+   * TC-014: 페이지 재진입 시나리오 (상태 복원)
+   */
+  const loadLatestCorrections = async (topicId: number, inputText: string) => {
+    try {
+      setState((prev) => ({ ...prev, isLoading: true }));
+
+      const response = await window.electron.invoke('correction:get-latest', {
+        sessionId: null, // 세션 없이 topicId로만 조회
+        topicId,
+      });
+
+      if (response.success && response.data && response.data.length > 0) {
+        // inputText로 섹션 정보 재추출
+        const { sections } = splitSentencesWithSections(inputText);
+
+        setState((prev) => ({
+          ...prev,
+          corrections: response.data,
+          sections, // 섹션 정보도 복원
+          isLoading: false,
+        }));
+        console.log(`Loaded ${response.data.length} previous correction results with ${sections.length} sections`);
+      } else {
+        // 첨삭 결과가 없는 경우 조용히 넘어감 (에러 표시 안 함)
+        setState((prev) => ({ ...prev, isLoading: false }));
+      }
+    } catch (error) {
+      // 최근 결과 조회 실패 시 무시 (사용자에게 에러 표시 안 함)
+      console.error('Failed to load latest corrections:', error);
+      setState((prev) => ({ ...prev, isLoading: false }));
+    }
+  };
+
+  // 리텔링 텍스트 로드 (inputText 반환)
+  const loadRetellingTexts = async (topicId: number): Promise<string> => {
     setState((prev) => ({ ...prev, isLoadingRetellings: true }));
 
     try {
       const response = await window.electron.invoke('get-retelling-texts', { topicId });
       if (response.success && response.data) {
         const retellingData = response.data as RetellingTextsResult;
+        const inputText = retellingData.formattedText || '';
         setState((prev) => ({
           ...prev,
           isLoadingRetellings: false,
           retellingTexts: retellingData,
           // 리텔링 텍스트가 있으면 자동으로 입력 필드에 설정
-          inputText: retellingData.formattedText || prev.inputText,
+          inputText: inputText || prev.inputText,
         }));
+        return inputText;
       } else {
         setState((prev) => ({
           ...prev,
           isLoadingRetellings: false,
         }));
+        return '';
       }
     } catch (error) {
       console.error('리텔링 텍스트 로드 실패:', error);
@@ -92,6 +134,7 @@ export const CorrectionPage: React.FC = () => {
         ...prev,
         isLoadingRetellings: false,
       }));
+      return '';
     }
   };
 
@@ -183,7 +226,10 @@ export const CorrectionPage: React.FC = () => {
     return sentences;
   };
 
-  // 첨삭 요청 처리
+  /**
+   * FR-001: 첨삭 요청 처리 (기존 결과 초기화)
+   * TC-008: CorrectionPage - 첨삭 요청 시 기존 결과 초기화
+   */
   const handleCorrectRequest = async () => {
     if (!state.activeTopic) {
       setState((prev) => ({
@@ -203,6 +249,7 @@ export const CorrectionPage: React.FC = () => {
       return;
     }
 
+    // TC-008: 기존 첨삭 결과 초기화
     setState((prev) => ({
       ...prev,
       isLoading: true,
@@ -230,6 +277,21 @@ export const CorrectionPage: React.FC = () => {
           isLoading: false,
           currentSentenceIndex: -1,
         }));
+
+        // 첨삭 완료 후 자동 저장 (상태 유지를 위해)
+        if (state.activeTopic) {
+          try {
+            await window.electron.invoke('save-correction', {
+              corrections: response.data,
+              sessionId: null, // 세션 없이 topicId로만 저장
+              topicId: state.activeTopic.id,
+            });
+            console.log('Corrections auto-saved successfully');
+          } catch (saveError) {
+            console.error('Auto-save failed:', saveError);
+            // 저장 실패해도 첨삭 결과는 표시 (사용자에게 에러 표시 안 함)
+          }
+        }
       } else {
         throw new Error(response.error || '첨삭 실패');
       }
@@ -270,12 +332,9 @@ export const CorrectionPage: React.FC = () => {
     setState((prev) => ({ ...prev, isSaving: true, error: null }));
 
     try {
-      // 임시로 sessionId 1 사용 (실제로는 현재 세션 가져와야 함)
-      const sessionId = 1;
-
       const response = await window.electron.invoke('save-correction', {
         corrections: state.corrections,
-        sessionId,
+        sessionId: null, // 세션 없이 topicId로만 저장
         topicId: state.activeTopic.id,
       });
 

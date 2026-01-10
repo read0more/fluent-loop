@@ -217,7 +217,7 @@ export interface CorrectSentencesBatchRequest {
 // 첨삭 저장 요청 (IPC)
 export interface SaveCorrectionRequest {
   corrections: CorrectionResult[];
-  sessionId: number;
+  sessionId: number | null;
   topicId: number;
 }
 

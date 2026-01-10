@@ -28,6 +28,7 @@ export const useConversation = (): UseConversationReturn => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isPlayingTTS, setIsPlayingTTS] = useState(false);
 
   const clearError = useCallback(() => {
     setError(null);
@@ -201,8 +202,19 @@ export const useConversation = (): UseConversationReturn => {
     }
   }, [conversation]);
 
+  /**
+   * FR-002: TTS 다시 듣기 (중복 재생 방지)
+   */
   const replayTTS = useCallback(async (messageId: number) => {
+    // 중복 재생 방지
+    if (isPlayingTTS) {
+      console.log('TTS already playing');
+      return;
+    }
+
     try {
+      setIsPlayingTTS(true);
+
       const response = await window.electron.invoke('replay-tts', {
         messageId,
       });
@@ -212,14 +224,27 @@ export const useConversation = (): UseConversationReturn => {
       }
 
       const audio = new Audio(`file://${response.data.ttsPath}`);
-      audio.play().catch((err) => {
+
+      // 재생 완료 시 상태 해제
+      audio.addEventListener('ended', () => {
+        setIsPlayingTTS(false);
+      });
+
+      // 에러 발생 시에도 상태 해제
+      audio.addEventListener('error', () => {
+        setIsPlayingTTS(false);
+      });
+
+      await audio.play().catch((err) => {
         console.error('TTS 재생 실패:', err);
         setError('음성 재생에 실패했습니다.');
+        setIsPlayingTTS(false);
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'TTS 재생 중 오류가 발생했습니다.');
+      setIsPlayingTTS(false);
     }
-  }, []);
+  }, [isPlayingTTS]);
 
   return {
     conversation,
