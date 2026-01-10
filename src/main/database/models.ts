@@ -208,6 +208,12 @@ export interface CorrectSentenceRequest {
   cefrLevel: CEFRLevel;
 }
 
+// 배치 첨삭 요청 (IPC) - 여러 문장을 한 번에 처리
+export interface CorrectSentencesBatchRequest {
+  sentences: string[];
+  cefrLevel: CEFRLevel;
+}
+
 // 첨삭 저장 요청 (IPC)
 export interface SaveCorrectionRequest {
   corrections: CorrectionResult[];
