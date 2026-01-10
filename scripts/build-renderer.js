@@ -13,7 +13,8 @@ const buildOptions = {
   target: ['chrome110'],
   plugins: [
     sassPlugin({
-      type: (path) => (path.includes('.module.') ? 'local-css' : 'css'),
+      filter: /\.scss$/,
+      type: 'css',
       loadPaths: [path.join(__dirname, '../src/renderer/styles')],
     }),
   ],
