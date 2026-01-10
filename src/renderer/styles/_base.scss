@@ -31,7 +31,7 @@ body {
 .nav-link {
   color: var(--text-secondary);
   text-decoration: none;
-  padding: var(--spacing-md) var(--spacing-xl);
+  padding: var(--spacing-sm) var(--spacing-lg);
   border-radius: var(--radius-md);
   transition: all var(--transition-fast);
   font-weight: 500;
@@ -44,6 +44,56 @@ body {
   &.active {
     color: var(--color-primary);
     background: var(--color-primary-alpha-15);
+  }
+
+  &.nav-step {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-sm) var(--spacing-md);
+
+    .step-number {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: var(--bg-surface-active);
+      color: var(--text-muted);
+      font-size: 0.75em;
+      font-weight: 600;
+      transition: all var(--transition-fast);
+    }
+
+    .step-label {
+      font-size: 0.9em;
+    }
+
+    &:hover .step-number {
+      background: var(--color-primary-alpha-30);
+      color: var(--color-primary);
+    }
+
+    &.active .step-number {
+      background: var(--color-primary);
+      color: white;
+    }
+  }
+
+  &.nav-settings {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    padding: var(--spacing-md);
+
+    svg {
+      transition: transform var(--transition-fast);
+    }
+
+    &:hover svg {
+      transform: rotate(45deg);
+    }
   }
 }
 

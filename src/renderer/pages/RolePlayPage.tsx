@@ -152,7 +152,6 @@ export const RolePlayPage: React.FC = () => {
     return (
       <div className="roleplay-page">
         <header className="page-header">
-          <h1>Step 5: AI 롤플레잉</h1>
           <p className="page-subtitle">AI와 자유롭게 영어 대화를 나눠보세요</p>
         </header>
 

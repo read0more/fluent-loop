@@ -12,6 +12,7 @@ export interface TopicPreviewProps {
   onRegenerate: (editedKoreanText: string) => void;
   onTitleChange: (newTitle: string) => void;
   onCancel?: () => void;
+  inline?: boolean;
 }
 
 export const TopicPreview: React.FC<TopicPreviewProps> = ({
@@ -24,6 +25,7 @@ export const TopicPreview: React.FC<TopicPreviewProps> = ({
   onRegenerate,
   onTitleChange,
   onCancel,
+  inline = false,
 }) => {
   const [editedKoreanText, setEditedKoreanText] = useState(koreanText);
   const [isModified, setIsModified] = useState(false);
@@ -78,8 +80,8 @@ export const TopicPreview: React.FC<TopicPreviewProps> = ({
   };
 
   return (
-    <div className="topic-preview">
-      <h2>토픽 미리보기</h2>
+    <div className={`topic-preview${inline ? ' topic-preview--inline' : ''}`}>
+      {!inline && <h2>토픽 미리보기</h2>}
 
       <div className="preview-section title-section">
         <h3>

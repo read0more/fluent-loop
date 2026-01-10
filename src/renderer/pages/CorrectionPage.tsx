@@ -309,7 +309,6 @@ export const CorrectionPage: React.FC = () => {
   return (
     <div className="correction-page">
       <header className="page-header">
-        <h1>Step 4: 리텔링 첨삭</h1>
         {state.activeTopic && (
           <p className="topic-info">
             현재 토픽: <strong>{state.activeTopic.title}</strong> (

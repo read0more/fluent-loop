@@ -249,8 +249,6 @@ export const RetellingPage: React.FC = () => {
 
   return (
     <div className="retelling-page">
-      <h1>단계 3: 리텔링 (3/2/1분)</h1>
-
       {/* Error message */}
       {state.error && state.step !== 'no-topic' && (
         <div className="error-message">
