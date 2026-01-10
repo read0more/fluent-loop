@@ -8,7 +8,7 @@ import { CorrectionPage } from './pages/CorrectionPage';
 import { RolePlayPage } from './pages/RolePlayPage';
 import { ConversationCorrectionPage } from './pages/ConversationCorrectionPage';
 import { SettingsPage } from './pages/SettingsPage';
-import './styles.css';
+import './styles/global.scss';
 
 const App: React.FC = () => {
   return (

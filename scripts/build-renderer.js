@@ -1,5 +1,6 @@
 const esbuild = require('esbuild');
 const path = require('path');
+const { sassPlugin } = require('esbuild-sass-plugin');
 
 const isWatch = process.argv.includes('--watch');
 
@@ -10,6 +11,12 @@ const buildOptions = {
   entryNames: 'renderer',
   platform: 'browser',
   target: ['chrome110'],
+  plugins: [
+    sassPlugin({
+      type: (path) => (path.includes('.module.') ? 'local-css' : 'css'),
+      loadPaths: [path.join(__dirname, '../src/renderer/styles')],
+    }),
+  ],
   loader: {
     '.tsx': 'tsx',
     '.ts': 'ts',

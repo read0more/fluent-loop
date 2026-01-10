@@ -1,0 +1,164 @@
+// Chat Input Component Styles
+
+.input {
+  background: var(--bg-surface);
+  border-radius: var(--radius-xl);
+  padding: var(--spacing-lg);
+}
+
+.error {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  background: var(--color-danger-alpha-15);
+  border: 1px solid var(--border-danger);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-md) var(--spacing-lg);
+  margin-bottom: var(--spacing-md);
+  color: var(--color-danger-light);
+  font-size: 0.9em;
+}
+
+.errorIcon {
+  font-size: 1.2em;
+}
+
+.errorClose {
+  background: none;
+  border: none;
+  color: var(--color-danger-light);
+  cursor: pointer;
+  font-size: 1.2em;
+  margin-left: auto;
+  padding: 0 var(--spacing-xs);
+}
+
+.controls {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+}
+
+.recordButton {
+  background: var(--color-danger-alpha-20);
+  color: var(--color-danger-light);
+  border: 2px solid var(--border-danger);
+  padding: 12px;
+  border-radius: 50%;
+  font-size: 1.5em;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  width: 50px;
+  height: 50px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+
+  &:hover:not(:disabled) {
+    background: var(--color-danger-alpha-30);
+    transform: scale(1.05);
+  }
+
+  &.recording {
+    background: var(--color-danger-alpha-30);
+    animation: pulse 1.5s infinite;
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(244, 67, 54, 0.7);
+  }
+  50% {
+    box-shadow: 0 0 0 10px rgba(244, 67, 54, 0);
+  }
+}
+
+.recordingPulse {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  background: var(--color-danger-light);
+  border-radius: 50%;
+  top: 8px;
+  right: 8px;
+  animation: blink 1s infinite;
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+.messageInput {
+  flex: 1;
+  background: var(--bg-surface-hover);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-lg);
+  padding: 12px;
+  color: var(--text-primary);
+  font-size: 1em;
+  font-family: inherit;
+  resize: none;
+  transition: border-color var(--transition-fast);
+
+  &:focus {
+    outline: none;
+    border-color: var(--color-primary);
+  }
+
+  &::placeholder {
+    color: var(--text-disabled);
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+}
+
+.sendButton {
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
+  color: white;
+  border: none;
+  padding: 12px 20px;
+  border-radius: var(--radius-lg);
+  font-size: 1em;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  white-space: nowrap;
+
+  &:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px var(--color-primary-alpha-30);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+.recordingIndicator {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  margin-top: var(--spacing-md);
+  color: var(--color-danger-light);
+  font-size: 0.9em;
+}
+
+.recordingDot {
+  width: 8px;
+  height: 8px;
+  background: var(--color-danger-light);
+  border-radius: 50%;
+  animation: blink 1s infinite;
+}

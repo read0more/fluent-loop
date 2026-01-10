@@ -1,0 +1,121 @@
+// Recording List Component Styles
+
+.list {
+  background: var(--bg-surface);
+  border-radius: var(--radius-xl);
+  padding: var(--spacing-2xl);
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-xl);
+
+  h3 {
+    color: var(--color-primary);
+    font-size: 1.2em;
+    margin: 0;
+  }
+}
+
+.btnRefresh {
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  border: 1px solid var(--border-medium);
+  padding: var(--spacing-sm) var(--spacing-lg);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+
+  &:hover {
+    background: var(--bg-surface-active);
+  }
+}
+
+.loading,
+.empty {
+  color: var(--text-secondary);
+  text-align: center;
+  padding: var(--spacing-3xl);
+}
+
+.error {
+  text-align: center;
+  padding: var(--spacing-xl);
+
+  p {
+    color: var(--color-danger-light);
+    margin-bottom: var(--spacing-md);
+  }
+}
+
+.items {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.item {
+  background: var(--bg-surface-dark);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-lg);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: background var(--transition-fast);
+
+  &:hover {
+    background: var(--bg-surface-darker);
+  }
+}
+
+.itemInfo {
+  flex: 1;
+}
+
+.itemName {
+  color: var(--text-primary);
+  font-weight: 500;
+  margin-bottom: var(--spacing-xs);
+}
+
+.itemMeta {
+  color: var(--text-muted);
+  font-size: 0.9em;
+}
+
+.itemActions {
+  display: flex;
+  gap: var(--spacing-md);
+}
+
+.btnPlay,
+.btnDelete {
+  padding: var(--spacing-sm) var(--spacing-lg);
+  border-radius: var(--radius-md);
+  border: none;
+  cursor: pointer;
+  font-size: 0.9em;
+  transition: all var(--transition-fast);
+}
+
+.btnPlay {
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
+  color: white;
+
+  &:hover {
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-sm);
+  }
+}
+
+.btnDelete {
+  background: var(--color-danger-alpha-20);
+  color: var(--color-danger-light);
+  border: 1px solid var(--border-danger);
+
+  &:hover {
+    background: var(--color-danger-alpha-30);
+  }
+}

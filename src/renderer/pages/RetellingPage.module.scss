@@ -1,0 +1,177 @@
+// Step 3: Retelling Page Styles
+
+.page {
+  padding: var(--spacing-4xl);
+  max-width: 900px;
+  margin: 0 auto;
+  width: 100%;
+
+  h1 {
+    color: var(--color-primary);
+    margin-bottom: var(--spacing-3xl);
+    font-size: 2em;
+    text-align: center;
+  }
+}
+
+.content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-3xl);
+}
+
+// Timer Section
+.timerSection {
+  background: var(--bg-surface);
+  border-radius: var(--radius-xl);
+  padding: var(--spacing-3xl);
+  text-align: center;
+}
+
+// Timer Selection
+.timerSelection {
+  background: var(--bg-surface);
+  border-radius: var(--radius-xl);
+  padding: var(--spacing-2xl);
+  text-align: center;
+
+  h3 {
+    color: var(--color-primary);
+    margin-bottom: var(--spacing-xl);
+    font-size: 1.2em;
+  }
+}
+
+.timerButtons {
+  display: flex;
+  gap: var(--spacing-lg);
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.btnTimerSelect {
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  border: 2px solid var(--border-medium);
+  padding: var(--spacing-lg) var(--spacing-3xl);
+  border-radius: var(--radius-xl);
+  font-size: 1.1em;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  min-width: 100px;
+
+  &:hover:not(:disabled) {
+    background: var(--color-primary-alpha-15);
+    border-color: var(--color-primary);
+    color: var(--color-primary);
+    transform: translateY(-2px);
+  }
+
+  &.active {
+    background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
+    border-color: var(--color-primary);
+    color: white;
+    box-shadow: var(--shadow-md);
+  }
+
+  &.completed {
+    background: var(--color-secondary-alpha-20);
+    border-color: var(--color-secondary);
+    color: var(--color-secondary);
+  }
+
+  &.active.completed {
+    background: linear-gradient(135deg, var(--color-secondary) 0%, var(--color-secondary-dark) 100%);
+    color: white;
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+  }
+}
+
+// Retry Section
+.retrySection {
+  background: var(--bg-surface);
+  border-radius: var(--radius-xl);
+  padding: var(--spacing-2xl);
+  text-align: center;
+
+  h3 {
+    color: var(--text-muted);
+    font-size: 1em;
+    margin-bottom: var(--spacing-xl);
+    font-weight: 500;
+  }
+}
+
+.retryButtons {
+  display: flex;
+  gap: var(--spacing-lg);
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.btnRetryDuration {
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  border: 1px solid var(--border-medium);
+  padding: 12px 25px;
+  border-radius: var(--radius-lg);
+  font-size: 1em;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+
+  &:hover {
+    background: var(--color-primary-alpha-15);
+    border-color: var(--color-primary);
+    color: var(--color-primary);
+    transform: translateY(-2px);
+  }
+}
+
+// Next Step Section
+.nextStepSection {
+  text-align: center;
+  padding: var(--spacing-md) 0;
+}
+
+// Completion Actions
+.completionActions {
+  display: flex;
+  gap: var(--spacing-lg);
+  justify-content: center;
+  margin-top: var(--spacing-3xl);
+}
+
+.btnRestart {
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  border: 1px solid var(--border-medium);
+  padding: var(--spacing-lg) var(--spacing-3xl);
+  border-radius: var(--radius-lg);
+  font-size: 1em;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+
+  &:hover {
+    background: var(--bg-surface-active);
+  }
+}
+
+.btnDismiss {
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  border: 1px solid var(--border-medium);
+  padding: var(--spacing-sm) var(--spacing-lg);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+
+  &:hover {
+    background: var(--bg-surface-active);
+  }
+}

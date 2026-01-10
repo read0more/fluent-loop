@@ -1,0 +1,221 @@
+// Step 5: AI Roleplay Page Styles
+
+.page {
+  padding: var(--spacing-4xl);
+  max-width: 1200px;
+  margin: 0 auto;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 80px);
+
+  &.conversationActive {
+    height: calc(100vh - 60px);
+    padding: var(--spacing-xl);
+  }
+}
+
+.pageHeader {
+  text-align: center;
+  margin-bottom: var(--spacing-3xl);
+
+  h1 {
+    color: var(--color-primary);
+    font-size: 2em;
+    margin-bottom: var(--spacing-md);
+  }
+}
+
+.pageSubtitle {
+  color: var(--text-secondary);
+  font-size: 1.1em;
+}
+
+// Topic Info Card
+.topicInfoCard {
+  background: var(--bg-surface);
+  border-radius: var(--radius-xl);
+  padding: var(--spacing-3xl);
+  margin-bottom: var(--spacing-3xl);
+  text-align: center;
+}
+
+.topicTitle {
+  color: var(--color-primary);
+  font-size: 1.8em;
+  margin-bottom: var(--spacing-lg);
+}
+
+.topicLevel {
+  color: var(--text-secondary);
+  font-size: 1em;
+  margin-bottom: var(--spacing-xl);
+}
+
+.topicKeywords {
+  margin-top: var(--spacing-xl);
+
+  strong {
+    color: var(--color-primary);
+    font-size: 1.1em;
+  }
+}
+
+.keywordsList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-md);
+  justify-content: center;
+  margin-top: var(--spacing-lg);
+}
+
+.keywordTag {
+  background: var(--color-primary-alpha-15);
+  color: var(--color-primary);
+  padding: var(--spacing-sm) var(--spacing-lg);
+  border-radius: var(--radius-pill);
+  font-size: 0.95em;
+  border: 1px solid var(--border-primary);
+}
+
+// Warning Banner
+.conversationWarning {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-lg);
+  background: var(--color-warning-alpha-15);
+  border: 2px solid var(--border-warning);
+  border-radius: var(--radius-xl);
+  padding: var(--spacing-xl);
+  margin-bottom: var(--spacing-3xl);
+}
+
+.warningIcon {
+  font-size: 2em;
+}
+
+.warningContent {
+  h3 {
+    color: var(--color-warning);
+    font-size: 1.2em;
+    margin-bottom: var(--spacing-md);
+  }
+
+  p {
+    color: var(--text-primary);
+    margin-bottom: var(--spacing-sm);
+    line-height: 1.6;
+  }
+}
+
+// Start Conversation Section
+.startConversationSection {
+  text-align: center;
+  margin-top: var(--spacing-3xl);
+}
+
+.btnStartConversation {
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
+  color: white;
+  border: none;
+  padding: 18px 50px;
+  border-radius: var(--radius-full);
+  font-size: 1.2em;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  box-shadow: var(--shadow-md);
+
+  &:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+}
+
+// Conversation Header
+.conversationHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--bg-surface);
+  border-radius: var(--radius-xl);
+  padding: var(--spacing-lg) var(--spacing-2xl);
+  margin-bottom: var(--spacing-lg);
+}
+
+.headerLeft {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-lg);
+}
+
+.conversationTopic {
+  color: var(--color-primary);
+  font-size: 1.3em;
+  font-weight: 600;
+  margin: 0;
+}
+
+.conversationLevel {
+  background: var(--color-primary-alpha-20);
+  color: var(--color-primary);
+  padding: var(--spacing-xs) 12px;
+  border-radius: var(--radius-lg);
+  font-size: 0.9em;
+}
+
+.btnEndConversation {
+  background: var(--color-danger-alpha-20);
+  color: var(--color-danger-light);
+  border: 1px solid var(--border-danger);
+  padding: var(--spacing-md) var(--spacing-xl);
+  border-radius: var(--radius-lg);
+  font-size: 1em;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+
+  &:hover:not(:disabled) {
+    background: var(--color-danger-alpha-30);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+// Conversation Banner
+.conversationBanner {
+  background: var(--color-primary-alpha-15);
+  border: 1px solid rgba(77, 166, 255, 0.5);
+  border-radius: var(--radius-lg);
+  padding: 12px var(--spacing-xl);
+  text-align: center;
+  color: var(--color-primary);
+  font-size: 1.05em;
+  font-weight: 600;
+  margin-bottom: var(--spacing-lg);
+}
+
+// No Topic Message
+.noTopicMessage {
+  text-align: center;
+  padding: 60px var(--spacing-xl);
+
+  h2 {
+    color: var(--color-primary);
+    font-size: 1.8em;
+    margin-bottom: var(--spacing-xl);
+  }
+
+  p {
+    color: var(--text-secondary);
+    font-size: 1.1em;
+    margin-bottom: var(--spacing-3xl);
+  }
+}

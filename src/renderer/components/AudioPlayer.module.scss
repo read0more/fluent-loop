@@ -1,0 +1,109 @@
+// Audio Player Component Styles
+
+.player {
+  background: var(--bg-surface);
+  border-radius: var(--radius-xl);
+  padding: var(--spacing-xl);
+}
+
+.controls {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+}
+
+.buttons {
+  display: flex;
+  gap: var(--spacing-md);
+  justify-content: center;
+}
+
+.btnPlay,
+.btnPause,
+.btnStop {
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
+  color: white;
+  border: none;
+  padding: 12px 20px;
+  border-radius: var(--radius-full);
+  font-size: 1.2em;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  width: 50px;
+  height: 50px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+  }
+}
+
+.btnStop {
+  background: var(--bg-surface);
+
+  &:hover {
+    background: var(--bg-surface-active);
+  }
+}
+
+.progressContainer {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+}
+
+.timeDisplay {
+  color: var(--text-secondary);
+  font-size: 0.9em;
+  min-width: 45px;
+  font-variant-numeric: tabular-nums;
+}
+
+.progressSlider {
+  flex: 1;
+  height: 6px;
+  border-radius: var(--radius-xs);
+  background: var(--border-light);
+  outline: none;
+  -webkit-appearance: none;
+
+  &::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--color-primary);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+
+    &:hover {
+      transform: scale(1.2);
+      box-shadow: 0 0 10px rgba(77, 166, 255, 0.5);
+    }
+  }
+}
+
+.speedControl {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  justify-content: center;
+
+  label {
+    color: var(--text-secondary);
+    font-size: 0.9em;
+  }
+}
+
+.speedSelector {
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  border: 1px solid var(--border-medium);
+  padding: 6px 12px;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  font-size: 0.9em;
+}

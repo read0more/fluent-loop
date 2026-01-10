@@ -1,0 +1,41 @@
+// Topic Preview Component Styles
+// Note: Most styles are inherited from TopicCreationPage.module.scss
+// This file is for additional or override styles if needed
+
+.preview {
+  background: var(--bg-surface);
+  border-radius: var(--radius-xl);
+  padding: var(--spacing-3xl);
+
+  h2 {
+    color: var(--color-primary);
+    margin-bottom: var(--spacing-2xl);
+    text-align: center;
+  }
+}
+
+.section {
+  margin-bottom: var(--spacing-2xl);
+
+  h3 {
+    color: var(--text-muted);
+    font-size: 0.9em;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: var(--spacing-md);
+  }
+}
+
+.content {
+  background: var(--bg-surface-dark);
+  padding: var(--spacing-xl);
+  border-radius: var(--radius-lg);
+  line-height: 1.6;
+}
+
+.actions {
+  display: flex;
+  gap: var(--spacing-lg);
+  justify-content: center;
+  margin-top: var(--spacing-3xl);
+}

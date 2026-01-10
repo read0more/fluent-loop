@@ -1,0 +1,130 @@
+// Settings Page Styles
+
+.page {
+  padding: var(--spacing-4xl);
+  max-width: 800px;
+  margin: 0 auto;
+
+  h1 {
+    color: var(--color-primary);
+    margin-bottom: var(--spacing-3xl);
+    font-size: 2em;
+    text-align: center;
+  }
+}
+
+.loading {
+  text-align: center;
+  color: var(--text-secondary);
+  padding: 50px;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-3xl);
+}
+
+.section {
+  background: var(--bg-surface);
+  border-radius: var(--radius-xl);
+  padding: var(--spacing-2xl);
+
+  h2 {
+    color: var(--color-primary);
+    font-size: 1.2em;
+    margin-bottom: var(--spacing-lg);
+  }
+}
+
+.pathSelector {
+  display: flex;
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-md);
+}
+
+.pathInput {
+  flex: 1;
+  background: var(--bg-surface-dark);
+  color: var(--text-primary);
+  border: 1px solid var(--border-light);
+  padding: 12px;
+  border-radius: var(--radius-md);
+  font-size: 1em;
+}
+
+.btnSelectFolder {
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  font-weight: 600;
+  transition: all var(--transition-fast);
+
+  &:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+.hint {
+  color: var(--text-muted);
+  font-size: 0.9em;
+  margin-top: var(--spacing-xs);
+}
+
+.actions {
+  display: flex;
+  gap: var(--spacing-lg);
+  justify-content: center;
+  margin-top: var(--spacing-md);
+}
+
+.btnSave {
+  background: linear-gradient(135deg, var(--color-secondary) 0%, var(--color-secondary-dark) 100%);
+  color: white;
+  border: none;
+  padding: var(--spacing-lg) var(--spacing-4xl);
+  border-radius: var(--radius-lg);
+  font-size: 1em;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+
+  &:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-success);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+.btnReset {
+  background: var(--color-danger-alpha-20);
+  color: var(--color-danger-light);
+  border: 1px solid var(--border-danger);
+  padding: var(--spacing-lg) var(--spacing-3xl);
+  border-radius: var(--radius-lg);
+  font-size: 1em;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+
+  &:hover:not(:disabled) {
+    background: var(--color-danger-alpha-30);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}

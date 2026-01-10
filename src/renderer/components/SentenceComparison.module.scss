@@ -1,0 +1,145 @@
+// Sentence Comparison Component Styles
+
+.comparison {
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-lg);
+  background: var(--bg-surface-dark);
+
+  &.highlighted {
+    border-color: var(--color-primary);
+    background: rgba(77, 166, 255, 0.05);
+  }
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-lg);
+  padding-bottom: var(--spacing-md);
+  border-bottom: 1px solid var(--border-light);
+}
+
+.number {
+  font-weight: 600;
+  color: var(--color-primary);
+  font-size: 1.1em;
+}
+
+.badges {
+  display: flex;
+  gap: var(--spacing-sm);
+  flex-wrap: wrap;
+}
+
+.badge {
+  padding: 4px 12px;
+  border-radius: var(--radius-xl);
+  font-size: 0.85em;
+  font-weight: 600;
+  text-transform: uppercase;
+
+  &.red {
+    background: var(--color-danger-alpha-20);
+    color: var(--color-danger-light);
+    border: 1px solid var(--border-danger);
+  }
+
+  &.blue {
+    background: var(--color-info-alpha-20);
+    color: var(--color-info-light);
+    border: 1px solid rgba(33, 150, 243, 0.5);
+  }
+
+  &.green {
+    background: var(--color-secondary-alpha-20);
+    color: var(--color-secondary-light);
+    border: 1px solid var(--border-success);
+  }
+}
+
+.content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+
+  &.explanation {
+    margin-top: var(--spacing-xs);
+  }
+}
+
+.sectionLabel {
+  font-weight: 600;
+  color: var(--text-secondary);
+  font-size: 0.9em;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.text {
+  padding: 12px;
+  border-radius: var(--radius-md);
+  font-size: 1.05em;
+  line-height: 1.6;
+
+  &.original {
+    background: var(--bg-surface);
+    color: var(--text-primary);
+  }
+
+  &.correct {
+    background: rgba(76, 175, 80, 0.1);
+    color: var(--color-secondary-light);
+    border: 1px solid var(--border-success);
+  }
+
+  &.modified {
+    background: var(--bg-surface);
+  }
+}
+
+// Diff Highlighting
+.wordUnchanged {
+  color: var(--text-primary);
+}
+
+.wordChanged {
+  background: var(--color-highlight-bg);
+  color: var(--color-highlight);
+  padding: 2px 4px;
+  border-radius: var(--radius-xs);
+  font-weight: 600;
+}
+
+.wordAdded {
+  background: rgba(76, 175, 80, 0.3);
+  color: var(--color-secondary-light);
+  padding: 2px 4px;
+  border-radius: var(--radius-xs);
+  font-weight: 600;
+}
+
+.wordDeleted {
+  background: var(--color-danger-alpha-30);
+  color: var(--color-danger-light);
+  text-decoration: line-through;
+  padding: 2px 4px;
+  border-radius: var(--radius-xs);
+}
+
+.explanation {
+  background: var(--color-primary-alpha-15);
+  border-left: 3px solid var(--color-primary);
+  padding: 12px 15px;
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-size: 0.95em;
+  line-height: 1.5;
+}

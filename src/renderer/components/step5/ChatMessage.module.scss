@@ -1,0 +1,124 @@
+// Chat Message Component Styles
+
+.message {
+  display: flex;
+  gap: 12px;
+  max-width: 80%;
+  animation: slideIn 0.3s ease;
+
+  &.ai {
+    align-self: flex-start;
+  }
+
+  &.user {
+    align-self: flex-end;
+    flex-direction: row-reverse;
+  }
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.avatar {
+  flex-shrink: 0;
+}
+
+.avatarIcon {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5em;
+
+  &.ai {
+    background: var(--color-primary-alpha-20);
+  }
+
+  &.user {
+    background: var(--color-secondary-alpha-20);
+  }
+}
+
+.contentWrapper {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+
+  .user & {
+    align-items: flex-end;
+  }
+}
+
+.bubble {
+  padding: 12px 18px;
+  border-radius: var(--radius-3xl);
+  background: var(--bg-surface-hover);
+
+  .ai & {
+    background: var(--color-primary-alpha-15);
+    border-bottom-left-radius: var(--radius-sm);
+  }
+
+  .user & {
+    background: var(--color-secondary-alpha-15);
+    border-bottom-right-radius: var(--radius-sm);
+  }
+}
+
+.text {
+  color: var(--text-primary);
+  line-height: 1.6;
+  margin: 0;
+  font-size: 1em;
+}
+
+.timestamp {
+  font-size: 0.8em;
+  color: var(--text-muted);
+  padding: 0 var(--spacing-xs);
+}
+
+.replayButton {
+  background: var(--color-primary-alpha-20);
+  color: var(--color-primary);
+  border: 1px solid var(--border-primary);
+  padding: 6px 12px;
+  border-radius: var(--radius-md);
+  font-size: 0.85em;
+  cursor: pointer;
+  margin-top: var(--spacing-sm);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  transition: all var(--transition-fast);
+
+  &:hover {
+    background: var(--color-primary-alpha-30);
+  }
+}
+
+.speakerIcon {
+  font-size: 1em;
+}
+
+// AI Responding Indicator
+.respondingIndicator {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: var(--spacing-lg);
+  background: var(--color-primary-alpha-15);
+  border-radius: var(--radius-xl);
+  align-self: flex-start;
+  max-width: 300px;
+}
