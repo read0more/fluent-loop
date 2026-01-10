@@ -1,0 +1,271 @@
+// Step 6: Conversation Correction Page Styles
+
+.page {
+  padding: var(--spacing-4xl);
+  max-width: 1000px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.pageHeader {
+  text-align: center;
+  margin-bottom: var(--spacing-3xl);
+
+  h1 {
+    color: var(--color-primary);
+    font-size: 2em;
+    margin-bottom: var(--spacing-md);
+  }
+}
+
+.pageSubtitle {
+  color: var(--text-secondary);
+  font-size: 1.1em;
+}
+
+// No Conversation Message
+.noConversationMessage {
+  text-align: center;
+  padding: 60px var(--spacing-xl);
+
+  h2 {
+    color: var(--color-primary);
+    font-size: 1.8em;
+    margin-bottom: var(--spacing-xl);
+  }
+
+  p {
+    color: var(--text-secondary);
+    font-size: 1.1em;
+    margin-bottom: var(--spacing-3xl);
+  }
+}
+
+// Correction Actions
+.correctionActions {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: var(--spacing-lg);
+  flex-wrap: wrap;
+  margin-bottom: var(--spacing-3xl);
+  padding: var(--spacing-xl);
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: var(--radius-xl);
+}
+
+.correctionStats {
+  display: flex;
+  gap: var(--spacing-xl);
+  margin-left: auto;
+
+  .statItem {
+    color: var(--text-secondary);
+    font-size: 0.95em;
+    flex-direction: row;
+
+    &.highlight {
+      color: var(--color-warning);
+      font-weight: 600;
+    }
+  }
+}
+
+// Correcting Overlay
+.correctingOverlay {
+  display: flex;
+  justify-content: center;
+  padding: var(--spacing-4xl) 0;
+}
+
+// Correction Messages List
+.correctionMessagesList {
+  margin-top: var(--spacing-xl);
+
+  .sectionTitle {
+    color: var(--color-primary);
+    font-size: 1.3em;
+    margin-bottom: var(--spacing-xl);
+    padding-bottom: var(--spacing-md);
+    border-bottom: 2px solid var(--border-primary);
+  }
+}
+
+// Correction Guide
+.correctionGuide {
+  text-align: center;
+  padding: 60px var(--spacing-xl);
+  background: rgba(77, 166, 255, 0.05);
+  border: 2px dashed var(--border-primary);
+  border-radius: var(--radius-2xl);
+  margin-top: var(--spacing-xl);
+
+  h3 {
+    color: var(--color-primary);
+    font-size: 1.5em;
+    margin-bottom: var(--spacing-lg);
+  }
+
+  p {
+    color: var(--text-secondary);
+    font-size: 1.05em;
+    line-height: 1.6;
+    margin-bottom: var(--spacing-md);
+  }
+}
+
+.guideIcon {
+  font-size: 3em;
+  margin-bottom: var(--spacing-lg);
+}
+
+// Corrected Conversation Flow
+.correctedConversationFlow {
+  margin-top: var(--spacing-4xl);
+  padding-top: var(--spacing-3xl);
+  border-top: 2px solid var(--border-primary);
+
+  .sectionTitle {
+    color: var(--color-primary);
+    font-size: 1.3em;
+    margin-bottom: var(--spacing-xs);
+  }
+}
+
+.flowHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: var(--spacing-xl);
+}
+
+.flowDescription {
+  color: var(--text-muted);
+  font-size: 0.95em;
+  margin: 0;
+}
+
+.btnPlayAll {
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: var(--radius-lg);
+  font-size: 1em;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  white-space: nowrap;
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+  }
+
+  &.playing {
+    background: linear-gradient(135deg, var(--color-danger) 0%, var(--color-danger-dark) 100%);
+    animation: pulse-glow 1.5s infinite;
+  }
+}
+
+.conversationFlow {
+  background: var(--bg-surface-darker);
+  border-radius: var(--radius-2xl);
+  padding: var(--spacing-2xl);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+}
+
+.flowMessage {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-width: 85%;
+  transition: all var(--transition-normal);
+
+  &.playing {
+    transform: scale(1.02);
+
+    .flowText {
+      box-shadow: 0 0 15px rgba(77, 166, 255, 0.5);
+    }
+  }
+
+  &.ai {
+    align-self: flex-start;
+  }
+
+  &.user {
+    align-self: flex-end;
+  }
+}
+
+.flowMessageHeader {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+
+  .user & {
+    justify-content: flex-end;
+  }
+}
+
+.flowSpeaker {
+  font-weight: 700;
+  font-size: 0.85em;
+  padding: 3px 10px;
+  border-radius: var(--radius-md);
+  width: fit-content;
+
+  .ai & {
+    background: var(--color-primary-alpha-20);
+    color: var(--color-primary);
+  }
+
+  .user & {
+    background: var(--color-secondary-alpha-20);
+    color: var(--color-secondary-light);
+    align-self: flex-end;
+  }
+}
+
+.btnPlaySingle {
+  background: var(--color-primary-alpha-20);
+  border: none;
+  padding: 4px 8px;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  font-size: 0.9em;
+  transition: all var(--transition-fast);
+
+  &:hover:not(:disabled) {
+    background: rgba(77, 166, 255, 0.4);
+    transform: scale(1.1);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+.flowText {
+  padding: 14px 18px;
+  border-radius: var(--radius-3xl);
+  margin: 0;
+  line-height: 1.6;
+  font-size: 1em;
+  color: var(--text-primary);
+
+  .ai & {
+    background: rgba(77, 166, 255, 0.12);
+    border-bottom-left-radius: var(--radius-sm);
+  }
+
+  .user & {
+    background: rgba(76, 175, 80, 0.12);
+    border-bottom-right-radius: var(--radius-sm);
+    text-align: right;
+  }
+}

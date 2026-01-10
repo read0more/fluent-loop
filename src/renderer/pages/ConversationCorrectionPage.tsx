@@ -221,7 +221,6 @@ export const ConversationCorrectionPage: React.FC = () => {
   return (
     <div className="conversation-correction-page">
       <header className="page-header">
-        <h1>Step 6: 대화 첨삭</h1>
         <p className="page-subtitle">AI와의 대화 내용을 첨삭받아보세요</p>
       </header>
 

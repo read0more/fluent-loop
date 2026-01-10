@@ -1,0 +1,105 @@
+// Timer Component Styles
+
+.timer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-xl);
+}
+
+.label {
+  color: var(--color-primary);
+  font-size: 1.3em;
+  font-weight: 600;
+}
+
+.display {
+  font-size: 5em;
+  font-weight: 200;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 0 30px rgba(77, 166, 255, 0.3);
+
+  &.completed {
+    color: var(--color-secondary);
+    text-shadow: 0 0 30px rgba(76, 175, 80, 0.3);
+  }
+}
+
+.controls {
+  display: flex;
+  gap: var(--spacing-lg);
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.btnStart,
+.btnResume {
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
+  color: white;
+  border: none;
+  padding: var(--spacing-lg) var(--spacing-4xl);
+  border-radius: var(--radius-full);
+  font-size: 1.1em;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  box-shadow: var(--shadow-md);
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+  }
+}
+
+.btnPause {
+  background: linear-gradient(135deg, var(--color-warning) 0%, var(--color-warning-dark) 100%);
+  color: white;
+  border: none;
+  padding: var(--spacing-lg) var(--spacing-3xl);
+  border-radius: var(--radius-full);
+  font-size: 1.1em;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  box-shadow: var(--shadow-warning);
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(255, 152, 0, 0.4);
+  }
+}
+
+.btnStop {
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  border: 1px solid var(--border-medium);
+  padding: var(--spacing-lg) var(--spacing-3xl);
+  border-radius: var(--radius-full);
+  font-size: 1.1em;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+
+  &:hover {
+    background: var(--bg-surface-active);
+  }
+}
+
+.btnReset,
+.btnComplete {
+  background: linear-gradient(135deg, var(--color-secondary) 0%, var(--color-secondary-dark) 100%);
+  color: white;
+  border: none;
+  padding: var(--spacing-lg) var(--spacing-4xl);
+  border-radius: var(--radius-full);
+  font-size: 1.1em;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  box-shadow: var(--shadow-success);
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-success-lg);
+  }
+}

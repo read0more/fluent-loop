@@ -1,0 +1,126 @@
+// Voice Recorder Component Styles
+
+.recorder {
+  background: var(--bg-surface);
+  border-radius: var(--radius-xl);
+  padding: var(--spacing-3xl);
+  text-align: center;
+}
+
+.display {
+  display: flex;
+  justify-content: center;
+  align-items: baseline;
+  gap: var(--spacing-xs);
+  margin-bottom: var(--spacing-2xl);
+}
+
+.timer {
+  font-size: 3em;
+  font-weight: 300;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.maxTime {
+  font-size: 1.2em;
+  color: var(--text-disabled);
+}
+
+.controls {
+  margin-bottom: var(--spacing-xl);
+}
+
+.btnRecord {
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
+  color: white;
+  border: none;
+  padding: 18px 50px;
+  border-radius: var(--radius-full);
+  font-size: 1.1em;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  box-shadow: var(--shadow-md);
+
+  &:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+.btnStop {
+  background: linear-gradient(135deg, var(--color-danger-light) 0%, var(--color-danger) 100%);
+  color: white;
+  border: none;
+  padding: 18px 50px;
+  border-radius: var(--radius-full);
+  font-size: 1.1em;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  box-shadow: var(--shadow-danger);
+  animation: pulse-red 1.5s infinite;
+}
+
+.btnReset {
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  border: 1px solid var(--border-medium);
+  padding: var(--spacing-lg) var(--spacing-4xl);
+  border-radius: var(--radius-full);
+  font-size: 1em;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+
+  &:hover {
+    background: var(--bg-surface-active);
+  }
+}
+
+.processing {
+  color: var(--color-primary);
+  font-size: 1.1em;
+}
+
+.recordingIndicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-md);
+  color: var(--color-danger-light);
+  font-weight: 600;
+}
+
+.pulse {
+  width: 12px;
+  height: 12px;
+  background: var(--color-danger-light);
+  border-radius: 50%;
+  animation: pulse 1s ease-in-out infinite;
+}
+
+@keyframes pulse-red {
+  0%, 100% {
+    box-shadow: 0 4px 15px rgba(244, 67, 54, 0.3);
+  }
+  50% {
+    box-shadow: 0 4px 25px rgba(244, 67, 54, 0.5);
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.3);
+    opacity: 0.7;
+  }
+}

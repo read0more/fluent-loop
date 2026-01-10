@@ -1,0 +1,92 @@
+// Auto Send Toggle Component Styles
+
+.toggle {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.switch {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+
+  input[type="checkbox"] {
+    position: absolute;
+    opacity: 0;
+  }
+}
+
+.slider {
+  position: relative;
+  width: 44px;
+  height: 24px;
+  background: var(--bg-surface);
+  border-radius: 24px;
+  cursor: pointer;
+  transition: background var(--transition-fast);
+
+  &::before {
+    content: '';
+    position: absolute;
+    width: 18px;
+    height: 18px;
+    background: white;
+    border-radius: 50%;
+    top: 3px;
+    left: 3px;
+    transition: transform var(--transition-fast);
+  }
+
+  input[type="checkbox"]:checked + & {
+    background: var(--color-primary);
+
+    &::before {
+      transform: translateX(20px);
+    }
+  }
+}
+
+.label {
+  color: var(--text-primary);
+  font-size: 0.95em;
+}
+
+.delayControl {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  background: var(--bg-surface);
+  padding: 6px 12px;
+  border-radius: var(--radius-lg);
+}
+
+.delayIcon {
+  font-size: 1em;
+}
+
+.delaySlider {
+  width: 100px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--border-light);
+  outline: none;
+  -webkit-appearance: none;
+
+  &::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: var(--color-primary);
+    cursor: pointer;
+  }
+}
+
+.delayValue {
+  color: var(--color-primary);
+  font-size: 0.9em;
+  font-weight: 600;
+  min-width: 40px;
+}

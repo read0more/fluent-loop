@@ -1,0 +1,35 @@
+// Correction Display Component Styles
+
+.display {
+  min-height: 200px;
+
+  &.empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 300px;
+  }
+}
+
+.emptyMessage {
+  color: var(--text-disabled);
+  text-align: center;
+  font-size: 1.1em;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xl);
+}
+
+.item {
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-lg);
+  transition: background var(--transition-fast);
+
+  &:hover {
+    background: var(--bg-surface);
+  }
+}

@@ -290,8 +290,6 @@ export const ListeningPage: React.FC = () => {
 
   return (
     <div className="listening-page">
-      <h1>단계 2: 듣기 연습</h1>
-
       {/* 에러 메시지 */}
       {state.error && state.step !== 'no-topic' && (
         <div className="error-message">

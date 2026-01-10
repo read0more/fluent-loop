@@ -1,0 +1,45 @@
+// Keyword Display Component Styles
+
+.display {
+  background: var(--bg-surface);
+  border-radius: var(--radius-xl);
+  padding: var(--spacing-2xl);
+
+  h3 {
+    color: var(--color-primary);
+    margin-bottom: var(--spacing-xl);
+    font-size: 1.2em;
+    text-align: center;
+  }
+
+  &.empty .emptyMessage {
+    color: var(--text-muted);
+    text-align: center;
+  }
+}
+
+.list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: center;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.item {
+  background: var(--color-primary-alpha-15);
+  color: var(--color-primary);
+  padding: var(--spacing-md) var(--spacing-xl);
+  border-radius: var(--radius-pill);
+  font-size: 1em;
+  font-weight: 500;
+  border: 1px solid var(--border-primary);
+  transition: all var(--transition-fast);
+
+  &:hover {
+    background: rgba(77, 166, 255, 0.25);
+    transform: translateY(-2px);
+  }
+}

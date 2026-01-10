@@ -565,6 +565,21 @@ body {
   background: rgba(77, 166, 255, 0.15);
 }
 
+.nav-link.nav-settings {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  padding: 10px;
+}
+
+.nav-link.nav-settings svg {
+  transition: transform 0.2s;
+}
+
+.nav-link.nav-settings:hover svg {
+  transform: rotate(45deg);
+}
+
 /* Listening Page */
 .listening-page {
   padding: 40px;
@@ -3441,4 +3456,24 @@ body {
   background: rgba(76, 175, 80, 0.12);
   border-bottom-right-radius: 4px;
   text-align: right;
+}
+
+/* Processing Indicator (Inline) */
+.processing-indicator {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  padding: 30px;
+  margin-top: 20px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 15px;
+}
+
+/* Topic Preview Inline Mode */
+.topic-preview--inline {
+  margin-top: 25px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  padding-top: 25px;
 }

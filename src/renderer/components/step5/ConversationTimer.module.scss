@@ -1,0 +1,49 @@
+// Conversation Timer Component Styles
+
+.timer {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  padding: var(--spacing-sm) var(--spacing-lg);
+  background: var(--bg-surface);
+  border-radius: var(--radius-lg);
+
+  &.nearLimit {
+    background: var(--color-warning-alpha-15);
+    border: 1px solid var(--border-warning);
+
+    .display {
+      color: var(--color-warning);
+    }
+  }
+
+  &.overLimit {
+    background: var(--color-danger-alpha-15);
+    border: 1px solid var(--border-danger);
+
+    .display {
+      color: var(--color-danger-light);
+    }
+
+    .warning {
+      color: var(--color-danger-light);
+    }
+  }
+}
+
+.icon {
+  font-size: 1.2em;
+}
+
+.display {
+  font-size: 1.5em;
+  font-weight: 600;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.warning {
+  font-size: 0.85em;
+  color: var(--color-warning);
+  margin-left: var(--spacing-md);
+}

@@ -1,0 +1,185 @@
+// Common Mixins
+
+// Button base styles
+@mixin button-base {
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  font-weight: 600;
+  transition: all var(--transition-fast);
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+// Primary button gradient
+@mixin button-primary {
+  @include button-base;
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
+  color: white;
+  box-shadow: var(--shadow-md);
+
+  &:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+  }
+}
+
+// Secondary/Success button gradient
+@mixin button-success {
+  @include button-base;
+  background: linear-gradient(135deg, var(--color-secondary) 0%, var(--color-secondary-dark) 100%);
+  color: white;
+  box-shadow: var(--shadow-success);
+
+  &:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-success-lg);
+  }
+}
+
+// Danger button gradient
+@mixin button-danger {
+  @include button-base;
+  background: linear-gradient(135deg, var(--color-danger-light) 0%, var(--color-danger) 100%);
+  color: white;
+  box-shadow: var(--shadow-danger);
+
+  &:hover:not(:disabled) {
+    transform: translateY(-2px);
+  }
+}
+
+// Ghost/Outline button
+@mixin button-ghost {
+  @include button-base;
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  border: 1px solid var(--border-medium);
+
+  &:hover:not(:disabled) {
+    background: var(--bg-surface-active);
+  }
+}
+
+// Pill button shape
+@mixin button-pill {
+  border-radius: var(--radius-full);
+  padding: 15px 40px;
+}
+
+// Card/Panel style
+@mixin card {
+  background: var(--bg-surface);
+  border-radius: var(--radius-xl);
+  padding: var(--spacing-2xl);
+}
+
+// Section title
+@mixin section-title {
+  color: var(--color-primary);
+  font-size: 1.2em;
+  margin-bottom: var(--spacing-xl);
+}
+
+// Page container
+@mixin page-container($max-width: 800px) {
+  padding: var(--spacing-4xl);
+  max-width: $max-width;
+  margin: 0 auto;
+  width: 100%;
+}
+
+// Page title
+@mixin page-title {
+  color: var(--color-primary);
+  margin-bottom: var(--spacing-3xl);
+  font-size: 2em;
+  text-align: center;
+}
+
+// Input base
+@mixin input-base {
+  background: var(--bg-surface-dark);
+  color: var(--text-primary);
+  border: 1px solid var(--border-light);
+  padding: 12px;
+  border-radius: var(--radius-md);
+  font-size: 1em;
+  font-family: inherit;
+  transition: border-color var(--transition-fast);
+
+  &:focus {
+    outline: none;
+    border-color: var(--color-primary);
+  }
+
+  &::placeholder {
+    color: var(--text-disabled);
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+}
+
+// Flex center
+@mixin flex-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+// Flex column
+@mixin flex-column($gap: var(--spacing-lg)) {
+  display: flex;
+  flex-direction: column;
+  gap: $gap;
+}
+
+// Truncate text
+@mixin truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+// Hover lift effect
+@mixin hover-lift($y: -2px) {
+  transition: transform var(--transition-fast);
+
+  &:hover {
+    transform: translateY($y);
+  }
+}
+
+// Badge style
+@mixin badge($bg-color, $text-color, $border-color: transparent) {
+  background: $bg-color;
+  color: $text-color;
+  padding: 4px 12px;
+  border-radius: var(--radius-xl);
+  font-size: 0.85em;
+  font-weight: 600;
+  @if $border-color != transparent {
+    border: 1px solid $border-color;
+  }
+}
+
+// Tabular numbers for timers
+@mixin tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+// Text glow effect
+@mixin text-glow($color) {
+  text-shadow: 0 0 30px $color;
+}
+
+// Box glow effect
+@mixin box-glow($color) {
+  box-shadow: 0 0 15px $color;
+}
