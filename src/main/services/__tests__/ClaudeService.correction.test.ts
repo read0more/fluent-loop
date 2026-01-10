@@ -129,7 +129,7 @@ describe('ClaudeService - Correction Features', () => {
         testableService.parseCorrectionResponse(invalidJSON);
       } catch (error) {
         expect(error).toBeInstanceOf(AppError);
-        expect((error as AppError).userMessage).toContain('파싱에 실패');
+        expect((error as AppError).userMessage).toContain('파싱 실패');
       }
     });
 

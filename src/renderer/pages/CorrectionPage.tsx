@@ -215,46 +215,34 @@ export const CorrectionPage: React.FC = () => {
     await processSentences(sentences, state.activeTopic.cefrLevel);
   };
 
-  // 문장별 순차 첨삭
+  // 배치 첨삭 (한 번의 API 호출로 모든 문장 처리)
   const processSentences = async (sentences: string[], cefrLevel: CEFRLevel) => {
-    const results: CorrectionResult[] = [];
+    try {
+      const response = await window.electron.invoke('correct-sentences-batch', {
+        sentences,
+        cefrLevel,
+      });
 
-    for (let i = 0; i < sentences.length; i++) {
-      setState((prev) => ({ ...prev, currentSentenceIndex: i }));
-
-      try {
-        const response = await window.electron.invoke('correct-sentence', {
-          sentence: sentences[i],
-          cefrLevel,
-        });
-
-        if (response.success && response.data) {
-          results.push(response.data);
-          setState((prev) => ({
-            ...prev,
-            corrections: [...results],
-          }));
-        } else {
-          throw new Error(response.error || '첨삭 실패');
-        }
-      } catch (error) {
+      if (response.success && response.data) {
         setState((prev) => ({
           ...prev,
+          corrections: response.data,
           isLoading: false,
           currentSentenceIndex: -1,
-          error: `문장 ${i + 1} 첨삭 중 오류: ${
-            error instanceof Error ? error.message : '알 수 없는 오류'
-          }`,
         }));
-        return;
+      } else {
+        throw new Error(response.error || '첨삭 실패');
       }
+    } catch (error) {
+      setState((prev) => ({
+        ...prev,
+        isLoading: false,
+        currentSentenceIndex: -1,
+        error: `첨삭 중 오류: ${
+          error instanceof Error ? error.message : '알 수 없는 오류'
+        }`,
+      }));
     }
-
-    setState((prev) => ({
-      ...prev,
-      isLoading: false,
-      currentSentenceIndex: -1,
-    }));
   };
 
   // TTS 재생

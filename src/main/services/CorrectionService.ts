@@ -162,7 +162,7 @@ export class CorrectionService {
   }
 
   /**
-   * 여러 문장 배치 첨삭 (순차 처리)
+   * 여러 문장 배치 첨삭 (순차 처리) - Legacy
    */
   async correctMultipleSentences(
     sentences: string[],
@@ -181,6 +181,43 @@ export class CorrectionService {
     }
 
     return results;
+  }
+
+  /**
+   * 여러 문장 배치 첨삭 (한 번의 API 호출) - 성능 최적화
+   * N개 문장을 1번의 Claude API 호출로 처리
+   */
+  async correctSentencesBatch(
+    sentences: string[],
+    cefrLevel: CEFRLevel,
+    retries: number = 2
+  ): Promise<CorrectionResult[]> {
+    if (!sentences || sentences.length === 0) {
+      return [];
+    }
+
+    let lastError: Error | null = null;
+
+    for (let attempt = 0; attempt <= retries; attempt++) {
+      try {
+        const results = await this.claudeService.correctSentencesBatch(sentences, cefrLevel);
+        return results;
+      } catch (error) {
+        lastError = error as Error;
+
+        // 재시도 가능한 에러인지 확인
+        if (error instanceof AppError && error.code === ErrorCode.CLAUDE_TIMEOUT) {
+          console.log(`Batch correction retry attempt ${attempt + 1}/${retries}...`);
+          await this.delay(1000 * (attempt + 1)); // Exponential backoff
+          continue;
+        }
+
+        // 재시도 불가능한 에러는 즉시 throw
+        throw error;
+      }
+    }
+
+    throw lastError!;
   }
 
   /**

@@ -49,6 +49,7 @@ export const RetellingPage: React.FC = () => {
     setState((prev) => ({ ...prev, step: 'loading', error: null }));
 
     try {
+      // 1. 활성 토픽 조회
       const response = await window.electron.invoke('get-active-topic');
 
       if (!response.success) {
@@ -70,18 +71,64 @@ export const RetellingPage: React.FC = () => {
         return;
       }
 
+      const topic = response.data;
+
+      // 2. 리텔링 상태 복원 (추가)
+      const retellingResponse = await window.electron.invoke('get-retelling-texts', {
+        topicId: topic.id,
+      });
+
+      let completedSteps: number[] = [];
+      let transcribedTexts: Record<1 | 2 | 3, string | null> = {
+        1: null,
+        2: null,
+        3: null,
+      };
+      let nextStep: 1 | 2 | 3 = 1;
+
+      // 3. 응답 데이터 기반 상태 복원
+      if (retellingResponse.success && retellingResponse.data) {
+        const { threeMin, twoMin, oneMin } = retellingResponse.data;
+
+        // duration=3 → step=1 (3분 리텔링)
+        if (threeMin) {
+          completedSteps.push(1);
+          transcribedTexts[1] = threeMin;
+          nextStep = 2;
+        }
+
+        // duration=2 → step=2 (2분 리텔링)
+        if (twoMin) {
+          completedSteps.push(2);
+          transcribedTexts[2] = twoMin;
+          nextStep = 3;
+        }
+
+        // duration=1 → step=3 (1분 리텔링)
+        if (oneMin) {
+          completedSteps.push(3);
+          transcribedTexts[3] = oneMin;
+          // nextStep은 3으로 유지 (모든 스텝 완료)
+        }
+      } else {
+        // 조회 실패 시에도 빈 상태로 계속 진행 (Graceful degradation)
+        console.warn('Failed to load retelling state, starting fresh:', retellingResponse.error);
+      }
+
+      // 4. 상태 업데이트
       setState({
-        step: 'ready',
-        topic: response.data,
-        currentTimerStep: 1,
-        completedSteps: [],
+        step: completedSteps.length === 3 ? 'complete' : 'ready',
+        topic,
+        currentTimerStep: nextStep,
+        completedSteps,
         error: null,
         isTimerRunning: false,
         isRecording: false,
         isProcessingSTT: false,
-        transcribedTexts: { 1: null, 2: null, 3: null },
+        transcribedTexts,
       });
-    } catch {
+    } catch (error) {
+      console.error('Failed to load active topic:', error);
       setState((prev) => ({
         ...prev,
         step: 'no-topic',

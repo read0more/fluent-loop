@@ -383,6 +383,26 @@ Do NOT include:
   }
 
   /**
+   * 첨삭 결과 검증 및 추출
+   */
+  private validateAndExtractCorrectionResult(parsed: any): CorrectionResult {
+    if (!parsed.original || !parsed.corrected || parsed.explanation === undefined) {
+      throw new Error('Missing required fields: original, corrected, or explanation');
+    }
+
+    if (!Array.isArray(parsed.categories)) {
+      throw new Error('categories must be an array');
+    }
+
+    return {
+      original: parsed.original,
+      corrected: parsed.corrected,
+      explanation: parsed.explanation,
+      categories: parsed.categories,
+    };
+  }
+
+  /**
    * Step 4: 문장 첨삭 기능
    */
   async correctSentence(sentence: string, cefrLevel: CEFRLevel): Promise<CorrectionResult> {
@@ -423,7 +443,17 @@ Do NOT include:
    * 첨삭 전용 프롬프트 생성
    */
   private buildCorrectionPrompt(sentence: string, cefrLevel: CEFRLevel): string {
-    return `You are an English teacher correcting a CEFR ${cefrLevel} student's sentence.
+    return `
+<response_format>
+You MUST respond with ONLY a JSON object. No explanatory text, no markdown code blocks, no additional commentary.
+Respond with ONLY the pure JSON object, nothing else.
+</response_format>
+
+**CRITICAL INSTRUCTION**: You MUST respond with ONLY a JSON object.
+DO NOT include markdown code blocks (\`\`\`json...\`\`\`).
+DO NOT include any text before or after the JSON.
+
+You are an English teacher correcting a CEFR ${cefrLevel} student's sentence.
 
 Original sentence:
 "${sentence}"
@@ -440,13 +470,22 @@ Analyze and correct this sentence based on:
 2. **Vocabulary**: Suggest better word choices appropriate for ${cefrLevel} level
 3. **Naturalness**: Make the sentence sound more natural and fluent
 
-Return ONLY a JSON object in this exact format:
+<output_format>
+CRITICAL - Output ONLY this JSON structure, nothing else:
 {
   "original": "${sentence}",
   "corrected": "...",
   "explanation": "...",
   "categories": ["grammar", "vocabulary", "naturalness"]
 }
+
+Do NOT include:
+- Markdown code blocks (\`\`\`json...\`\`\`)
+- Explanatory text before or after the JSON
+- Comments or notes
+- Any text that is not the JSON object itself
+- Any text outside the JSON braces
+</output_format>
 
 Guidelines:
 - If the sentence is already correct, set "corrected" to the same as "original" and "explanation" to "No correction needed." or "수정이 필요하지 않습니다."
@@ -456,49 +495,339 @@ Guidelines:
 - For ${cefrLevel} level:
   - A1/A2: Use very simple explanations, focus on basic grammar
   - B1/B2: Provide intermediate-level explanations, introduce synonyms
-  - C1/C2: Offer advanced explanations, discuss nuances and idiomatic usage
-
-Provide ONLY the JSON output, no additional text.`;
+  - C1/C2: Offer advanced explanations, discuss nuances and idiomatic usage`;
   }
 
   /**
-   * 첨삭 응답 파싱
+   * 첨삭 응답 파싱 (다중 전략)
    */
   private parseCorrectionResponse(output: string): CorrectionResult {
+    const originalOutput = output; // Keep for logging
+
     try {
       let jsonStr = output.trim();
 
-      // ```json ... ``` 제거
-      const jsonMatch = jsonStr.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
-      if (jsonMatch) {
-        jsonStr = jsonMatch[1];
+      // Strategy 0: Handle Claude CLI JSON wrapper format
+      // When using --output-format json, Claude CLI wraps the response
+      if (jsonStr.includes('"result"') && jsonStr.includes('"type"')) {
+        try {
+          console.log('[ClaudeService] Correction: Detecting Claude CLI wrapper format...');
+          const cliResponse = JSON.parse(jsonStr);
+          if (cliResponse.result && typeof cliResponse.result === 'string') {
+            console.log('[ClaudeService] Correction: Extracting result from CLI wrapper...');
+            jsonStr = cliResponse.result;
+          }
+        } catch {
+          console.log(
+            '[ClaudeService] Correction: Failed to parse CLI wrapper, continuing with other strategies...'
+          );
+        }
       }
 
-      const parsed = JSON.parse(jsonStr);
-
-      // 검증
-      if (!parsed.original || !parsed.corrected || !parsed.explanation) {
-        throw new Error('Missing required fields in correction response');
+      // Strategy 1: Try direct JSON parse if starts and ends with braces
+      if (jsonStr.startsWith('{') && jsonStr.endsWith('}')) {
+        try {
+          console.log('[ClaudeService] Correction: Trying direct JSON parse...');
+          return this.validateAndExtractCorrectionResult(JSON.parse(jsonStr));
+        } catch {
+          console.log(
+            '[ClaudeService] Correction: Direct parse failed, trying extraction strategies...'
+          );
+        }
       }
 
-      if (!Array.isArray(parsed.categories)) {
-        throw new Error('Categories must be an array');
+      // Strategy 2: Extract from markdown code block
+      const codeBlockMatch = jsonStr.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+      if (codeBlockMatch) {
+        try {
+          console.log('[ClaudeService] Correction: Trying code block extraction...');
+          return this.validateAndExtractCorrectionResult(JSON.parse(codeBlockMatch[1]));
+        } catch {
+          console.log('[ClaudeService] Correction: Code block parse failed');
+        }
       }
 
-      return {
-        original: parsed.original,
-        corrected: parsed.corrected,
-        explanation: parsed.explanation,
-        categories: parsed.categories,
-      };
+      // Strategy 3: Find JSON object pattern with required fields
+      const jsonObjectMatch = jsonStr.match(
+        /\{[^{}]*"original"[^{}]*"corrected"[^{}]*"explanation"[^{}]*\}/s
+      );
+      if (jsonObjectMatch) {
+        try {
+          console.log('[ClaudeService] Correction: Trying pattern match extraction...');
+          return this.validateAndExtractCorrectionResult(JSON.parse(jsonObjectMatch[0]));
+        } catch {
+          console.log('[ClaudeService] Correction: Pattern match parse failed');
+        }
+      }
+
+      // Strategy 4: Aggressive extraction - find any valid JSON object
+      const allBraceMatches = this.extractJsonObjects(jsonStr);
+      for (const match of allBraceMatches) {
+        try {
+          console.log('[ClaudeService] Correction: Trying aggressive JSON extraction...');
+          const result = this.validateAndExtractCorrectionResult(JSON.parse(match));
+          console.log('[ClaudeService] Correction: Successfully extracted JSON from mixed content');
+          return result;
+        } catch {
+          // Try next match
+          continue;
+        }
+      }
+
+      // All strategies failed
+      throw new Error(
+        `No valid JSON found in correction response (length: ${output.length}). All extraction strategies failed.`
+      );
     } catch (error) {
+      console.log('[ClaudeService] Correction parsing error:', error);
+
+      // Log the Claude response for debugging
+      this.logClaudeInteraction('correctSentence-FAILED', originalOutput, error as Error);
+
       throw new AppError(
         ErrorCode.CLAUDE_PARSING_ERROR,
         'Failed to parse correction response',
-        '첨삭 결과 파싱에 실패했습니다. 다시 시도해주세요.',
+        `첨삭 결과 파싱 실패. 로그: .claude/logs/ 폴더 확인하세요. 에러: ${(error as Error).message}`,
         error as Error
       );
     }
+  }
+
+  /**
+   * Step 4: 여러 문장 배치 첨삭 (성능 최적화)
+   */
+  async correctSentencesBatch(
+    sentences: string[],
+    cefrLevel: CEFRLevel
+  ): Promise<CorrectionResult[]> {
+    // Validation
+    if (!sentences || sentences.length === 0) {
+      throw new AppError(
+        ErrorCode.VALIDATION_ERROR,
+        'Empty sentences array',
+        '첨삭할 문장이 없습니다.'
+      );
+    }
+
+    // 빈 문장 필터링
+    const validSentences = sentences.filter((s) => s && s.trim().length > 0);
+    if (validSentences.length === 0) {
+      throw new AppError(
+        ErrorCode.VALIDATION_ERROR,
+        'No valid sentences',
+        '유효한 문장이 없습니다.'
+      );
+    }
+
+    const prompt = this.buildBatchCorrectionPrompt(validSentences, cefrLevel);
+
+    try {
+      const output = await this.executeClaude(prompt);
+      return this.parseBatchCorrectionResponse(output, validSentences);
+    } catch (error) {
+      if (error instanceof AppError) {
+        throw error;
+      }
+      throw new AppError(
+        ErrorCode.CLAUDE_API_ERROR,
+        'Failed to correct sentences batch',
+        '배치 첨삭 처리 중 오류가 발생했습니다. 다시 시도해주세요.',
+        error as Error
+      );
+    }
+  }
+
+  /**
+   * 배치 첨삭 프롬프트 생성
+   */
+  private buildBatchCorrectionPrompt(sentences: string[], cefrLevel: CEFRLevel): string {
+    const sentencesList = sentences.map((s, i) => `${i + 1}. "${s}"`).join('\n');
+
+    return `
+<response_format>
+You MUST respond with ONLY a JSON array. No explanatory text, no markdown code blocks, no additional commentary.
+Respond with ONLY the pure JSON array, nothing else.
+</response_format>
+
+**CRITICAL INSTRUCTION**: You MUST respond with ONLY a JSON array.
+DO NOT include markdown code blocks (\`\`\`json...\`\`\`).
+DO NOT include any text before or after the JSON array.
+
+You are an English teacher correcting a CEFR ${cefrLevel} student's sentences.
+
+Below are ${sentences.length} sentences to correct. Analyze and correct each one.
+
+**IMPORTANT - Section Markers**:
+Some sentences may be section markers like "----3분 리텔링 시 내용----".
+- If a sentence is just a section marker (starts with "----" and ends with "----"), return it as-is without correction.
+- Set "corrected" to the same as "original" and "explanation" to "섹션 구분자입니다." with "categories": []
+
+Sentences to correct:
+${sentencesList}
+
+Analyze each sentence based on:
+1. **Grammar**: Fix grammatical errors (tense, subject-verb agreement, articles, prepositions, word order, etc.)
+2. **Vocabulary**: Suggest better word choices appropriate for ${cefrLevel} level
+3. **Naturalness**: Make the sentence sound more natural and fluent
+
+<output_format>
+CRITICAL - Output ONLY this JSON array structure, nothing else:
+[
+  {
+    "index": 0,
+    "original": "first sentence",
+    "corrected": "corrected first sentence",
+    "explanation": "설명...",
+    "categories": ["grammar", "vocabulary", "naturalness"]
+  },
+  {
+    "index": 1,
+    "original": "second sentence",
+    "corrected": "corrected second sentence",
+    "explanation": "설명...",
+    "categories": ["grammar"]
+  }
+]
+
+Do NOT include:
+- Markdown code blocks (\`\`\`json...\`\`\`)
+- Explanatory text before or after the JSON
+- Any text outside the JSON array brackets
+</output_format>
+
+Guidelines:
+- Return exactly ${sentences.length} items in the array (one for each sentence)
+- "index" must match the sentence number (0-based)
+- If a sentence is already correct, set "corrected" = "original" and "explanation" = "수정이 필요하지 않습니다."
+- "categories" should include only relevant correction types
+- "explanation" should be concise and in Korean
+- For ${cefrLevel} level:
+  - A1/A2: Use very simple explanations, focus on basic grammar
+  - B1/B2: Provide intermediate-level explanations, introduce synonyms
+  - C1/C2: Offer advanced explanations, discuss nuances and idiomatic usage`;
+  }
+
+  /**
+   * 배치 첨삭 응답 파싱 (다중 전략)
+   */
+  private parseBatchCorrectionResponse(output: string, sentences: string[]): CorrectionResult[] {
+    const originalOutput = output;
+
+    try {
+      let jsonStr = output.trim();
+
+      // Strategy 0: Handle Claude CLI JSON wrapper format
+      if (jsonStr.includes('"result"') && jsonStr.includes('"type"')) {
+        try {
+          console.log('[ClaudeService] BatchCorrection: Detecting Claude CLI wrapper format...');
+          const cliResponse = JSON.parse(jsonStr);
+          if (cliResponse.result && typeof cliResponse.result === 'string') {
+            console.log('[ClaudeService] BatchCorrection: Extracting result from CLI wrapper...');
+            jsonStr = cliResponse.result;
+          }
+        } catch {
+          console.log(
+            '[ClaudeService] BatchCorrection: Failed to parse CLI wrapper, continuing...'
+          );
+        }
+      }
+
+      // Strategy 1: Try direct JSON array parse
+      if (jsonStr.startsWith('[') && jsonStr.endsWith(']')) {
+        try {
+          console.log('[ClaudeService] BatchCorrection: Trying direct JSON array parse...');
+          return this.validateAndExtractBatchCorrectionResult(JSON.parse(jsonStr), sentences);
+        } catch {
+          console.log('[ClaudeService] BatchCorrection: Direct parse failed, trying extraction...');
+        }
+      }
+
+      // Strategy 2: Extract from markdown code block
+      const codeBlockMatch = jsonStr.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+      if (codeBlockMatch) {
+        try {
+          console.log('[ClaudeService] BatchCorrection: Trying code block extraction...');
+          return this.validateAndExtractBatchCorrectionResult(
+            JSON.parse(codeBlockMatch[1]),
+            sentences
+          );
+        } catch {
+          console.log('[ClaudeService] BatchCorrection: Code block parse failed');
+        }
+      }
+
+      // Strategy 3: Find JSON array pattern
+      const arrayMatch = jsonStr.match(/\[[\s\S]*\]/);
+      if (arrayMatch) {
+        try {
+          console.log('[ClaudeService] BatchCorrection: Trying array pattern extraction...');
+          return this.validateAndExtractBatchCorrectionResult(JSON.parse(arrayMatch[0]), sentences);
+        } catch {
+          console.log('[ClaudeService] BatchCorrection: Array pattern parse failed');
+        }
+      }
+
+      throw new Error(
+        `No valid JSON array found in batch correction response (length: ${output.length})`
+      );
+    } catch (error) {
+      console.log('[ClaudeService] BatchCorrection parsing error:', error);
+      this.logClaudeInteraction('correctSentencesBatch-FAILED', originalOutput, error as Error);
+
+      throw new AppError(
+        ErrorCode.CLAUDE_PARSING_ERROR,
+        'Failed to parse batch correction response',
+        `배치 첨삭 결과 파싱 실패. 로그: .claude/logs/ 폴더 확인. 에러: ${(error as Error).message}`,
+        error as Error
+      );
+    }
+  }
+
+  /**
+   * 배치 첨삭 결과 검증 및 추출
+   */
+  private validateAndExtractBatchCorrectionResult(
+    parsed: any,
+    sentences: string[]
+  ): CorrectionResult[] {
+    if (!Array.isArray(parsed)) {
+      throw new Error('Response must be an array');
+    }
+
+    const results: CorrectionResult[] = [];
+
+    for (let i = 0; i < sentences.length; i++) {
+      // index로 매칭하거나, 순서대로 매칭
+      const item = parsed.find((p: any) => p.index === i) || parsed[i];
+
+      if (!item) {
+        // 해당 문장에 대한 결과가 없으면 원본 그대로 반환
+        results.push({
+          original: sentences[i],
+          corrected: sentences[i],
+          explanation: '첨삭 결과 없음',
+          categories: [],
+        });
+        continue;
+      }
+
+      if (!item.original || !item.corrected || item.explanation === undefined) {
+        throw new Error(`Missing required fields in correction item at index ${i}`);
+      }
+
+      if (!Array.isArray(item.categories)) {
+        throw new Error(`categories must be an array at index ${i}`);
+      }
+
+      results.push({
+        original: item.original,
+        corrected: item.corrected,
+        explanation: item.explanation,
+        categories: item.categories,
+      });
+    }
+
+    return results;
   }
 
   /**
