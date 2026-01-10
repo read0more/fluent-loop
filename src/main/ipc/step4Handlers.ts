@@ -157,11 +157,11 @@ export function registerStep4Handlers(): void {
           );
         }
 
-        if (!sessionId || !topicId) {
+        if (topicId === undefined || topicId === null) {
           throw new AppError(
             ErrorCode.VALIDATION_ERROR,
-            'Missing sessionId or topicId',
-            '세션 정보가 올바르지 않습니다.'
+            'Missing topicId',
+            '토픽 정보가 올바르지 않습니다.'
           );
         }
 

@@ -225,7 +225,7 @@ export class CorrectionService {
    */
   async saveCorrections(
     corrections: CorrectionResult[],
-    sessionId: number,
+    sessionId: number | null,
     topicId: number
   ): Promise<void> {
     if (corrections.length === 0) {
@@ -280,7 +280,7 @@ export class CorrectionService {
       params.push(topicId);
     }
 
-    if (sessionId !== undefined) {
+    if (sessionId !== undefined && sessionId !== null) {
       query += ' AND session_id = ?';
       params.push(sessionId);
     }
