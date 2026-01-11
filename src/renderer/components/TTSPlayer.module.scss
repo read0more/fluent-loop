@@ -3,7 +3,7 @@
 .player {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-xl);
+  gap: 20px;
 }
 
 .controls {
@@ -13,24 +13,24 @@
 .btnPlay,
 .btnPause,
 .btnResume {
-  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
+  background: linear-gradient(135deg, #4da6ff 0%, #3d8cf0 100%);
   color: white;
   border: none;
   padding: 12px 30px;
-  border-radius: var(--radius-pill);
+  border-radius: 25px;
   font-size: 1em;
   font-weight: 600;
   cursor: pointer;
-  transition: all var(--transition-fast);
+  transition: all 0.2s;
 
   &:hover {
     transform: translateY(-2px);
-    box-shadow: var(--shadow-md);
+    box-shadow: 0 4px 15px rgba(77, 166, 255, 0.3);
   }
 }
 
 .loading {
-  color: var(--color-primary);
+  color: #4da6ff;
   font-size: 1em;
 }
 
@@ -38,25 +38,101 @@
   text-align: center;
 
   p {
-    color: var(--color-danger-light);
-    margin-bottom: var(--spacing-md);
+    color: #ff6b6b;
+    margin-bottom: 10px;
   }
 }
 
 .btnRetry {
-  background: var(--color-danger);
+  background: #f44336;
   color: white;
   border: none;
-  padding: var(--spacing-md) var(--spacing-xl);
-  border-radius: var(--radius-md);
+  padding: 10px 20px;
+  border-radius: 6px;
   cursor: pointer;
 }
 
 .text {
-  background: var(--bg-surface-dark);
-  padding: var(--spacing-xl);
-  border-radius: var(--radius-lg);
-  color: var(--text-primary);
+  background: rgba(0, 0, 0, 0.2);
+  padding: 20px;
+  border-radius: 8px;
+  color: #e4e4e4;
   line-height: 1.6;
   font-size: 1.05em;
+}
+
+// Audio Player styles (embedded in TTSPlayer)
+.audioPlayer {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.audioControls {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  flex-wrap: wrap;
+}
+
+.controlButtons {
+  display: flex;
+  gap: 10px;
+}
+
+.btnStop {
+  background: rgba(255, 255, 255, 0.1);
+  color: #e4e4e4;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  padding: 12px 20px;
+  border-radius: 25px;
+  font-size: 1em;
+  cursor: pointer;
+  transition: all 0.2s;
+
+  &:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.15);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+.progressContainer {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 200px;
+}
+
+.timeDisplay {
+  color: #a0a0a0;
+  font-size: 0.9em;
+  font-variant-numeric: tabular-nums;
+  min-width: 40px;
+}
+
+.progressSlider {
+  flex: 1;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.1);
+  outline: none;
+  -webkit-appearance: none;
+
+  &::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: #4da6ff;
+    cursor: pointer;
+  }
+
+  &:disabled {
+    opacity: 0.5;
+  }
 }

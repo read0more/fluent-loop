@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import styles from './TTSPlayer.module.scss';
 
 export interface TTSPlayerProps {
   text: string;
@@ -178,7 +179,7 @@ export const TTSPlayer: React.FC<TTSPlayerProps> = ({
   }, [autoPlay]);
 
   return (
-    <div className="tts-player">
+    <div className={styles.player}>
       {/* Hidden audio element */}
       {audioSrc && (
         <audio
@@ -192,48 +193,48 @@ export const TTSPlayer: React.FC<TTSPlayerProps> = ({
       )}
 
       {/* Controls */}
-      <div className="tts-controls">
+      <div className={styles.controls}>
         {state === 'loading' ? (
-          <div className="tts-loading">음성 생성 중...</div>
+          <div className={styles.loading}>음성 생성 중...</div>
         ) : state === 'error' ? (
-          <div className="tts-error">
+          <div className={styles.error}>
             <p>{error}</p>
-            <button onClick={() => setState('idle')} className="btn-retry-tts">
+            <button onClick={() => setState('idle')} className={styles.btnRetry}>
               재시도
             </button>
           </div>
         ) : (
-          <div className="audio-player">
-            <div className="audio-controls">
+          <div className={styles.audioPlayer}>
+            <div className={styles.audioControls}>
               {/* Play/Pause/Stop Buttons */}
-              <div className="control-buttons">
+              <div className={styles.controlButtons}>
                 {state !== 'playing' ? (
-                  <button onClick={handlePlayClick} className="btn-audio-play">
+                  <button onClick={handlePlayClick} className={styles.btnPlay}>
                     ▶
                   </button>
                 ) : (
-                  <button onClick={pauseAudio} className="btn-audio-pause">
+                  <button onClick={pauseAudio} className={styles.btnPause}>
                     ⏸
                   </button>
                 )}
-                <button onClick={stopAudio} className="btn-audio-stop" disabled={!audioSrc}>
+                <button onClick={stopAudio} className={styles.btnStop} disabled={!audioSrc}>
                   ⏹
                 </button>
               </div>
 
               {/* Progress Slider */}
-              <div className="progress-container">
-                <span className="time-display">{formatTime(currentTime)}</span>
+              <div className={styles.progressContainer}>
+                <span className={styles.timeDisplay}>{formatTime(currentTime)}</span>
                 <input
                   type="range"
                   min="0"
                   max={duration || 0}
                   value={currentTime}
                   onChange={(e) => seekTo(parseFloat(e.target.value))}
-                  className="progress-slider"
+                  className={styles.progressSlider}
                   disabled={!audioSrc}
                 />
-                <span className="time-display">{formatTime(duration)}</span>
+                <span className={styles.timeDisplay}>{formatTime(duration)}</span>
               </div>
             </div>
           </div>
@@ -241,7 +242,7 @@ export const TTSPlayer: React.FC<TTSPlayerProps> = ({
       </div>
 
       {/* Text display */}
-      <div className="tts-text">{text}</div>
+      <div className={styles.text}>{text}</div>
     </div>
   );
 };

@@ -1,5 +1,6 @@
 import React from 'react';
 import { CorrectionResult, CorrectionCategory } from '../../main/database/models';
+import styles from './SentenceComparison.module.scss';
 
 interface SentenceComparisonProps {
   correction: CorrectionResult;
@@ -32,7 +33,7 @@ export const SentenceComparison: React.FC<SentenceComparisonProps> = ({
   // 간단한 Diff 시각화 (단어 단위 비교)
   const renderDiff = () => {
     if (!isModified) {
-      return <div className="sentence-text correct">{corrected}</div>;
+      return <div className={`${styles.text} ${styles.correct}`}>{corrected}</div>;
     }
 
     // 단어 단위로 분리
@@ -49,65 +50,65 @@ export const SentenceComparison: React.FC<SentenceComparisonProps> = ({
 
       if (origWord === corrWord) {
         diffElements.push(
-          <span key={i} className="word-unchanged">
+          <span key={i} className={styles.wordUnchanged}>
             {corrWord}{' '}
           </span>
         );
       } else if (origWord && corrWord) {
         // 변경됨
         diffElements.push(
-          <span key={i} className="word-changed">
+          <span key={i} className={styles.wordChanged}>
             {corrWord}{' '}
           </span>
         );
       } else if (corrWord) {
         // 추가됨
         diffElements.push(
-          <span key={i} className="word-added">
+          <span key={i} className={styles.wordAdded}>
             {corrWord}{' '}
           </span>
         );
       }
     }
 
-    return <div className="sentence-text modified">{diffElements}</div>;
+    return <div className={`${styles.text} ${styles.modified}`}>{diffElements}</div>;
   };
 
   return (
-    <div className={`sentence-comparison ${isHighlighted ? 'highlighted' : ''}`}>
-      <div className="sentence-header">
-        <span className="sentence-number">문장 {index + 1}</span>
-        <div className="category-badges">
+    <div className={`${styles.comparison} ${isHighlighted ? styles.highlighted : ''}`}>
+      <div className={styles.header}>
+        <span className={styles.number}>문장 {index + 1}</span>
+        <div className={styles.badges}>
           {categories.map((category) => (
             <span
               key={category}
-              className={`category-badge ${CATEGORY_COLORS[category]}`}
+              className={`${styles.badge} ${styles[CATEGORY_COLORS[category]]}`}
             >
               {CATEGORY_LABELS[category]}
             </span>
           ))}
           {!isModified && (
-            <span className="category-badge green">올바름</span>
+            <span className={`${styles.badge} ${styles.green}`}>올바름</span>
           )}
         </div>
       </div>
 
-      <div className="sentence-content">
-        <div className="sentence-section">
-          <label className="section-label">원본:</label>
-          <div className="sentence-text original">{original}</div>
+      <div className={styles.content}>
+        <div className={styles.section}>
+          <label className={styles.sectionLabel}>원본:</label>
+          <div className={`${styles.text} ${styles.original}`}>{original}</div>
         </div>
 
         {isModified && (
-          <div className="sentence-section">
-            <label className="section-label">수정:</label>
+          <div className={styles.section}>
+            <label className={styles.sectionLabel}>수정:</label>
             {renderDiff()}
           </div>
         )}
 
-        <div className="sentence-section explanation">
-          <label className="section-label">설명:</label>
-          <div className="explanation-text">{explanation}</div>
+        <div className={`${styles.section} ${styles.explanation}`}>
+          <label className={styles.sectionLabel}>설명:</label>
+          <div className={styles.explanationText}>{explanation}</div>
         </div>
       </div>
     </div>

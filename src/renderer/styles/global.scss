@@ -2,11 +2,172 @@
 
 @use 'variables';
 
-// Legacy styles for backwards compatibility
-// TODO: Gradually migrate components to use SCSS Modules
-@use 'legacy';
+/* ===========================================
+   Global Base Styles
+   =========================================== */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
 
-// Animations (global scope needed)
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+  color: #e4e4e4;
+  min-height: 100vh;
+}
+
+#root {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ===========================================
+   Global Error Message
+   =========================================== */
+.error-message {
+  background: rgba(244, 67, 54, 0.15);
+  border: 1px solid #f44336;
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.error-message p {
+  color: #ff6b6b;
+  margin-bottom: 15px;
+}
+
+.btn-retry {
+  background: #f44336;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.btn-retry:hover {
+  background: #d32f2f;
+}
+
+/* ===========================================
+   Global Button Styles
+   =========================================== */
+.btn-primary {
+  background: linear-gradient(135deg, #4da6ff 0%, #3d8cf0 100%);
+  color: white;
+  border: none;
+  padding: 15px 40px;
+  border-radius: 8px;
+  font-size: 1.1em;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 4px 15px rgba(77, 166, 255, 0.3);
+}
+
+.btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(77, 166, 255, 0.4);
+}
+
+.btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.btn-secondary {
+  background: rgba(76, 175, 80, 0.2);
+  color: #81c784;
+  border: 1px solid rgba(76, 175, 80, 0.5);
+  padding: 15px 40px;
+  border-radius: 8px;
+  font-size: 1.1em;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: rgba(76, 175, 80, 0.3);
+  transform: translateY(-1px);
+}
+
+.btn-secondary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ===========================================
+   Navigation (AppNavigation component)
+   =========================================== */
+.app-nav {
+  background: rgba(255, 255, 255, 0.05);
+  padding: 15px 30px;
+  display: flex;
+  gap: 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.nav-link {
+  color: #a0a0a0;
+  text-decoration: none;
+  padding: 10px 20px;
+  border-radius: 6px;
+  transition: all 0.2s;
+  font-weight: 500;
+}
+
+.nav-link:hover {
+  color: #4da6ff;
+  background: rgba(77, 166, 255, 0.1);
+}
+
+.nav-link.active {
+  color: #4da6ff;
+  background: rgba(77, 166, 255, 0.15);
+}
+
+.nav-link.nav-settings {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  padding: 10px;
+}
+
+.nav-link.nav-settings svg {
+  transition: transform 0.2s;
+}
+
+.nav-link.nav-settings:hover svg {
+  transform: rotate(45deg);
+}
+
+/* ===========================================
+   Loading Overlay
+   =========================================== */
+.loading-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+/* ===========================================
+   Global Animations
+   =========================================== */
 @keyframes spin {
   to {
     transform: rotate(360deg);

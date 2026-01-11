@@ -3,6 +3,7 @@ import { TextInputArea } from '../components/TextInputArea';
 import { CorrectionDisplay } from '../components/CorrectionDisplay';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { CorrectionResult, Topic, CEFRLevel, RetellingTextsResult } from '../../main/database/models';
+import styles from './CorrectionPage.module.scss';
 
 interface SectionInfo {
   name: string;
@@ -354,10 +355,10 @@ export const CorrectionPage: React.FC = () => {
   };
 
   return (
-    <div className="correction-page">
-      <header className="page-header">
+    <div className={styles.page}>
+      <header className={styles.pageHeader}>
         {state.activeTopic && (
-          <p className="topic-info">
+          <p className={styles.topicInfo}>
             현재 토픽: <strong>{state.activeTopic.title}</strong> (
             {state.activeTopic.cefrLevel})
           </p>
@@ -365,18 +366,18 @@ export const CorrectionPage: React.FC = () => {
       </header>
 
       {state.error && (
-        <div className="error-message">
-          <span className="error-icon">⚠️</span>
+        <div className={styles.errorMessage}>
+          <span className={styles.errorIcon}>⚠️</span>
           {state.error}
         </div>
       )}
 
-      <div className="correction-content">
-        <section className="input-section">
-          <div className="input-header">
+      <div className={styles.content}>
+        <section className={styles.inputSection}>
+          <div className={styles.inputHeader}>
             <h2>리텔링 입력</h2>
             {state.retellingTexts && state.retellingTexts.formattedText && (
-              <span className="retelling-loaded-badge">
+              <span className={styles.retellingLoadedBadge}>
                 Step 3 리텔링 텍스트 로드됨
               </span>
             )}
@@ -394,12 +395,12 @@ export const CorrectionPage: React.FC = () => {
           )}
         </section>
 
-        <section className="results-section">
-          <div className="results-header">
+        <section className={styles.resultsSection}>
+          <div className={styles.resultsHeader}>
             <h2>첨삭 결과</h2>
             {state.corrections.length > 0 && !state.isLoading && (
               <button
-                className="save-button"
+                className={styles.saveButton}
                 onClick={handleSaveCorrections}
                 disabled={state.isSaving}
               >

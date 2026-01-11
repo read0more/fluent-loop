@@ -3,6 +3,7 @@ import { Message } from '../../../main/database/models';
 import { ChatMessage } from './ChatMessage';
 import { useChatScroll } from '../../hooks/useChatScroll';
 import { LoadingSpinner } from '../LoadingSpinner';
+import styles from './ChatContainer.module.scss';
 
 export interface ChatContainerProps {
   messages: Message[];
@@ -22,9 +23,9 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({
   const { containerRef } = useChatScroll([messages]);
 
   return (
-    <div className="chat-container" ref={containerRef}>
+    <div className={styles.container} ref={containerRef}>
       {messages.length === 0 && !isAIResponding && (
-        <div className="chat-empty-state">
+        <div className={styles.emptyState}>
           <p>대화를 시작하세요!</p>
         </div>
       )}
@@ -40,7 +41,7 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({
       ))}
 
       {isAIResponding && (
-        <div className="ai-responding-indicator">
+        <div className={styles.respondingIndicator}>
           <LoadingSpinner message="AI 응답 생성 중..." size="small" />
         </div>
       )}

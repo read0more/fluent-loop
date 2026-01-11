@@ -3,6 +3,7 @@ import {
   ConversationCorrectionResult,
   CorrectionCategory,
 } from '../../../main/database/models';
+import styles from './CorrectedMessageItem.module.scss';
 
 interface CorrectedMessageItemProps {
   correction: ConversationCorrectionResult;
@@ -43,7 +44,7 @@ export const CorrectedMessageItem: React.FC<CorrectedMessageItemProps> = ({
   // 단어 단위 Diff 렌더링
   const renderDiff = () => {
     if (!isModified) {
-      return <span className="text-correct">{corrected}</span>;
+      return <span className={styles.textCorrect}>{corrected}</span>;
     }
 
     const originalWords = original.split(/\s+/);
@@ -57,19 +58,19 @@ export const CorrectedMessageItem: React.FC<CorrectedMessageItemProps> = ({
 
       if (origWord === corrWord) {
         diffElements.push(
-          <span key={i} className="word-unchanged">
+          <span key={i} className={styles.wordUnchanged}>
             {corrWord}{' '}
           </span>
         );
       } else if (origWord && corrWord) {
         diffElements.push(
-          <span key={i} className="word-changed">
+          <span key={i} className={styles.wordChanged}>
             {corrWord}{' '}
           </span>
         );
       } else if (corrWord) {
         diffElements.push(
-          <span key={i} className="word-added">
+          <span key={i} className={styles.wordAdded}>
             {corrWord}{' '}
           </span>
         );
@@ -80,16 +81,16 @@ export const CorrectedMessageItem: React.FC<CorrectedMessageItemProps> = ({
   };
 
   return (
-    <div className={`corrected-message-item ${isAI ? 'ai' : 'user'}`}>
+    <div className={`${styles.item} ${isAI ? styles.ai : styles.user}`}>
       {/* 메시지 헤더 */}
-      <div className="message-header">
-        <span className={`speaker-label ${isAI ? 'ai' : 'user'}`}>
+      <div className={styles.header}>
+        <span className={`${styles.speakerLabel} ${isAI ? styles.ai : styles.user}`}>
           {isAI ? 'AI' : 'You'}
         </span>
-        <span className="message-time">{formatTime(timestamp)}</span>
+        <span className={styles.time}>{formatTime(timestamp)}</span>
         {onPlayTTS && (
           <button
-            className="btn-play-tts"
+            className={styles.btnPlayTts}
             onClick={() => onPlayTTS(isModified ? corrected : original)}
             title="음성으로 듣기"
           >
@@ -99,31 +100,31 @@ export const CorrectedMessageItem: React.FC<CorrectedMessageItemProps> = ({
       </div>
 
       {/* 메시지 내용 */}
-      <div className="message-content">
-        <div className="original-text">{original}</div>
+      <div className={styles.content}>
+        <div className={styles.originalText}>{original}</div>
       </div>
 
       {/* User 메시지이고 수정된 경우 첨삭 결과 표시 */}
       {!isAI && isModified && (
-        <div className="correction-detail">
-          <div className="correction-row">
-            <label className="correction-label">수정:</label>
-            <div className="corrected-text">{renderDiff()}</div>
+        <div className={styles.correctionDetail}>
+          <div className={styles.correctionRow}>
+            <label className={styles.correctionLabel}>수정:</label>
+            <div className={styles.correctedText}>{renderDiff()}</div>
           </div>
 
           {explanation && (
-            <div className="correction-row">
-              <label className="correction-label">설명:</label>
-              <div className="explanation-text">{explanation}</div>
+            <div className={styles.correctionRow}>
+              <label className={styles.correctionLabel}>설명:</label>
+              <div className={styles.explanationText}>{explanation}</div>
             </div>
           )}
 
           {categories.length > 0 && (
-            <div className="correction-categories">
+            <div className={styles.correctionCategories}>
               {categories.map((category) => (
                 <span
                   key={category}
-                  className={`category-badge ${CATEGORY_COLORS[category]}`}
+                  className={`${styles.categoryBadge} ${styles[CATEGORY_COLORS[category]]}`}
                 >
                   {CATEGORY_LABELS[category]}
                 </span>
@@ -135,8 +136,8 @@ export const CorrectedMessageItem: React.FC<CorrectedMessageItemProps> = ({
 
       {/* User 메시지이고 수정되지 않은 경우 */}
       {!isAI && !isModified && (
-        <div className="correction-detail correct">
-          <span className="correct-badge">✓ 올바른 문장</span>
+        <div className={`${styles.correctionDetail} ${styles.correct}`}>
+          <span className={styles.correctBadge}>✓ 올바른 문장</span>
         </div>
       )}
     </div>

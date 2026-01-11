@@ -33,6 +33,12 @@
   }
 }
 
+.processingIndicator {
+  display: flex;
+  justify-content: center;
+  padding: var(--spacing-2xl);
+}
+
 // Topic Preview
 .topicPreview {
   background: var(--bg-surface);

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import styles from './VoiceRecorder.module.scss';
 
 export interface VoiceRecorderProps {
   maxDuration: number;
@@ -135,36 +136,36 @@ export const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
   };
 
   return (
-    <div className="voice-recorder">
-      <div className="recorder-display">
-        <div className="timer">{formatTime(elapsedTime)}</div>
+    <div className={styles.voiceRecorder}>
+      <div className={styles.recorderDisplay}>
+        <div className={styles.timer}>{formatTime(elapsedTime)}</div>
       </div>
 
-      <div className="recorder-controls">
+      <div className={styles.recorderControls}>
         {state === 'idle' && (
-          <button onClick={startRecording} disabled={disabled} className="btn-record">
+          <button onClick={startRecording} disabled={disabled} className={styles.btnRecord}>
             녹음 시작
           </button>
         )}
 
         {state === 'recording' && (
-          <button onClick={stopRecording} className="btn-stop">
+          <button onClick={stopRecording} className={styles.btnStop}>
             녹음 중지
           </button>
         )}
 
-        {state === 'processing' && <div className="processing">처리 중...</div>}
+        {state === 'processing' && <div className={styles.processing}>처리 중...</div>}
 
         {state === 'complete' && (
-          <button onClick={reset} className="btn-reset">
+          <button onClick={reset} className={styles.btnReset}>
             다시 녹음
           </button>
         )}
       </div>
 
       {state === 'recording' && (
-        <div className="recording-indicator">
-          <span className="pulse"></span>
+        <div className={styles.recordingIndicator}>
+          <span className={styles.pulse}></span>
           녹음 중
         </div>
       )}

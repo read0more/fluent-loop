@@ -1,5 +1,6 @@
 import React from 'react';
 import { RetellingHistoryTooltip } from './RetellingHistoryTooltip';
+import styles from './ProgressTracker.module.scss';
 
 export interface ProgressTrackerProps {
   currentStep: 1 | 2 | 3;
@@ -18,7 +19,7 @@ export interface StepStatus {
 
 const CheckIcon: React.FC = () => (
   <svg
-    className="check-icon"
+    className={styles.checkIcon}
     data-testid="check-icon"
     width="20"
     height="20"
@@ -62,18 +63,18 @@ export const ProgressTracker: React.FC<ProgressTrackerProps> = ({
   ];
 
   return (
-    <div className="progress-tracker">
+    <div className={styles.tracker}>
       {steps.map((stepInfo, index) => (
         <React.Fragment key={stepInfo.step}>
-          <div className={`progress-step ${stepInfo.status}`} data-testid={`progress-step-${stepInfo.step}`}>
-            <div className="step-indicator">
+          <div className={`${styles.step} ${styles[stepInfo.status]}`} data-testid={`progress-step-${stepInfo.step}`}>
+            <div className={styles.indicator}>
               {showCheckmarks && stepInfo.status === 'completed' ? (
                 <CheckIcon />
               ) : (
-                <span className="step-number">{stepInfo.step}</span>
+                <span className={styles.stepNumber}>{stepInfo.step}</span>
               )}
             </div>
-            <span className="step-label">
+            <span className={styles.label}>
               {stepInfo.label}
               {showHistory && topicId && (
                 <RetellingHistoryTooltip topicId={topicId} duration={stepInfo.step as 1 | 2 | 3} />
@@ -81,7 +82,7 @@ export const ProgressTracker: React.FC<ProgressTrackerProps> = ({
             </span>
           </div>
 
-          {index < steps.length - 1 && <div className="progress-line" />}
+          {index < steps.length - 1 && <div className={styles.line} />}
         </React.Fragment>
       ))}
     </div>

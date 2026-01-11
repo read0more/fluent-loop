@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Voice } from '../../main/database/models';
+import styles from './VoiceSelector.module.scss';
 
 export interface VoiceSelectorProps {
   value: string;
@@ -42,13 +43,13 @@ export const VoiceSelector: React.FC<VoiceSelectorProps> = ({
   }, []);
 
   return (
-    <div className="voice-selector">
-      <label className="voice-selector-label">TTS 음성 선택</label>
+    <div className={styles.voiceSelector}>
+      <label className={styles.voiceSelectorLabel}>TTS 음성 선택</label>
 
-      {loading && <div className="voice-selector-loading">음성 목록 로드 중...</div>}
+      {loading && <div className={styles.voiceSelectorLoading}>음성 목록 로드 중...</div>}
 
       {error && (
-        <div className="voice-selector-error">
+        <div className={styles.voiceSelectorError}>
           <p>{error}</p>
           <button onClick={loadVoices} className="btn-retry">
             재시도
@@ -61,7 +62,7 @@ export const VoiceSelector: React.FC<VoiceSelectorProps> = ({
           value={value}
           onChange={(e) => onChange(e.target.value)}
           disabled={disabled}
-          className="voice-selector-dropdown"
+          className={styles.voiceSelectorDropdown}
         >
           {voices.map((voice) => (
             <option key={voice.id} value={voice.id}>

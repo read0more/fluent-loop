@@ -1,5 +1,6 @@
 import React from 'react';
 import { CEFRLevel } from '../../main/database/models';
+import styles from './CEFRSelector.module.scss';
 
 export interface CEFRSelectorProps {
   value: CEFRLevel;
@@ -26,12 +27,12 @@ export const CEFRSelector: React.FC<CEFRSelectorProps> = ({
   showDescriptions = true,
 }) => {
   return (
-    <div className="cefr-selector">
-      <label className="selector-label">CEFR 레벨 선택</label>
+    <div className={styles.cefrSelector}>
+      <label className={styles.selectorLabel}>CEFR 레벨 선택</label>
 
-      <div className="level-options">
+      <div className={styles.levelOptions}>
         {CEFR_LEVELS.map((level) => (
-          <div key={level} className="level-option">
+          <div key={level} className={styles.levelOption}>
             <input
               type="radio"
               id={`cefr-${level}`}
@@ -42,8 +43,8 @@ export const CEFRSelector: React.FC<CEFRSelectorProps> = ({
               disabled={disabled}
             />
             <label htmlFor={`cefr-${level}`}>
-              <span className="level-name">{level}</span>
-              {showDescriptions && <span className="level-desc">{CEFR_DESCRIPTIONS[level]}</span>}
+              <span className={styles.levelName}>{level}</span>
+              {showDescriptions && <span className={styles.levelDesc}>{CEFR_DESCRIPTIONS[level]}</span>}
             </label>
           </div>
         ))}

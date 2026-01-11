@@ -6,6 +6,7 @@ import { ConversationTimer } from '../components/step5/ConversationTimer';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { useConversation } from '../hooks/useConversation';
 import { Topic } from '../../main/database/models';
+import styles from './RolePlayPage.module.scss';
 
 interface RolePlayPageState {
   topic: Topic | null;
@@ -126,7 +127,7 @@ export const RolePlayPage: React.FC = () => {
   // 로딩 중
   if (state.isLoadingTopic) {
     return (
-      <div className="roleplay-page">
+      <div className={styles.page}>
         <LoadingSpinner message="토픽을 불러오는 중..." fullScreen={false} />
       </div>
     );
@@ -135,8 +136,8 @@ export const RolePlayPage: React.FC = () => {
   // 토픽이 없는 경우
   if (!state.topic) {
     return (
-      <div className="roleplay-page">
-        <div className="no-topic-message">
+      <div className={styles.page}>
+        <div className={styles.noTopicMessage}>
           <h2>활성 토픽이 없습니다</h2>
           <p>먼저 토픽을 생성해주세요.</p>
           <button onClick={() => navigate('/')} className="btn-primary">
@@ -150,20 +151,20 @@ export const RolePlayPage: React.FC = () => {
   // 대화 시작 전
   if (!state.isConversationStarted) {
     return (
-      <div className="roleplay-page">
-        <header className="page-header">
-          <p className="page-subtitle">AI와 자유롭게 영어 대화를 나눠보세요</p>
+      <div className={styles.page}>
+        <header className={styles.pageHeader}>
+          <p className={styles.pageSubtitle}>AI와 자유롭게 영어 대화를 나눠보세요</p>
         </header>
 
-        <div className="topic-info-card">
-          <h2 className="topic-title">{state.topic.title}</h2>
-          <div className="topic-level">CEFR Level: {state.topic.cefrLevel}</div>
+        <div className={styles.topicInfoCard}>
+          <h2 className={styles.topicTitle}>{state.topic.title}</h2>
+          <div className={styles.topicLevel}>CEFR Level: {state.topic.cefrLevel}</div>
           {state.topic.keywords && state.topic.keywords.length > 0 && (
-            <div className="topic-keywords">
+            <div className={styles.topicKeywords}>
               <strong>주요 키워드:</strong>
-              <div className="keywords-list">
+              <div className={styles.keywordsList}>
                 {state.topic.keywords.map((keyword, index) => (
-                  <span key={index} className="keyword-tag">
+                  <span key={index} className={styles.keywordTag}>
                     {keyword}
                   </span>
                 ))}
@@ -172,9 +173,9 @@ export const RolePlayPage: React.FC = () => {
           )}
         </div>
 
-        <div className="conversation-warning">
-          <div className="warning-icon">⚠️</div>
-          <div className="warning-content">
+        <div className={styles.conversationWarning}>
+          <div className={styles.warningIcon}>⚠️</div>
+          <div className={styles.warningContent}>
             <h3>중요 안내</h3>
             <p>이 단계에서는 중간에 단어를 찾거나 첨삭 하려 하지말고 현재 가진 지식으로 최대한 대화를 끝까지 이어가는 연습을 합니다.</p>
             <p>실수를 두려워하지 말고 자신있게 대화해보세요!</p>
@@ -192,11 +193,11 @@ export const RolePlayPage: React.FC = () => {
           </div>
         )}
 
-        <div className="start-conversation-section">
+        <div className={styles.startConversationSection}>
           <button
             onClick={handleStartConversation}
             disabled={isLoading}
-            className="btn-start-conversation"
+            className={styles.btnStartConversation}
           >
             {isLoading ? '대화 준비 중...' : '대화 시작하기'}
           </button>
@@ -207,12 +208,12 @@ export const RolePlayPage: React.FC = () => {
 
   // 대화 진행 중
   return (
-    <div className="roleplay-page conversation-active">
+    <div className={`${styles.page} ${styles.conversationActive}`}>
       {/* Header with timer and end button */}
-      <header className="conversation-header">
-        <div className="header-left">
-          <h2 className="conversation-topic">{state.topic.title}</h2>
-          <span className="conversation-level">{state.topic.cefrLevel}</span>
+      <header className={styles.conversationHeader}>
+        <div className={styles.headerLeft}>
+          <h2 className={styles.conversationTopic}>{state.topic.title}</h2>
+          <span className={styles.conversationLevel}>{state.topic.cefrLevel}</span>
         </div>
 
         <ConversationTimer
@@ -222,7 +223,7 @@ export const RolePlayPage: React.FC = () => {
 
         <button
           onClick={() => setState((prev) => ({ ...prev, showEndConfirmation: true }))}
-          className="btn-end-conversation"
+          className={styles.btnEndConversation}
           disabled={isLoading}
         >
           대화 종료
@@ -267,28 +268,28 @@ export const RolePlayPage: React.FC = () => {
 
       {/* End confirmation dialog */}
       {state.showEndConfirmation && (
-        <div className="dialog-overlay">
-          <div className="dialog-box">
+        <div className={styles.dialogOverlay}>
+          <div className={styles.dialogBox}>
             <h3>대화를 종료하시겠습니까?</h3>
             <p>지금까지의 대화 내용이 저장됩니다.</p>
-            <div className="dialog-stats">
-              <div className="stat-item">
-                <span className="stat-label">대화 시간:</span>
-                <span className="stat-value">
+            <div className={styles.dialogStats}>
+              <div className={styles.statItem}>
+                <span className={styles.statLabel}>대화 시간:</span>
+                <span className={styles.statValue}>
                   {Math.floor(state.elapsedTime / 60)}분 {state.elapsedTime % 60}초
                 </span>
               </div>
-              <div className="stat-item">
-                <span className="stat-label">메시지 수:</span>
-                <span className="stat-value">{messages.length}개</span>
+              <div className={styles.statItem}>
+                <span className={styles.statLabel}>메시지 수:</span>
+                <span className={styles.statValue}>{messages.length}개</span>
               </div>
             </div>
-            <div className="dialog-actions">
+            <div className={styles.dialogActions}>
               <button
                 onClick={() =>
                   setState((prev) => ({ ...prev, showEndConfirmation: false }))
                 }
-                className="btn-cancel"
+                className={styles.btnCancel}
                 disabled={isLoading}
               >
                 취소
@@ -302,7 +303,7 @@ export const RolePlayPage: React.FC = () => {
               </button>
               <button
                 onClick={() => handleEndConversation(true)}
-                className="btn-confirm"
+                className={styles.btnConfirm}
                 disabled={isLoading}
               >
                 {isLoading ? '종료 중...' : '첨삭하러 가기'}

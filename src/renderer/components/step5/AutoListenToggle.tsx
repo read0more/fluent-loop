@@ -1,4 +1,5 @@
 import React from 'react';
+import styles from './AutoListenToggle.module.scss';
 
 export interface AutoListenToggleProps {
   enabled: boolean;
@@ -11,16 +12,16 @@ export interface AutoListenToggleProps {
  */
 export const AutoListenToggle: React.FC<AutoListenToggleProps> = ({ enabled, onToggle }) => {
   return (
-    <div className={`auto-listen-toggle ${enabled ? 'active' : ''}`}>
-      <label className="toggle-switch">
+    <div className={`${styles.toggle} ${enabled ? styles.active : ''}`}>
+      <label className={styles.switch}>
         <input
           type="checkbox"
           checked={enabled}
           onChange={(e) => onToggle(e.target.checked)}
         />
-        <span className="toggle-slider"></span>
+        <span className={styles.slider}></span>
       </label>
-      <span className="toggle-label">항상 듣기</span>
+      <span className={styles.label}>항상 듣기</span>
     </div>
   );
 };

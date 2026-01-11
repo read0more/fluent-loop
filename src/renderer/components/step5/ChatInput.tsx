@@ -3,6 +3,7 @@ import { AutoSendToggle } from './AutoSendToggle';
 import { AutoListenToggle } from './AutoListenToggle';
 import { useAutoSend } from '../../hooks/useAutoSend';
 import { useSilenceDetection } from '../../hooks/useSilenceDetection';
+import styles from './ChatInput.module.scss';
 
 export interface ChatInputProps {
   onSendMessage: (content: string) => void;
@@ -232,24 +233,24 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   const isDisabled = disabled || isSending;
 
   return (
-    <div className="chat-input">
+    <div className={styles.input}>
       {error && (
-        <div className="input-error">
-          <span className="error-icon">⚠️</span>
+        <div className={styles.error}>
+          <span className={styles.errorIcon}>⚠️</span>
           {error}
-          <button onClick={() => setError(null)} className="error-close">
+          <button onClick={() => setError(null)} className={styles.errorClose}>
             ✕
           </button>
         </div>
       )}
 
-      <div className="input-controls">
+      <div className={styles.controls}>
         {/* 자동 듣기 토글 */}
         <AutoListenToggle enabled={autoListenEnabled} onToggle={onToggleAutoListen} />
 
         {/* 녹음 버튼 */}
         <button
-          className={`record-button ${recordingState === 'recording' ? 'recording' : ''}`}
+          className={`${styles.recordButton} ${recordingState === 'recording' ? styles.recording : ''}`}
           onClick={() => {
             console.log('[ChatInput] Button clicked, recordingState:', recordingState);
             if (recordingState === 'idle') {
@@ -264,7 +265,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
           {recordingState === 'idle' && '🎤'}
           {recordingState === 'recording' && (
             <>
-              <span className="recording-pulse"></span>
+              <span className={styles.recordingPulse}></span>
               🎤
             </>
           )}
@@ -273,7 +274,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
 
         {/* 텍스트 입력 */}
         <textarea
-          className="message-input"
+          className={styles.messageInput}
           value={inputText}
           onChange={(e) => setInputText(e.target.value)}
           onKeyPress={handleKeyPress}
@@ -296,7 +297,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
 
         {/* 전송 버튼 */}
         <button
-          className="send-button"
+          className={styles.sendButton}
           onClick={handleSend}
           disabled={!inputText.trim() || isDisabled || recordingState !== 'idle'}
           title="메시지 전송"
@@ -306,8 +307,8 @@ export const ChatInput: React.FC<ChatInputProps> = ({
       </div>
 
       {recordingState === 'recording' && (
-        <div className="recording-indicator-inline">
-          <span className="recording-dot"></span>
+        <div className={styles.recordingIndicator}>
+          <span className={styles.recordingDot}></span>
           녹음 중... (클릭하여 중지)
         </div>
       )}

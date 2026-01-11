@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import styles from './ConversationTimer.module.scss';
 
 export interface ConversationTimerProps {
   isActive: boolean;
@@ -50,14 +51,14 @@ export const ConversationTimer: React.FC<ConversationTimerProps> = ({
   const isOverLimit = elapsedSeconds >= 5 * 60; // 5분 이상
 
   return (
-    <div className={`conversation-timer ${isOverLimit ? 'over-limit' : isNearLimit ? 'near-limit' : ''}`}>
-      <span className="timer-icon">⏱</span>
-      <span className="timer-display">{formatTime(elapsedSeconds)}</span>
+    <div className={`${styles.timer} ${isOverLimit ? styles.overLimit : isNearLimit ? styles.nearLimit : ''}`}>
+      <span className={styles.icon}>⏱</span>
+      <span className={styles.display}>{formatTime(elapsedSeconds)}</span>
       {isNearLimit && !isOverLimit && (
-        <span className="timer-warning">5분 제한에 근접했습니다</span>
+        <span className={styles.warning}>5분 제한에 근접했습니다</span>
       )}
       {isOverLimit && (
-        <span className="timer-warning">5분 제한을 초과했습니다!</span>
+        <span className={styles.warning}>5분 제한을 초과했습니다!</span>
       )}
     </div>
   );

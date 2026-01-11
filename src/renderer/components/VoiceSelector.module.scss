@@ -1,44 +1,44 @@
-// Voice Selector Component Styles
+// VoiceSelector Component Styles
 
-.selector {
+.voiceSelector {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-md);
+  gap: 10px;
 }
 
-.label {
-  color: var(--text-secondary);
+.voiceSelectorLabel {
+  color: #a0a0a0;
   font-size: 0.9em;
   font-weight: 500;
 }
 
-.loading {
-  color: var(--text-secondary);
-  padding: var(--spacing-lg);
+.voiceSelectorLoading {
+  color: #a0a0a0;
+  padding: 15px;
   text-align: center;
 }
 
-.error {
+.voiceSelectorError {
   text-align: center;
 
   p {
-    color: var(--color-danger-light);
-    margin-bottom: var(--spacing-md);
+    color: #ff6b6b;
+    margin-bottom: 10px;
   }
 }
 
-.dropdown {
-  background: var(--bg-surface-dark);
-  color: var(--text-primary);
-  border: 1px solid var(--border-light);
+.voiceSelectorDropdown {
+  background: rgba(0, 0, 0, 0.2);
+  color: #e4e4e4;
+  border: 1px solid rgba(255, 255, 255, 0.1);
   padding: 12px;
-  border-radius: var(--radius-md);
+  border-radius: 6px;
   font-size: 1em;
   cursor: pointer;
-  transition: all var(--transition-fast);
+  transition: all 0.2s;
 
   &:hover:not(:disabled) {
-    border-color: var(--color-primary);
+    border-color: #4da6ff;
   }
 
   &:disabled {

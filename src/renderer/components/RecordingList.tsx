@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { RecordingFile } from '../../main/database/models';
+import styles from './RecordingList.module.scss';
 
 export interface RecordingListProps {
   step: 1 | 2;
@@ -97,20 +98,20 @@ export const RecordingList: React.FC<RecordingListProps> = ({
   }, [step, customPath]);
 
   return (
-    <div className="recording-list">
-      <div className="recording-list-header">
+    <div className={styles.list}>
+      <div className={styles.header}>
         <h3>녹음 목록</h3>
-        <button onClick={loadRecordings} className="btn-refresh">
+        <button onClick={loadRecordings} className={styles.btnRefresh}>
           새로고침
         </button>
       </div>
 
       {loadingState === 'loading' && (
-        <div className="recording-loading">녹음 목록을 불러오는 중...</div>
+        <div className={styles.loading}>녹음 목록을 불러오는 중...</div>
       )}
 
       {loadingState === 'error' && (
-        <div className="recording-error">
+        <div className={styles.error}>
           <p>{error}</p>
           <button onClick={loadRecordings} className="btn-retry">
             재시도
@@ -119,25 +120,25 @@ export const RecordingList: React.FC<RecordingListProps> = ({
       )}
 
       {loadingState === 'loaded' && recordings.length === 0 && (
-        <div className="recording-empty">녹음된 파일이 없습니다.</div>
+        <div className={styles.empty}>녹음된 파일이 없습니다.</div>
       )}
 
       {loadingState === 'loaded' && recordings.length > 0 && (
-        <div className="recording-items">
+        <div className={styles.items}>
           {recordings.map((recording) => (
-            <div key={recording.filePath} className="recording-item">
-              <div className="recording-info">
-                <div className="recording-name">{recording.fileName}</div>
-                <div className="recording-meta">
+            <div key={recording.filePath} className={styles.item}>
+              <div className={styles.itemInfo}>
+                <div className={styles.itemName}>{recording.fileName}</div>
+                <div className={styles.itemMeta}>
                   {formatDate(recording.createdAt)} · {formatSize(recording.size)}
                 </div>
               </div>
 
-              <div className="recording-actions">
+              <div className={styles.itemActions}>
                 {onRecordingSelect && (
                   <button
                     onClick={() => onRecordingSelect(recording.filePath)}
-                    className="btn-recording-play"
+                    className={styles.btnPlay}
                   >
                     재생
                   </button>
@@ -145,7 +146,7 @@ export const RecordingList: React.FC<RecordingListProps> = ({
 
                 <button
                   onClick={() => handleDelete(recording.filePath)}
-                  className="btn-recording-delete"
+                  className={styles.btnDelete}
                 >
                   삭제
                 </button>

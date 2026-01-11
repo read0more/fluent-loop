@@ -4,6 +4,7 @@ import { RecordingList } from '../components/RecordingList';
 import { AudioPlayer } from '../components/AudioPlayer';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { Topic } from '../../main/database/models';
+import styles from './ListeningPage.module.scss';
 
 type Step = 'loading' | 'no-topic' | 'ready' | 'recording' | 'processing' | 'playing-recording';
 
@@ -289,12 +290,12 @@ export const ListeningPage: React.FC = () => {
   }, []);
 
   return (
-    <div className="listening-page">
+    <div className={styles.page}>
       {/* 에러 메시지 */}
       {state.error && state.step !== 'no-topic' && (
         <div className="error-message">
           <p>{state.error}</p>
-          <button onClick={() => setState((prev) => ({ ...prev, error: null }))} className="btn-dismiss">
+          <button onClick={() => setState((prev) => ({ ...prev, error: null }))} className={styles.btnDismiss}>
             닫기
           </button>
         </div>
@@ -312,7 +313,7 @@ export const ListeningPage: React.FC = () => {
 
       {/* 토픽 없음 */}
       {state.step === 'no-topic' && (
-        <div className="no-topic-message">
+        <div className={styles.noTopicMessage}>
           <p>{state.error}</p>
           <button onClick={loadActiveTopic} className="btn-retry">
             다시 시도
@@ -323,14 +324,14 @@ export const ListeningPage: React.FC = () => {
       {/* 메인 콘텐츠 */}
       {(state.step === 'ready' || state.step === 'recording' || state.step === 'playing-recording') &&
         state.topic && (
-          <div className="listening-content">
+          <div className={styles.content}>
             {/* 토픽 정보 */}
-            <div className="topic-info">
+            <div className={styles.topicInfo}>
               {isTitleEditing ? (
-                <div className="title-edit-container">
+                <div className={styles.titleEditContainer}>
                   <input
                     type="text"
-                    className="title-input"
+                    className={styles.titleInput}
                     value={editedTitle}
                     onChange={(e) => setEditedTitle(e.target.value)}
                     onBlur={handleTitleSave}
@@ -339,13 +340,13 @@ export const ListeningPage: React.FC = () => {
                     maxLength={100}
                     disabled={isSavingTitle}
                   />
-                  {isSavingTitle && <span className="saving-indicator">저장 중...</span>}
+                  {isSavingTitle && <span className={styles.savingIndicator}>저장 중...</span>}
                 </div>
               ) : (
-                <div className="title-display">
+                <div className={styles.titleDisplay}>
                   <h2>{state.topic.title}</h2>
                   <button
-                    className="btn-edit-title"
+                    className={styles.btnEditTitle}
                     onClick={() => setIsTitleEditing(true)}
                     title="제목 편집"
                   >
@@ -353,31 +354,31 @@ export const ListeningPage: React.FC = () => {
                   </button>
                 </div>
               )}
-              <div className="topic-level">CEFR Level: {state.topic.cefrLevel}</div>
+              <div className={styles.topicLevel}>CEFR Level: {state.topic.cefrLevel}</div>
             </div>
 
             {/* TTS 플레이어 */}
-            <div className="tts-section">
+            <div className={styles.ttsSection}>
               <h3>영어 텍스트 듣기</h3>
               <TTSPlayer text={state.topic.englishContent} autoPlay={false} />
             </div>
 
             {/* 녹음 섹션 */}
-            <div className="recording-section">
+            <div className={styles.recordingSection}>
               <h3>듣고 따라 말하기</h3>
 
               {!isRecording ? (
-                <button onClick={startRecording} className="btn-record-start">
+                <button onClick={startRecording} className={styles.btnRecordStart}>
                   녹음 시작
                 </button>
               ) : (
-                <div className="recording-active">
-                  <div className="recording-timer">{formatTime(recordingTime)} / 1:00</div>
-                  <button onClick={stopRecording} className="btn-record-stop">
+                <div className={styles.recordingActive}>
+                  <div className={styles.recordingTimer}>{formatTime(recordingTime)} / 1:00</div>
+                  <button onClick={stopRecording} className={styles.btnRecordStop}>
                     녹음 중지
                   </button>
-                  <div className="recording-indicator">
-                    <span className="pulse"></span>
+                  <div className={styles.recordingIndicator}>
+                    <span className={styles.pulse}></span>
                     녹음 중
                   </div>
                 </div>
@@ -394,7 +395,7 @@ export const ListeningPage: React.FC = () => {
 
             {/* 선택된 녹음 재생 */}
             {state.selectedRecording && (
-              <div className="playback-section">
+              <div className={styles.playbackSection}>
                 <h3>내 녹음 듣기</h3>
                 <AudioPlayer
                   src={`file://${state.selectedRecording}`}

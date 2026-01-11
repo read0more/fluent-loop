@@ -5,6 +5,7 @@ import { CEFRSelector } from '../components/CEFRSelector';
 import { TopicPreview } from '../components/TopicPreview';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { CEFRLevel } from '../../main/database/models';
+import styles from './TopicCreationPage.module.scss';
 
 type Step = 'idle' | 'recording' | 'processing' | 'result' | 'saving' | 'complete';
 
@@ -318,7 +319,7 @@ export const TopicCreationPage: React.FC = () => {
   const isProcessing = state.step === 'processing';
 
   return (
-    <div className="topic-creation-page">
+    <div className={styles.page}>
       {/* 에러 메시지 */}
       {state.error && (
         <div className="error-message">
@@ -331,7 +332,7 @@ export const TopicCreationPage: React.FC = () => {
 
       {/* 메인 UI (설명/녹음/결과) */}
       {isMainUIVisible && (
-        <div className="step-container">
+        <div className={styles.stepContainer}>
           {/* CEFR 선택기 - 결과가 있을 때는 비활성화 */}
           <CEFRSelector
             value={state.cefrLevel}
@@ -349,14 +350,14 @@ export const TopicCreationPage: React.FC = () => {
           />
 
           {/* 설명 텍스트 */}
-          <div className="instructions">
+          <div className={styles.instructions}>
             <p>영어 1분 스피치를 하기 위한 관심있는 토픽에 대해 한국어로 40초 정도 말씀해 주세요. AI가 선택한 CEFR 레벨에 맞는 수준의 영어로 변환합니다.</p>
             <p>예: 최근 관심사, 취미, 배우고 싶은 것 등</p>
           </div>
 
           {/* 처리 중 인디케이터 (인라인) */}
           {isProcessing && (
-            <div className="processing-indicator">
+            <div className={styles.processingIndicator}>
               <LoadingSpinner message={state.processingMessage} fullScreen={false} />
             </div>
           )}
@@ -387,13 +388,13 @@ export const TopicCreationPage: React.FC = () => {
 
       {/* 완료 */}
       {state.step === 'complete' && (
-        <div className="completion-message">
+        <div className={styles.completionMessage}>
           <h2>토픽 생성 완료!</h2>
           <p>1주일 정도의 시간을 가지고 이 토픽으로 학습을 반복하는 것을 추천합니다.</p>
-          <button onClick={() => navigate('/listening')} className="btn-next">
+          <button onClick={() => navigate('/listening')} className={styles.btnNext}>
             다음 단계로
           </button>
-          <button onClick={handleRetry} className="btn-new-topic">
+          <button onClick={handleRetry} className={styles.btnNewTopic}>
             새 토픽 만들기
           </button>
         </div>

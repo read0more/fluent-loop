@@ -12,7 +12,7 @@
 }
 
 .emptyMessage {
-  color: var(--text-disabled);
+  color: #666;
   text-align: center;
   font-size: 1.1em;
 }
@@ -20,16 +20,179 @@
 .list {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-xl);
+  gap: 20px;
 }
 
 .item {
   background: rgba(255, 255, 255, 0.03);
-  border-radius: var(--radius-lg);
-  padding: var(--spacing-lg);
-  transition: background var(--transition-fast);
+  border-radius: 8px;
+  padding: 15px;
+  transition: background 0.2s;
 
   &:hover {
-    background: var(--bg-surface);
+    background: rgba(255, 255, 255, 0.05);
   }
+}
+
+.processingIndicator {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  padding: 20px;
+  background: rgba(77, 166, 255, 0.1);
+  border-radius: 8px;
+  margin-bottom: 20px;
+}
+
+.processingText {
+  color: #4da6ff;
+  font-weight: 600;
+}
+
+// All Correct Message
+.allCorrectMessage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  background: rgba(76, 175, 80, 0.1);
+  border: 1px solid rgba(76, 175, 80, 0.3);
+  border-radius: 12px;
+  margin-bottom: 20px;
+
+  p {
+    color: #4caf50;
+    font-size: 1.1em;
+    font-weight: 500;
+    margin: 0;
+  }
+}
+
+.successIcon {
+  font-size: 48px;
+  color: #4caf50;
+  margin-bottom: 16px;
+}
+
+// Section Corrections Wrapper
+.sectionCorrectionsWrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.sectionCorrectionsGroup {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(77, 166, 255, 0.15);
+  border-radius: 12px;
+  padding: 20px;
+}
+
+.sectionCorrectionsHeader {
+  font-size: 1.15em;
+  font-weight: 600;
+  color: #4da6ff;
+  margin: 0 0 16px 0;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(77, 166, 255, 0.2);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  &::before {
+    content: '';
+    display: inline-block;
+    width: 4px;
+    height: 18px;
+    background: #4da6ff;
+    border-radius: 2px;
+  }
+}
+
+// Correction Actions
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 15px;
+  padding-top: 15px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.ttsButton {
+  padding: 8px 16px;
+  background: rgba(77, 166, 255, 0.2);
+  color: #4da6ff;
+  border: 1px solid rgba(77, 166, 255, 0.5);
+  border-radius: 6px;
+  font-size: 0.9em;
+  cursor: pointer;
+  transition: all 0.2s;
+
+  &:hover:not(:disabled) {
+    background: rgba(77, 166, 255, 0.3);
+    transform: translateY(-1px);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+// Section Summaries
+.sectionSummaries {
+  margin-top: 40px;
+  padding-top: 30px;
+  border-top: 2px solid rgba(77, 166, 255, 0.3);
+}
+
+.sectionSummariesTitle {
+  color: #4da6ff;
+  font-size: 1.3em;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+
+  &::before {
+    content: '';
+    display: inline-block;
+    width: 4px;
+    height: 20px;
+    background: #4da6ff;
+    border-radius: 2px;
+  }
+}
+
+.sectionSummaryItem {
+  background: rgba(77, 166, 255, 0.08);
+  border: 1px solid rgba(77, 166, 255, 0.2);
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 16px;
+}
+
+.sectionSummaryHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.sectionName {
+  font-weight: 600;
+  color: #4da6ff;
+  font-size: 1.1em;
+}
+
+.sectionSummaryText {
+  color: #e0e0e0;
+  line-height: 1.8;
+  font-size: 1.05em;
+  margin: 0;
+  padding: 15px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 8px;
 }

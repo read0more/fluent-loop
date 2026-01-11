@@ -7,6 +7,7 @@ import {
   ConversationCorrectionResult,
   IPCResponse,
 } from '../../main/database/models';
+import styles from './ConversationCorrectionPage.module.scss';
 
 interface ConversationCorrectionPageState {
   conversationId: number | null;
@@ -188,7 +189,7 @@ export const ConversationCorrectionPage: React.FC = () => {
   // 로딩 중
   if (state.isLoading) {
     return (
-      <div className="conversation-correction-page">
+      <div className={styles.page}>
         <LoadingSpinner message="대화 정보를 불러오는 중..." fullScreen={false} />
       </div>
     );
@@ -197,8 +198,8 @@ export const ConversationCorrectionPage: React.FC = () => {
   // 대화 정보가 없는 경우
   if (!state.conversationId) {
     return (
-      <div className="conversation-correction-page">
-        <div className="no-conversation-message">
+      <div className={styles.page}>
+        <div className={styles.noConversationMessage}>
           <h2>첨삭할 대화가 없습니다</h2>
           <p>Step 5에서 AI와 대화를 먼저 진행해주세요.</p>
           <button onClick={() => navigate('/roleplay')} className="btn-primary">
@@ -219,16 +220,16 @@ export const ConversationCorrectionPage: React.FC = () => {
   ).length;
 
   return (
-    <div className="conversation-correction-page">
-      <header className="page-header">
-        <p className="page-subtitle">AI와의 대화 내용을 첨삭받아보세요</p>
+    <div className={styles.page}>
+      <header className={styles.pageHeader}>
+        <p className={styles.pageSubtitle}>AI와의 대화 내용을 첨삭받아보세요</p>
       </header>
 
       {/* 토픽 정보 */}
       {state.topic && (
-        <div className="topic-info-card">
-          <h2 className="topic-title">{state.topic.title}</h2>
-          <div className="topic-level">CEFR Level: {state.topic.cefrLevel}</div>
+        <div className={styles.topicInfoCard}>
+          <h2 className={styles.topicTitle}>{state.topic.title}</h2>
+          <div className={styles.topicLevel}>CEFR Level: {state.topic.cefrLevel}</div>
         </div>
       )}
 
@@ -244,7 +245,7 @@ export const ConversationCorrectionPage: React.FC = () => {
       )}
 
       {/* 액션 버튼 */}
-      <div className="correction-actions">
+      <div className={styles.correctionActions}>
         <button
           onClick={handleCorrectConversation}
           disabled={state.isCorrecting}
@@ -254,14 +255,14 @@ export const ConversationCorrectionPage: React.FC = () => {
         </button>
 
         {state.corrections.length > 0 && (
-          <div className="correction-stats">
-            <span className="stat-item">
+          <div className={styles.correctionStats}>
+            <span className={styles.statItem}>
               총 {state.corrections.length}개 메시지
             </span>
-            <span className="stat-item">
+            <span className={styles.statItem}>
               내 메시지 {userMessageCount}개
             </span>
-            <span className="stat-item highlight">
+            <span className={`${styles.statItem} ${styles.highlight}`}>
               수정됨 {correctedCount}개
             </span>
           </div>
@@ -270,15 +271,15 @@ export const ConversationCorrectionPage: React.FC = () => {
 
       {/* 첨삭 진행 중 */}
       {state.isCorrecting && (
-        <div className="correcting-overlay">
+        <div className={styles.correctingOverlay}>
           <LoadingSpinner message="AI가 대화를 분석 중입니다..." fullScreen={false} />
         </div>
       )}
 
       {/* 첨삭 결과 */}
       {state.corrections.length > 0 && (
-        <div className="correction-messages-list">
-          <h3 className="section-title">대화 내용 및 첨삭 결과</h3>
+        <div className={styles.correctionMessagesList}>
+          <h3 className={styles.sectionTitle}>대화 내용 및 첨삭 결과</h3>
           {state.corrections.map((correction, index) => (
             <CorrectedMessageItem
               key={correction.messageId}
@@ -292,37 +293,37 @@ export const ConversationCorrectionPage: React.FC = () => {
 
       {/* 완성된 대화 플로우 */}
       {state.corrections.length > 0 && (
-        <div className="corrected-conversation-flow">
-          <div className="flow-header">
+        <div className={styles.correctedConversationFlow}>
+          <div className={styles.flowHeader}>
             <div>
-              <h3 className="section-title">완성된 대화</h3>
-              <p className="flow-description">수정된 내용이 반영된 전체 대화입니다.</p>
+              <h3 className={styles.sectionTitle}>완성된 대화</h3>
+              <p className={styles.flowDescription}>수정된 내용이 반영된 전체 대화입니다.</p>
             </div>
             <button
               onClick={state.isPlayingAll ? handleStopPlayAll : handlePlayAll}
-              className={`btn-play-all ${state.isPlayingAll ? 'playing' : ''}`}
+              className={`${styles.btnPlayAll} ${state.isPlayingAll ? styles.playing : ''}`}
             >
               {state.isPlayingAll ? '⏹ 중지' : '▶ 전체 재생'}
             </button>
           </div>
-          <div className="conversation-flow">
+          <div className={styles.conversationFlow}>
             {state.corrections.map((c, index) => (
               <div
                 key={c.messageId}
-                className={`flow-message ${c.speaker} ${state.currentPlayingIndex === index ? 'playing' : ''}`}
+                className={`${styles.flowMessage} ${styles[c.speaker]} ${state.currentPlayingIndex === index ? styles.playing : ''}`}
               >
-                <div className="flow-message-header">
-                  <span className="flow-speaker">{c.speaker === 'ai' ? 'AI' : 'You'}</span>
+                <div className={styles.flowMessageHeader}>
+                  <span className={styles.flowSpeaker}>{c.speaker === 'ai' ? 'AI' : 'You'}</span>
                   <button
                     onClick={() => handlePlaySingle(c.corrected, index)}
-                    className="btn-play-single"
+                    className={styles.btnPlaySingle}
                     disabled={state.isPlayingAll}
                     title="이 문장 재생"
                   >
                     🔊
                   </button>
                 </div>
-                <p className="flow-text">{c.corrected}</p>
+                <p className={styles.flowText}>{c.corrected}</p>
               </div>
             ))}
           </div>
@@ -331,8 +332,8 @@ export const ConversationCorrectionPage: React.FC = () => {
 
       {/* 첨삭 전 안내 */}
       {state.corrections.length === 0 && !state.isCorrecting && (
-        <div className="correction-guide">
-          <div className="guide-icon">📝</div>
+        <div className={styles.correctionGuide}>
+          <div className={styles.guideIcon}>📝</div>
           <h3>대화 첨삭 안내</h3>
           <p>위의 "첨삭 요청" 버튼을 클릭하면 AI가 대화 내용을 분석합니다.</p>
           <p>여러분의 영어 문장에서 문법, 어휘, 자연스러움을 검토하고 개선점을 알려드립니다.</p>
