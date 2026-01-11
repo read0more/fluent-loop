@@ -1,5 +1,6 @@
 import React from 'react';
 import { Message } from '../../../main/database/models';
+import styles from './ChatMessage.module.scss';
 
 export interface ChatMessageProps {
   message: Message;
@@ -15,7 +16,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
   onReplayTTS,
 }) => {
   const isAI = message.speaker === 'ai';
-  const messageClass = `chat-message ${isAI ? 'ai-message' : 'user-message'}`;
+  const messageClass = `${styles.message} ${isAI ? styles.ai : styles.user}`;
 
   const formatTimestamp = (timestamp: number): string => {
     const mins = Math.floor(timestamp / 60);
@@ -25,31 +26,31 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
 
   return (
     <div className={messageClass}>
-      <div className="message-avatar">
+      <div className={styles.avatar}>
         {isAI ? (
-          <span className="avatar-icon ai-avatar">🤖</span>
+          <span className={`${styles.avatarIcon} ${styles.ai}`}>🤖</span>
         ) : (
-          <span className="avatar-icon user-avatar">👤</span>
+          <span className={`${styles.avatarIcon} ${styles.user}`}>👤</span>
         )}
       </div>
 
-      <div className="message-content-wrapper">
-        <div className="message-bubble">
-          <p className="message-text">{message.content}</p>
+      <div className={styles.contentWrapper}>
+        <div className={styles.bubble}>
+          <p className={styles.text}>{message.content}</p>
 
           {isAI && message.audioPath && onReplayTTS && (
             <button
-              className="replay-tts-button"
+              className={styles.replayButton}
               onClick={onReplayTTS}
               title="다시 듣기"
             >
-              <span className="speaker-icon">🔊</span>
+              <span className={styles.speakerIcon}>🔊</span>
               다시 듣기
             </button>
           )}
         </div>
 
-        <span className="message-timestamp">{formatTimestamp(message.timestamp)}</span>
+        <span className={styles.timestamp}>{formatTimestamp(message.timestamp)}</span>
       </div>
     </div>
   );

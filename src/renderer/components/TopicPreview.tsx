@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { CEFRLevel } from '../../main/database/models';
+import styles from './TopicPreview.module.scss';
 
 export interface TopicPreviewProps {
   title: string;
@@ -80,18 +81,18 @@ export const TopicPreview: React.FC<TopicPreviewProps> = ({
   };
 
   return (
-    <div className={`topic-preview${inline ? ' topic-preview--inline' : ''}`}>
+    <div className={`${styles.preview}${inline ? ` ${styles.inline}` : ''}`}>
       {!inline && <h2>토픽 미리보기</h2>}
 
-      <div className="preview-section title-section">
+      <div className={`${styles.section} ${styles.titleSection}`}>
         <h3>
-          토픽 제목 {isTitleModified && <span className="modified-badge">(수정됨)</span>}
+          토픽 제목 {isTitleModified && <span className={styles.modifiedBadge}>(수정됨)</span>}
         </h3>
         {isTitleEditing ? (
-          <div className="title-edit-container">
+          <div className={styles.titleEditContainer}>
             <input
               type="text"
-              className="title-input"
+              className={styles.titleInput}
               value={editedTitle}
               onChange={handleTitleChange}
               onBlur={handleTitleEditComplete}
@@ -101,10 +102,10 @@ export const TopicPreview: React.FC<TopicPreviewProps> = ({
             />
           </div>
         ) : (
-          <div className="title-display" onClick={() => setIsTitleEditing(true)}>
-            <span className="title-text">{editedTitle || '(제목 없음)'}</span>
+          <div className={styles.titleDisplay} onClick={() => setIsTitleEditing(true)}>
+            <span className={styles.titleText}>{editedTitle || '(제목 없음)'}</span>
             <button
-              className="btn-edit-title"
+              className={styles.btnEditTitle}
               onClick={(e) => {
                 e.stopPropagation();
                 setIsTitleEditing(true);
@@ -116,52 +117,52 @@ export const TopicPreview: React.FC<TopicPreviewProps> = ({
         )}
       </div>
 
-      <div className="preview-section">
-        <h3>한국어 원문 {isModified && <span className="modified-badge">(수정됨)</span>}</h3>
+      <div className={styles.section}>
+        <h3>한국어 원문 {isModified && <span className={styles.modifiedBadge}>(수정됨)</span>}</h3>
         <textarea
-          className="preview-content korean-text editable"
+          className={`${styles.content} ${styles.koreanText} ${styles.editable}`}
           value={editedKoreanText}
           onChange={handleKoreanTextChange}
           rows={5}
           placeholder="한국어 텍스트를 입력하세요..."
         />
         {isModified && (
-          <button onClick={handleRegenerate} className="btn-regenerate-inline">
+          <button onClick={handleRegenerate} className={styles.btnRegenerateInline}>
             수정된 텍스트로 영어 재생성
           </button>
         )}
       </div>
 
-      <div className="preview-section">
+      <div className={styles.section}>
         <h3>영어 스크립트</h3>
-        <div className="preview-content english-text">{englishText}</div>
+        <div className={`${styles.content} ${styles.englishText}`}>{englishText}</div>
       </div>
 
-      <div className="preview-section">
+      <div className={styles.section}>
         <h3>학습 키워드</h3>
-        <div className="keywords">
+        <div className={styles.keywords}>
           {keywords.map((keyword, index) => (
-            <span key={index} className="keyword-badge">
+            <span key={index} className={styles.keywordBadge}>
               {keyword}
             </span>
           ))}
         </div>
       </div>
 
-      <div className="preview-section">
+      <div className={styles.section}>
         <h3>CEFR 레벨</h3>
-        <div className="cefr-level-badge">{cefrLevel}</div>
+        <div className={styles.cefrLevelBadge}>{cefrLevel}</div>
       </div>
 
-      <div className="preview-actions">
-        <button onClick={onConfirm} className="btn-confirm">
+      <div className={styles.actions}>
+        <button onClick={onConfirm} className={styles.btnConfirm}>
           저장하고 시작
         </button>
-        <button onClick={handleRegenerate} className="btn-regenerate">
+        <button onClick={handleRegenerate} className={styles.btnRegenerate}>
           다시 생성
         </button>
         {onCancel && (
-          <button onClick={onCancel} className="btn-cancel">
+          <button onClick={onCancel} className={styles.btnCancel}>
             취소
           </button>
         )}

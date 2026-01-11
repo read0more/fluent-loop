@@ -52,6 +52,22 @@
   }
 }
 
+.inputHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-lg);
+}
+
+.retellingLoadedBadge {
+  background: var(--color-secondary-alpha-20);
+  color: var(--color-secondary-light);
+  padding: var(--spacing-xs) var(--spacing-md);
+  border-radius: var(--radius-md);
+  font-size: 0.85em;
+  font-weight: 500;
+}
+
 // Results Header
 .resultsHeader {
   display: flex;

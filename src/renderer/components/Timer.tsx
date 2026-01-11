@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import styles from './Timer.module.scss';
 
 export type TimerState = 'idle' | 'running' | 'paused' | 'completed';
 
@@ -231,34 +232,34 @@ export const Timer: React.FC<TimerProps> = ({
   }, []);
 
   return (
-    <div className="timer-component">
-      {label && <div className="timer-label">{label}</div>}
+    <div className={styles.timerComponent}>
+      {label && <div className={styles.timerLabel}>{label}</div>}
 
       <div
-        className={`timer-display ${state.state === 'completed' ? 'completed' : ''}`}
+        className={`${styles.timerDisplay} ${state.state === 'completed' ? styles.completed : ''}`}
         data-testid="timer-display"
       >
         {formatTime(state.remainingTime)}
       </div>
 
       {showControls && (
-        <div className="timer-controls">
+        <div className={styles.timerControls}>
           {state.state === 'idle' && (
-            <button onClick={start} className="btn-timer-start">
+            <button onClick={start} className={styles.btnTimerStart}>
               시작
             </button>
           )}
 
           {state.state === 'running' && (
             <>
-              <button onClick={pause} className="btn-timer-pause">
+              <button onClick={pause} className={styles.btnTimerPause}>
                 일시정지
               </button>
-              <button onClick={stop} className="btn-timer-stop">
+              <button onClick={stop} className={styles.btnTimerStop}>
                 중지
               </button>
               {showCompleteButton && (
-                <button onClick={manualComplete} className="btn-timer-complete">
+                <button onClick={manualComplete} className={styles.btnTimerComplete}>
                   완료
                 </button>
               )}
@@ -267,14 +268,14 @@ export const Timer: React.FC<TimerProps> = ({
 
           {state.state === 'paused' && (
             <>
-              <button onClick={resume} className="btn-timer-resume">
+              <button onClick={resume} className={styles.btnTimerResume}>
                 재개
               </button>
-              <button onClick={stop} className="btn-timer-stop">
+              <button onClick={stop} className={styles.btnTimerStop}>
                 중지
               </button>
               {showCompleteButton && (
-                <button onClick={manualComplete} className="btn-timer-complete">
+                <button onClick={manualComplete} className={styles.btnTimerComplete}>
                   완료
                 </button>
               )}
@@ -282,7 +283,7 @@ export const Timer: React.FC<TimerProps> = ({
           )}
 
           {state.state === 'completed' && (
-            <button onClick={stop} className="btn-timer-reset">
+            <button onClick={stop} className={styles.btnTimerReset}>
               재설정
             </button>
           )}

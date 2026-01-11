@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import styles from './AudioPlayer.module.scss';
 
 export interface AudioPlayerProps {
   src: string;
@@ -138,7 +139,7 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
   }, []);
 
   return (
-    <div className="audio-player">
+    <div className={styles.audioPlayer}>
       {/* Hidden audio element */}
       <audio
         ref={audioRef}
@@ -150,45 +151,45 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
       />
 
       {showControls && (
-        <div className="audio-controls">
+        <div className={styles.audioControls}>
           {/* Play/Pause Button */}
-          <div className="control-buttons">
+          <div className={styles.controlButtons}>
             {!isPlaying ? (
-              <button onClick={play} className="btn-audio-play">
+              <button onClick={play} className={styles.btnAudioPlay}>
                 ▶
               </button>
             ) : (
-              <button onClick={pause} className="btn-audio-pause">
+              <button onClick={pause} className={styles.btnAudioPause}>
                 ⏸
               </button>
             )}
-            <button onClick={stop} className="btn-audio-stop">
+            <button onClick={stop} className={styles.btnAudioStop}>
               ⏹
             </button>
           </div>
 
           {/* Progress Slider */}
-          <div className="progress-container">
-            <span className="time-display">{formatTime(currentTime)}</span>
+          <div className={styles.progressContainer}>
+            <span className={styles.timeDisplay}>{formatTime(currentTime)}</span>
             <input
               type="range"
               min="0"
               max={duration || 0}
               value={currentTime}
               onChange={(e) => seekTo(parseFloat(e.target.value))}
-              className="progress-slider"
+              className={styles.progressSlider}
             />
-            <span className="time-display">{formatTime(duration)}</span>
+            <span className={styles.timeDisplay}>{formatTime(duration)}</span>
           </div>
 
           {/* Speed Control */}
           {showSpeedControl && (
-            <div className="speed-control">
+            <div className={styles.speedControl}>
               <label>속도:</label>
               <select
                 value={speed}
                 onChange={(e) => changeSpeed(parseFloat(e.target.value))}
-                className="speed-selector"
+                className={styles.speedSelector}
               >
                 <option value="0.5">0.5x</option>
                 <option value="0.75">0.75x</option>

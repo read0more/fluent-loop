@@ -1,24 +1,24 @@
-// Keyword Display Component Styles
+// KeywordDisplay Component Styles
 
-.display {
-  background: var(--bg-surface);
-  border-radius: var(--radius-xl);
-  padding: var(--spacing-2xl);
+.keywordDisplay {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  padding: 25px;
 
   h3 {
-    color: var(--color-primary);
-    margin-bottom: var(--spacing-xl);
+    color: #4da6ff;
+    margin-bottom: 20px;
     font-size: 1.2em;
     text-align: center;
   }
 
   &.empty .emptyMessage {
-    color: var(--text-muted);
+    color: #888;
     text-align: center;
   }
 }
 
-.list {
+.keywordList {
   display: flex;
   flex-wrap: wrap;
   gap: 12px;
@@ -28,18 +28,30 @@
   margin: 0;
 }
 
-.item {
-  background: var(--color-primary-alpha-15);
-  color: var(--color-primary);
-  padding: var(--spacing-md) var(--spacing-xl);
-  border-radius: var(--radius-pill);
+.keywordItem {
+  background: rgba(77, 166, 255, 0.15);
+  color: #4da6ff;
+  padding: 10px 20px;
+  border-radius: 25px;
   font-size: 1em;
   font-weight: 500;
-  border: 1px solid var(--border-primary);
-  transition: all var(--transition-fast);
+  border: 1px solid rgba(77, 166, 255, 0.3);
+  transition: all 0.2s;
 
   &:hover {
     background: rgba(77, 166, 255, 0.25);
     transform: translateY(-2px);
   }
+}
+
+.emptyMessage {
+  color: #888;
+  text-align: center;
+}
+
+.moreKeywords {
+  color: #888;
+  text-align: center;
+  margin-top: 10px;
+  font-size: 0.9em;
 }

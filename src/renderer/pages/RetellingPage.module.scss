@@ -162,6 +162,155 @@
   }
 }
 
+// No Topic Message
+.noTopicMessage {
+  text-align: center;
+  padding: 50px;
+  background: var(--bg-surface);
+  border-radius: var(--radius-xl);
+
+  p {
+    color: var(--text-secondary);
+    font-size: 1.1em;
+    margin-bottom: var(--spacing-xl);
+  }
+}
+
+// Topic Info
+.topicInfo {
+  background: var(--bg-surface);
+  border-radius: var(--radius-xl);
+  padding: var(--spacing-2xl);
+  text-align: center;
+
+  h2 {
+    color: var(--text-primary);
+    font-size: 1.5em;
+    margin-bottom: var(--spacing-md);
+  }
+}
+
+.topicLevel {
+  color: var(--color-primary);
+  font-size: 1.1em;
+  font-weight: 600;
+}
+
+// Timer Selection Header
+.timerSelectionHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-xl);
+
+  h3 {
+    margin: 0;
+  }
+}
+
+.btnRestartSmall {
+  background: var(--bg-surface);
+  color: var(--text-muted);
+  border: 1px solid var(--border-medium);
+  padding: var(--spacing-sm) var(--spacing-lg);
+  border-radius: var(--radius-md);
+  font-size: 0.9em;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+
+  &:hover:not(:disabled) {
+    background: var(--bg-surface-active);
+    color: var(--text-primary);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+// Recording Indicator
+.recordingIndicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-xl);
+  color: var(--color-danger);
+  font-weight: 600;
+}
+
+.recordingDot {
+  width: 12px;
+  height: 12px;
+  background: var(--color-danger);
+  border-radius: 50%;
+  animation: pulse-red 1s infinite;
+}
+
+@keyframes pulse-red {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.5;
+    transform: scale(1.2);
+  }
+}
+
+// STT Processing
+.sttProcessing {
+  display: flex;
+  justify-content: center;
+  padding: var(--spacing-2xl);
+}
+
+// Completion Message
+.completionMessage {
+  text-align: center;
+  padding: var(--spacing-3xl);
+  background: var(--bg-surface);
+  border-radius: var(--radius-xl);
+
+  h2 {
+    color: var(--color-secondary);
+    font-size: 1.8em;
+    margin-bottom: var(--spacing-lg);
+  }
+
+  p {
+    color: var(--text-secondary);
+    font-size: 1.1em;
+    margin-bottom: var(--spacing-2xl);
+  }
+}
+
+.completionButtons {
+  display: flex;
+  gap: var(--spacing-lg);
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.btnNextStep {
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
+  color: white;
+  border: none;
+  padding: var(--spacing-lg) var(--spacing-3xl);
+  border-radius: var(--radius-lg);
+  font-size: 1em;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  box-shadow: var(--shadow-md);
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+  }
+}
+
 .btnDismiss {
   background: var(--bg-surface);
   color: var(--text-primary);

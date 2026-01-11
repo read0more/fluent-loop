@@ -1,34 +1,34 @@
 // Loading Spinner Component Styles
 
-.spinner {
+.loadingSpinner {
   text-align: center;
 }
 
-.spinnerIcon {
+.spinner {
   border: 3px solid rgba(255, 255, 255, 0.1);
-  border-top-color: var(--color-primary);
+  border-top-color: #4da6ff;
   border-radius: 50%;
   animation: spin 1s linear infinite;
-  margin: 0 auto var(--spacing-xl);
-
-  &.small {
-    width: 24px;
-    height: 24px;
-  }
-
-  &.medium {
-    width: 48px;
-    height: 48px;
-  }
-
-  &.large {
-    width: 72px;
-    height: 72px;
-  }
+  margin: 0 auto 20px;
 }
 
-.message {
-  color: var(--text-secondary);
+.spinnerSmall {
+  width: 24px;
+  height: 24px;
+}
+
+.spinnerMedium {
+  width: 48px;
+  height: 48px;
+}
+
+.spinnerLarge {
+  width: 72px;
+  height: 72px;
+}
+
+.loadingMessage {
+  color: #a0a0a0;
   font-size: 1.1em;
 }
 

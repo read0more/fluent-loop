@@ -1,4 +1,5 @@
 import React from 'react';
+import styles from './AutoSendToggle.module.scss';
 
 export interface AutoSendToggleProps {
   enabled: boolean;
@@ -17,20 +18,20 @@ export const AutoSendToggle: React.FC<AutoSendToggleProps> = ({
   onChangeDelay,
 }) => {
   return (
-    <div className="auto-send-toggle">
-      <label className="toggle-switch">
+    <div className={styles.toggle}>
+      <label className={styles.switch}>
         <input
           type="checkbox"
           checked={enabled}
           onChange={(e) => onToggle(e.target.checked)}
         />
-        <span className="toggle-slider"></span>
-        <span className="toggle-label">자동전송</span>
+        <span className={styles.slider}></span>
+        <span className={styles.label}>자동전송</span>
       </label>
 
       {enabled && (
-        <div className="delay-control">
-          <span className="delay-icon">⏱</span>
+        <div className={styles.delayControl}>
+          <span className={styles.delayIcon}>⏱</span>
           <input
             type="range"
             min="0.5"
@@ -38,9 +39,9 @@ export const AutoSendToggle: React.FC<AutoSendToggleProps> = ({
             step="0.5"
             value={delay}
             onChange={(e) => onChangeDelay(parseFloat(e.target.value))}
-            className="delay-slider"
+            className={styles.delaySlider}
           />
-          <span className="delay-value">{delay}초</span>
+          <span className={styles.delayValue}>{delay}초</span>
         </div>
       )}
     </div>

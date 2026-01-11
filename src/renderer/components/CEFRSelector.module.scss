@@ -1,26 +1,26 @@
-// CEFR Selector Component Styles
+// CEFRSelector Component Styles
 
-.selector {
-  background: var(--bg-surface);
-  border-radius: var(--radius-xl);
-  padding: var(--spacing-2xl);
+.cefrSelector {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  padding: 25px;
 }
 
-.label {
+.selectorLabel {
   display: block;
   font-size: 1.1em;
   font-weight: 600;
-  margin-bottom: var(--spacing-xl);
-  color: var(--color-primary);
+  margin-bottom: 20px;
+  color: #4da6ff;
 }
 
-.options {
+.levelOptions {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 12px;
 }
 
-.option {
+.levelOption {
   position: relative;
 
   input[type="radio"] {
@@ -35,33 +35,33 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    padding: var(--spacing-lg);
-    background: var(--bg-surface);
+    padding: 15px;
+    background: rgba(255, 255, 255, 0.05);
     border: 2px solid transparent;
-    border-radius: var(--radius-md);
+    border-radius: 10px;
     cursor: pointer;
-    transition: all var(--transition-fast);
+    transition: all 0.2s;
+
+    &:hover {
+      background: rgba(255, 255, 255, 0.1);
+    }
   }
 
   input[type="radio"]:checked + label {
-    background: var(--color-primary-alpha-15);
-    border-color: var(--color-primary);
-  }
-
-  label:hover {
-    background: var(--bg-surface-active);
+    background: rgba(77, 166, 255, 0.15);
+    border-color: #4da6ff;
   }
 }
 
 .levelName {
   font-size: 1.3em;
   font-weight: 700;
-  color: var(--color-primary);
+  color: #4da6ff;
 }
 
 .levelDesc {
   font-size: 0.85em;
-  color: var(--text-secondary);
-  margin-top: var(--spacing-xs);
+  color: #a0a0a0;
+  margin-top: 5px;
   text-align: center;
 }

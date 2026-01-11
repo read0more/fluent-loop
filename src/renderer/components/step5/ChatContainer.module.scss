@@ -2,14 +2,14 @@
 
 .container {
   flex: 1;
-  background: var(--bg-surface-darker);
-  border-radius: var(--radius-xl);
-  padding: var(--spacing-xl);
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 16px;
+  padding: 24px;
   overflow-y: auto;
-  margin-bottom: var(--spacing-lg);
+  margin-bottom: 20px;
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-lg);
+  gap: 20px;
 }
 
 .emptyState {
@@ -17,6 +17,17 @@
   align-items: center;
   justify-content: center;
   height: 100%;
-  color: var(--text-disabled);
+  color: #888;
   font-size: 1.1em;
+}
+
+.respondingIndicator {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 20px;
+  background: rgba(77, 166, 255, 0.15);
+  border-radius: 16px;
+  align-self: flex-start;
+  max-width: 300px;
 }

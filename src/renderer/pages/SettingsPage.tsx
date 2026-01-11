@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { VoiceSelector } from '../components/VoiceSelector';
 import { AppSettings } from '../../main/database/models';
+import styles from './SettingsPage.module.scss';
 
 type SettingsPageState = 'loading' | 'loaded' | 'saving' | 'error';
 
@@ -121,11 +122,11 @@ export const SettingsPage: React.FC = () => {
   }, []);
 
   return (
-    <div className="settings-page">
+    <div className={styles.page}>
       <h1>설정</h1>
 
       {/* 로딩 중 */}
-      {state === 'loading' && <div className="settings-loading">설정을 불러오는 중...</div>}
+      {state === 'loading' && <div className={styles.loading}>설정을 불러오는 중...</div>}
 
       {/* 에러 메시지 */}
       {error && (
@@ -138,13 +139,13 @@ export const SettingsPage: React.FC = () => {
       )}
 
       {/* 성공 메시지 */}
-      {successMessage && <div className="success-message">{successMessage}</div>}
+      {successMessage && <div className={styles.successMessage}>{successMessage}</div>}
 
       {/* 설정 폼 */}
       {(state === 'loaded' || state === 'saving') && (
-        <div className="settings-form">
+        <div className={styles.form}>
           {/* TTS 음성 설정 */}
-          <div className="settings-section">
+          <div className={styles.section}>
             <h2>TTS 음성</h2>
             <VoiceSelector
               value={settings.ttsVoiceId}
@@ -156,37 +157,37 @@ export const SettingsPage: React.FC = () => {
           </div>
 
           {/* 녹음 저장 경로 설정 */}
-          <div className="settings-section">
+          <div className={styles.section}>
             <h2>녹음 파일 저장 위치</h2>
-            <div className="path-selector">
+            <div className={styles.pathSelector}>
               <input
                 type="text"
                 value={settings.recordingSavePath || '기본 경로 사용'}
                 readOnly
-                className="path-input"
+                className={styles.pathInput}
               />
-              <button onClick={selectFolder} disabled={state === 'saving'} className="btn-select-folder">
+              <button onClick={selectFolder} disabled={state === 'saving'} className={styles.btnSelectFolder}>
                 폴더 선택
               </button>
             </div>
-            <p className="settings-hint">
+            <p className={styles.hint}>
               비워두면 기본 경로(test-data/data/recordings/step2)를 사용합니다.
             </p>
           </div>
 
           {/* 액션 버튼 */}
-          <div className="settings-actions">
+          <div className={styles.actions}>
             <button
               onClick={saveSettings}
               disabled={state === 'saving'}
-              className="btn-save-settings"
+              className={styles.btnSave}
             >
               {state === 'saving' ? '저장 중...' : '저장'}
             </button>
             <button
               onClick={resetSettings}
               disabled={state === 'saving'}
-              className="btn-reset-settings"
+              className={styles.btnReset}
             >
               초기화
             </button>

@@ -144,3 +144,51 @@
   flex-wrap: wrap;
   margin-top: var(--spacing-md);
 }
+
+// Word Diff Styles
+.wordUnchanged {
+  color: #e4e4e4;
+}
+
+.wordChanged {
+  background: rgba(255, 235, 59, 0.3);
+  color: #fff59d;
+  padding: 2px 4px;
+  border-radius: 3px;
+  font-weight: 600;
+}
+
+.wordAdded {
+  background: rgba(76, 175, 80, 0.3);
+  color: #81c784;
+  padding: 2px 4px;
+  border-radius: 3px;
+  font-weight: 600;
+}
+
+// Category Badge Styles
+.categoryBadge {
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 0.85em;
+  font-weight: 600;
+  text-transform: uppercase;
+
+  &.red {
+    background: rgba(244, 67, 54, 0.2);
+    color: #ff6b6b;
+    border: 1px solid rgba(244, 67, 54, 0.5);
+  }
+
+  &.blue {
+    background: rgba(33, 150, 243, 0.2);
+    color: #64b5f6;
+    border: 1px solid rgba(33, 150, 243, 0.5);
+  }
+
+  &.green {
+    background: rgba(76, 175, 80, 0.2);
+    color: #81c784;
+    border: 1px solid rgba(76, 175, 80, 0.5);
+  }
+}

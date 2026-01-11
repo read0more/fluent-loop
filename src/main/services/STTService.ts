@@ -22,7 +22,7 @@ export class STTService implements ISTTService {
         timeout: 5000,
       });
       return response.status === 200 && response.data.status === 'ok';
-    } catch (error) {
+    } catch {
       return false;
     }
   }
@@ -44,7 +44,7 @@ export class STTService implements ISTTService {
 
       const response = await axios.post<STTResult>(`${this.baseUrl}/stt/transcribe`, formData, {
         headers: formData.getHeaders(),
-        timeout: 30000, // 30초 타임아웃
+        timeout: 60000, // 60초 타임아웃
       });
 
       return response.data;

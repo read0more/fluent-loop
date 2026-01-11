@@ -1,68 +1,68 @@
 // Timer Component Styles
 
-.timer {
+.timerComponent {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: var(--spacing-xl);
+  gap: 20px;
 }
 
-.label {
-  color: var(--color-primary);
+.timerLabel {
+  color: #4da6ff;
   font-size: 1.3em;
   font-weight: 600;
 }
 
-.display {
+.timerDisplay {
   font-size: 5em;
   font-weight: 200;
-  color: var(--text-primary);
+  color: #fff;
   font-variant-numeric: tabular-nums;
   text-shadow: 0 0 30px rgba(77, 166, 255, 0.3);
 
   &.completed {
-    color: var(--color-secondary);
+    color: #4caf50;
     text-shadow: 0 0 30px rgba(76, 175, 80, 0.3);
   }
 }
 
-.controls {
+.timerControls {
   display: flex;
-  gap: var(--spacing-lg);
+  gap: 15px;
   justify-content: center;
   flex-wrap: wrap;
 }
 
-.btnStart,
-.btnResume {
-  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
+.btnTimerStart,
+.btnTimerResume {
+  background: linear-gradient(135deg, #4da6ff 0%, #3d8cf0 100%);
   color: white;
   border: none;
-  padding: var(--spacing-lg) var(--spacing-4xl);
-  border-radius: var(--radius-full);
+  padding: 15px 40px;
+  border-radius: 50px;
   font-size: 1.1em;
   font-weight: 600;
   cursor: pointer;
-  transition: all var(--transition-fast);
-  box-shadow: var(--shadow-md);
+  transition: all 0.2s;
+  box-shadow: 0 4px 15px rgba(77, 166, 255, 0.3);
 
   &:hover {
     transform: translateY(-2px);
-    box-shadow: var(--shadow-lg);
+    box-shadow: 0 6px 20px rgba(77, 166, 255, 0.4);
   }
 }
 
-.btnPause {
-  background: linear-gradient(135deg, var(--color-warning) 0%, var(--color-warning-dark) 100%);
+.btnTimerPause {
+  background: linear-gradient(135deg, #ffa726 0%, #ff9800 100%);
   color: white;
   border: none;
-  padding: var(--spacing-lg) var(--spacing-3xl);
-  border-radius: var(--radius-full);
+  padding: 15px 30px;
+  border-radius: 50px;
   font-size: 1.1em;
   font-weight: 600;
   cursor: pointer;
-  transition: all var(--transition-fast);
-  box-shadow: var(--shadow-warning);
+  transition: all 0.2s;
+  box-shadow: 0 4px 15px rgba(255, 152, 0, 0.3);
 
   &:hover {
     transform: translateY(-2px);
@@ -70,36 +70,53 @@
   }
 }
 
-.btnStop {
-  background: var(--bg-surface);
-  color: var(--text-primary);
-  border: 1px solid var(--border-medium);
-  padding: var(--spacing-lg) var(--spacing-3xl);
-  border-radius: var(--radius-full);
+.btnTimerStop {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  padding: 15px 30px;
+  border-radius: 50px;
   font-size: 1.1em;
   cursor: pointer;
-  transition: all var(--transition-fast);
+  transition: all 0.2s;
 
   &:hover {
-    background: var(--bg-surface-active);
+    background: rgba(255, 255, 255, 0.15);
   }
 }
 
-.btnReset,
-.btnComplete {
-  background: linear-gradient(135deg, var(--color-secondary) 0%, var(--color-secondary-dark) 100%);
+.btnTimerReset {
+  background: linear-gradient(135deg, #4caf50 0%, #43a047 100%);
   color: white;
   border: none;
-  padding: var(--spacing-lg) var(--spacing-4xl);
-  border-radius: var(--radius-full);
+  padding: 15px 40px;
+  border-radius: 50px;
   font-size: 1.1em;
   font-weight: 600;
   cursor: pointer;
-  transition: all var(--transition-fast);
-  box-shadow: var(--shadow-success);
+  transition: all 0.2s;
+  box-shadow: 0 4px 15px rgba(76, 175, 80, 0.3);
 
   &:hover {
     transform: translateY(-2px);
-    box-shadow: var(--shadow-success-lg);
+    box-shadow: 0 6px 20px rgba(76, 175, 80, 0.4);
+  }
+}
+
+.btnTimerComplete {
+  background: linear-gradient(135deg, #4caf50 0%, #43a047 100%);
+  color: white;
+  border: none;
+  padding: 15px 30px;
+  border-radius: 50px;
+  font-size: 1.1em;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 4px 15px rgba(76, 175, 80, 0.3);
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(76, 175, 80, 0.4);
   }
 }

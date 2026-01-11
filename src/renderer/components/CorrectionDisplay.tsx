@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { CorrectionResult } from '../../main/database/models';
 import { SentenceComparison } from './SentenceComparison';
 import { LoadingSpinner } from './LoadingSpinner';
+import styles from './CorrectionDisplay.module.scss';
 
 interface SectionInfo {
   name: string;
@@ -30,6 +31,42 @@ export const CorrectionDisplay: React.FC<CorrectionDisplayProps> = ({
    * TC-010: CorrectionDisplay - 중복 재생 방지
    */
   const [playingId, setPlayingId] = useState<number | null>(null);
+
+  /**
+   * 수정이 필요한 문장인지 확인
+   */
+  const needsCorrection = (correction: CorrectionResult) => {
+    return correction.original.trim() !== correction.corrected.trim();
+  };
+
+  /**
+   * 섹션별로 corrections 그룹화 (수정 필요한 것만 포함)
+   */
+  const getCorrectionsBySection = (): Array<{
+    name: string | null;
+    corrections: Array<{ correction: CorrectionResult; originalIndex: number }>;
+  }> => {
+    if (sections.length === 0) {
+      // 섹션이 없으면 수정 필요한 것만 필터링하여 반환
+      return [{
+        name: null,
+        corrections: corrections
+          .map((c, idx) => ({ correction: c, originalIndex: idx }))
+          .filter(item => needsCorrection(item.correction))
+      }];
+    }
+
+    return sections.map(section => ({
+      name: section.name,
+      corrections: corrections
+        .slice(section.startIndex, section.endIndex + 1)
+        .map((c, idx) => ({
+          correction: c,
+          originalIndex: section.startIndex + idx
+        }))
+        .filter(item => needsCorrection(item.correction))
+    }));
+  };
 
   /**
    * FR-002: TTS 재생 핸들러 (중복 재생 방지)
@@ -81,8 +118,8 @@ export const CorrectionDisplay: React.FC<CorrectionDisplayProps> = ({
 
   if (corrections.length === 0 && !isLoading) {
     return (
-      <div className="correction-display empty">
-        <p className="empty-message">
+      <div className={`${styles.display} ${styles.empty}`}>
+        <p className={styles.emptyMessage}>
           위의 입력란에 리텔링한 내용을 입력하고 "첨삭 받기" 버튼을 눌러주세요.
         </p>
       </div>
@@ -90,53 +127,80 @@ export const CorrectionDisplay: React.FC<CorrectionDisplayProps> = ({
   }
 
   const sectionSummaries = getSectionSummaries();
+  const correctionsBySection = getCorrectionsBySection();
+  const hasCorrectionsToShow = correctionsBySection.some(g => g.corrections.length > 0);
 
   return (
-    <div className="correction-display">
+    <div className={styles.display}>
       {isLoading && currentProcessingIndex >= 0 && (
-        <div className="processing-indicator">
+        <div className={styles.processingIndicator}>
           <LoadingSpinner />
-          <span className="processing-text">
+          <span className={styles.processingText}>
             문장 {currentProcessingIndex + 1} / {corrections.length + 1} 처리 중...
           </span>
         </div>
       )}
 
-      <div className="corrections-list">
-        {corrections.map((correction, index) => (
-          <div key={index} className="correction-item" data-testid="correction-result">
-            <SentenceComparison
-              correction={correction}
-              index={index}
-              isHighlighted={index === currentProcessingIndex}
-            />
+      {/* 모든 문장이 올바를 경우 */}
+      {!isLoading && corrections.length > 0 && !hasCorrectionsToShow && (
+        <div className={styles.allCorrectMessage}>
+          <span className={styles.successIcon}>&#10003;</span>
+          <p>모든 문장이 올바릅니다! 수정이 필요한 부분이 없습니다.</p>
+        </div>
+      )}
 
-            <div className="correction-actions">
-              <button
-                className="tts-button"
-                onClick={() => handlePlayTTS(correction.corrected, index)}
-                disabled={playingId !== null}
-                title="수정된 문장 듣기"
-                aria-label="TTS 재생"
-                data-testid={`play-tts-${index}`}
-              >
-                {playingId === index ? '⏸️ 재생 중...' : '🔊 듣기'}
-              </button>
+      {/* 섹션별 첨삭 결과 (수정 필요한 문장만 표시) */}
+      <div className={styles.sectionCorrectionsWrapper}>
+        {correctionsBySection.map((sectionGroup, sectionIdx) => {
+          // 수정 필요한 문장이 없으면 섹션 자체를 숨김
+          if (sectionGroup.corrections.length === 0) return null;
+
+          return (
+            <div key={sectionIdx} className={styles.sectionCorrectionsGroup}>
+              {sectionGroup.name && (
+                <h3 className={styles.sectionCorrectionsHeader}>
+                  {sectionGroup.name} 문장
+                </h3>
+              )}
+              <div className={styles.list}>
+                {sectionGroup.corrections.map(({ correction, originalIndex }, indexInSection) => (
+                  <div key={originalIndex} className={styles.item} data-testid="correction-result">
+                    <SentenceComparison
+                      correction={correction}
+                      index={indexInSection}
+                      isHighlighted={originalIndex === currentProcessingIndex}
+                    />
+
+                    <div className={styles.actions}>
+                      <button
+                        className={styles.ttsButton}
+                        onClick={() => handlePlayTTS(correction.corrected, originalIndex)}
+                        disabled={playingId !== null}
+                        title="수정된 문장 듣기"
+                        aria-label="TTS 재생"
+                        data-testid={`play-tts-${originalIndex}`}
+                      >
+                        {playingId === originalIndex ? '⏸️ 재생 중...' : '🔊 듣기'}
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* 섹션별 첨삭 완료 전체 문장 */}
       {!isLoading && sectionSummaries.length > 0 && (
-        <div className="section-summaries">
-          <h3 className="section-summaries-title">섹션별 첨삭 완료 문장</h3>
+        <div className={styles.sectionSummaries}>
+          <h3 className={styles.sectionSummariesTitle}>섹션별 첨삭 완료 문장</h3>
           {sectionSummaries.map((summary, index) => (
-            <div key={index} className="section-summary-item">
-              <div className="section-summary-header">
-                <span className="section-name">{summary.name}</span>
+            <div key={index} className={styles.sectionSummaryItem}>
+              <div className={styles.sectionSummaryHeader}>
+                <span className={styles.sectionName}>{summary.name}</span>
                 <button
-                  className="tts-button"
+                  className={styles.ttsButton}
                   onClick={() => handlePlayTTS(summary.text, -1 - index)}
                   disabled={playingId !== null}
                   title="전체 문장 듣기"
@@ -146,7 +210,7 @@ export const CorrectionDisplay: React.FC<CorrectionDisplayProps> = ({
                   {playingId === -1 - index ? '⏸️ 재생 중...' : '🔊 전체 듣기'}
                 </button>
               </div>
-              <p className="section-summary-text">{summary.text}</p>
+              <p className={styles.sectionSummaryText}>{summary.text}</p>
             </div>
           ))}
         </div>

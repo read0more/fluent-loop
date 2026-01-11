@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import styles from './TextInputArea.module.scss';
 
 interface TextInputAreaProps {
   value: string;
@@ -48,9 +49,9 @@ export const TextInputArea: React.FC<TextInputAreaProps> = ({
   const isSubmitDisabled = disabled || value.trim().length === 0;
 
   return (
-    <div className="text-input-area">
+    <div className={styles.area}>
       <textarea
-        className="correction-textarea"
+        className={styles.textarea}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         onKeyDown={handleKeyDown}
@@ -60,16 +61,16 @@ export const TextInputArea: React.FC<TextInputAreaProps> = ({
         rows={10}
       />
 
-      <div className="text-input-footer">
-        <div className="text-stats">
-          <span className="char-count">
+      <div className={styles.footer}>
+        <div className={styles.stats}>
+          <span className={styles.charCount}>
             {value.length} / {maxLength} 자
           </span>
-          <span className="sentence-count">문장: {sentenceCount}개</span>
+          <span className={styles.sentenceCount}>문장: {sentenceCount}개</span>
         </div>
 
         <button
-          className="submit-button primary"
+          className={`${styles.submitButton} ${styles.primary}`}
           onClick={onSubmit}
           disabled={isSubmitDisabled}
         >
@@ -77,7 +78,7 @@ export const TextInputArea: React.FC<TextInputAreaProps> = ({
         </button>
       </div>
 
-      <div className="input-hint">
+      <div className={styles.hint}>
         팁: Ctrl+Enter를 눌러 빠르게 제출할 수 있습니다
       </div>
     </div>

@@ -1,51 +1,46 @@
-// Voice Recorder Component Styles
+// VoiceRecorder Component Styles
 
-.recorder {
-  background: var(--bg-surface);
-  border-radius: var(--radius-xl);
-  padding: var(--spacing-3xl);
+.voiceRecorder {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  padding: 30px;
   text-align: center;
 }
 
-.display {
+.recorderDisplay {
   display: flex;
   justify-content: center;
   align-items: baseline;
-  gap: var(--spacing-xs);
-  margin-bottom: var(--spacing-2xl);
+  gap: 5px;
+  margin-bottom: 25px;
 }
 
 .timer {
   font-size: 3em;
   font-weight: 300;
-  color: var(--text-primary);
+  color: #fff;
   font-variant-numeric: tabular-nums;
 }
 
-.maxTime {
-  font-size: 1.2em;
-  color: var(--text-disabled);
-}
-
-.controls {
-  margin-bottom: var(--spacing-xl);
+.recorderControls {
+  margin-bottom: 20px;
 }
 
 .btnRecord {
-  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
+  background: linear-gradient(135deg, #4da6ff 0%, #3d8cf0 100%);
   color: white;
   border: none;
   padding: 18px 50px;
-  border-radius: var(--radius-full);
+  border-radius: 50px;
   font-size: 1.1em;
   font-weight: 600;
   cursor: pointer;
-  transition: all var(--transition-fast);
-  box-shadow: var(--shadow-md);
+  transition: all 0.2s;
+  box-shadow: 0 4px 15px rgba(77, 166, 255, 0.3);
 
   &:hover:not(:disabled) {
     transform: translateY(-2px);
-    box-shadow: var(--shadow-lg);
+    box-shadow: 0 6px 20px rgba(77, 166, 255, 0.4);
   }
 
   &:disabled {
@@ -55,36 +50,45 @@
 }
 
 .btnStop {
-  background: linear-gradient(135deg, var(--color-danger-light) 0%, var(--color-danger) 100%);
+  background: linear-gradient(135deg, #ff5252 0%, #f44336 100%);
   color: white;
   border: none;
   padding: 18px 50px;
-  border-radius: var(--radius-full);
+  border-radius: 50px;
   font-size: 1.1em;
   font-weight: 600;
   cursor: pointer;
-  transition: all var(--transition-fast);
-  box-shadow: var(--shadow-danger);
-  animation: pulse-red 1.5s infinite;
+  transition: all 0.2s;
+  box-shadow: 0 4px 15px rgba(244, 67, 54, 0.3);
+  animation: pulseRed 1.5s infinite;
+}
+
+@keyframes pulseRed {
+  0%, 100% {
+    box-shadow: 0 4px 15px rgba(244, 67, 54, 0.3);
+  }
+  50% {
+    box-shadow: 0 4px 25px rgba(244, 67, 54, 0.5);
+  }
 }
 
 .btnReset {
-  background: var(--bg-surface);
-  color: var(--text-primary);
-  border: 1px solid var(--border-medium);
-  padding: var(--spacing-lg) var(--spacing-4xl);
-  border-radius: var(--radius-full);
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  padding: 15px 40px;
+  border-radius: 50px;
   font-size: 1em;
   cursor: pointer;
-  transition: all var(--transition-fast);
+  transition: all 0.2s;
 
   &:hover {
-    background: var(--bg-surface-active);
+    background: rgba(255, 255, 255, 0.15);
   }
 }
 
 .processing {
-  color: var(--color-primary);
+  color: #4da6ff;
   font-size: 1.1em;
 }
 
@@ -92,26 +96,17 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: var(--spacing-md);
-  color: var(--color-danger-light);
+  gap: 10px;
+  color: #ff5252;
   font-weight: 600;
 }
 
 .pulse {
   width: 12px;
   height: 12px;
-  background: var(--color-danger-light);
+  background: #ff5252;
   border-radius: 50%;
   animation: pulse 1s ease-in-out infinite;
-}
-
-@keyframes pulse-red {
-  0%, 100% {
-    box-shadow: 0 4px 15px rgba(244, 67, 54, 0.3);
-  }
-  50% {
-    box-shadow: 0 4px 25px rgba(244, 67, 54, 0.5);
-  }
 }
 
 @keyframes pulse {

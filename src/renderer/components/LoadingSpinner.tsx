@@ -1,4 +1,5 @@
 import React from 'react';
+import styles from './LoadingSpinner.module.scss';
 
 export interface LoadingSpinnerProps {
   message?: string;
@@ -6,17 +7,23 @@ export interface LoadingSpinnerProps {
   fullScreen?: boolean;
 }
 
+const sizeClassMap = {
+  small: styles.spinnerSmall,
+  medium: styles.spinnerMedium,
+  large: styles.spinnerLarge,
+};
+
 export const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
   message = '처리 중...',
   size = 'medium',
   fullScreen = false,
 }) => {
-  const spinnerClass = `spinner spinner-${size}`;
+  const spinnerClass = `${styles.spinner} ${sizeClassMap[size]}`;
 
   const content = (
-    <div className="loading-spinner">
+    <div className={styles.loadingSpinner}>
       <div className={spinnerClass}></div>
-      {message && <p className="loading-message">{message}</p>}
+      {message && <p className={styles.loadingMessage}>{message}</p>}
     </div>
   );
 

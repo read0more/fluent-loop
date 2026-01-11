@@ -304,6 +304,71 @@ export class CorrectionService {
   }
 
   /**
+   * 특정 토픽의 최신 리텔링 생성 시간 조회
+   */
+  getLatestRetellingTimestamp(topicId: number): string | null {
+    const row = this.db
+      .prepare(
+        `
+      SELECT MAX(created_at) as latest_created_at
+      FROM retellings
+      WHERE topic_id = ?
+    `
+      )
+      .get(topicId) as { latest_created_at: string | null } | undefined;
+
+    return row?.latest_created_at || null;
+  }
+
+  /**
+   * 유효한 첨삭 결과만 조회 (리텔링 이후에 생성된 것만)
+   * 리텔링 텍스트가 변경되면 이전 첨삭 결과는 무효화됨
+   */
+  getValidCorrectionsHistory(
+    topicId: number,
+    sessionId?: number | null,
+    limit: number = 50
+  ): Correction[] {
+    // 1. 최신 리텔링 시간 조회
+    const latestRetellingTime = this.getLatestRetellingTimestamp(topicId);
+
+    // 리텔링이 없으면 빈 배열 반환 (첨삭도 무효)
+    if (!latestRetellingTime) {
+      return [];
+    }
+
+    // 2. 리텔링 이후에 생성된 첨삭만 조회
+    let query = `
+      SELECT * FROM corrections
+      WHERE topic_id = ?
+        AND created_at > ?
+    `;
+    const params: any[] = [topicId, latestRetellingTime];
+
+    if (sessionId !== undefined && sessionId !== null) {
+      query += ' AND session_id = ?';
+      params.push(sessionId);
+    }
+
+    query += ' ORDER BY created_at DESC LIMIT ?';
+    params.push(limit);
+
+    const stmt = this.db.prepare(query);
+    const rows = stmt.all(...params) as any[];
+
+    return rows.map((row) => ({
+      id: row.id,
+      sessionId: row.session_id,
+      topicId: row.topic_id,
+      originalSentence: row.original_sentence,
+      correctedSentence: row.corrected_sentence,
+      explanation: row.explanation,
+      categories: JSON.parse(row.categories),
+      createdAt: new Date(row.created_at),
+    }));
+  }
+
+  /**
    * Utility: 지연 함수
    */
   private delay(ms: number): Promise<void> {

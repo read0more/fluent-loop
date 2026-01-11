@@ -4,7 +4,8 @@ import { Timer } from '../components/Timer';
 import { KeywordDisplay } from '../components/KeywordDisplay';
 import { ProgressTracker } from '../components/ProgressTracker';
 import { LoadingSpinner } from '../components/LoadingSpinner';
-import { Topic, TranscribeRetellingResult } from '../../main/database/models';
+import { Topic, TranscribeRetellingResult, stepToDuration } from '../../main/database/models';
+import styles from './RetellingPage.module.scss';
 
 export type RetellingStep = 'loading' | 'no-topic' | 'ready' | 'timer-running' | 'complete';
 
@@ -43,6 +44,7 @@ export const RetellingPage: React.FC = () => {
   // 녹음 관련 refs
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
+  const recordingStartTimeRef = useRef<number | null>(null);
 
   // Load active topic
   const loadActiveTopic = async () => {
@@ -163,6 +165,10 @@ export const RetellingPage: React.FC = () => {
       };
 
       mediaRecorderRef.current = mediaRecorder;
+
+      // 녹음 시작 시각 기록
+      recordingStartTimeRef.current = Date.now();
+
       mediaRecorder.start(1000); // 1초마다 데이터 수집
 
       setState((prev) => ({ ...prev, isRecording: true }));
@@ -180,7 +186,12 @@ export const RetellingPage: React.FC = () => {
     if (!mediaRecorderRef.current || !state.topic) return;
 
     const currentStep = state.currentTimerStep;
-    const duration = currentStep === 1 ? 3 : currentStep === 2 ? 2 : 1;
+    const duration = stepToDuration(currentStep);
+
+    // 실제 녹음 시간 계산
+    const actualDuration = recordingStartTimeRef.current
+      ? Math.floor((Date.now() - recordingStartTimeRef.current) / 1000)
+      : 0;
 
     return new Promise<void>((resolve) => {
       const mediaRecorder = mediaRecorderRef.current!;
@@ -204,6 +215,7 @@ export const RetellingPage: React.FC = () => {
             topicId: state.topic!.id,
             duration,
             audioData,
+            actualDuration,
           });
 
           if (response.success && response.data) {
@@ -230,6 +242,9 @@ export const RetellingPage: React.FC = () => {
             isProcessingSTT: false,
             error: 'STT 변환 중 오류가 발생했습니다.',
           }));
+        } finally {
+          // 시작 시각 초기화
+          recordingStartTimeRef.current = null;
         }
 
         resolve();
@@ -295,12 +310,12 @@ export const RetellingPage: React.FC = () => {
   }, []);
 
   return (
-    <div className="retelling-page">
+    <div className={styles.page}>
       {/* Error message */}
       {state.error && state.step !== 'no-topic' && (
         <div className="error-message">
           <p>{state.error}</p>
-          <button onClick={() => setState((prev) => ({ ...prev, error: null }))} className="btn-dismiss">
+          <button onClick={() => setState((prev) => ({ ...prev, error: null }))} className={styles.btnDismiss}>
             닫기
           </button>
         </div>
@@ -311,7 +326,7 @@ export const RetellingPage: React.FC = () => {
 
       {/* No topic */}
       {state.step === 'no-topic' && (
-        <div className="no-topic-message">
+        <div className={styles.noTopicMessage}>
           <p>{state.error}</p>
           <button onClick={loadActiveTopic} className="btn-retry">
             다시 시도
@@ -321,41 +336,68 @@ export const RetellingPage: React.FC = () => {
 
       {/* Main content */}
       {(state.step === 'ready' || state.step === 'complete') && state.topic && (
-        <div className="retelling-content">
+        <div className={styles.content}>
           {/* Topic info */}
-          <div className="topic-info">
+          <div className={styles.topicInfo}>
             <h2 data-testid="topic-title">{state.topic.title}</h2>
-            <div className="topic-level">CEFR Level: {state.topic.cefrLevel}</div>
+            <div className={styles.topicLevel}>CEFR Level: {state.topic.cefrLevel}</div>
           </div>
 
           {/* Progress tracker */}
-          <ProgressTracker currentStep={state.currentTimerStep} completedSteps={state.completedSteps} />
+          <ProgressTracker
+            currentStep={state.currentTimerStep}
+            completedSteps={state.completedSteps}
+            topicId={state.topic.id}
+            showHistory={true}
+          />
 
           {/* Keywords */}
           <KeywordDisplay keywords={state.topic.keywords} />
 
           {/* Timer selection */}
           {state.step !== 'complete' && (
-            <div className="timer-selection">
-              <h3>타이머 선택</h3>
-              <div className="timer-buttons">
+            <div className={styles.timerSelection}>
+              <div className={styles.timerSelectionHeader}>
+                <h3>타이머 선택</h3>
+                <button
+                  onClick={async () => {
+                    if (state.topic) {
+                      await window.electron.invoke('delete-retellings', {
+                        topicId: state.topic.id,
+                      });
+                    }
+                    setState((prev) => ({
+                      ...prev,
+                      currentTimerStep: 1,
+                      completedSteps: [],
+                      step: 'ready',
+                      transcribedTexts: { 1: null, 2: null, 3: null },
+                    }));
+                  }}
+                  className={styles.btnRestartSmall}
+                  disabled={state.isTimerRunning}
+                >
+                  다시 시작
+                </button>
+              </div>
+              <div className={styles.timerButtons}>
                 <button
                   onClick={() => handleTimerSelect(1)}
-                  className={`btn-timer-select ${state.currentTimerStep === 1 ? 'active' : ''} ${state.completedSteps.includes(1) ? 'completed' : ''}`}
+                  className={`${styles.btnTimerSelect} ${state.currentTimerStep === 1 ? styles.active : ''} ${state.completedSteps.includes(1) ? styles.completed : ''}`}
                   disabled={state.isTimerRunning}
                 >
                   3분 {state.completedSteps.includes(1) && '✓'}
                 </button>
                 <button
                   onClick={() => handleTimerSelect(2)}
-                  className={`btn-timer-select ${state.currentTimerStep === 2 ? 'active' : ''} ${state.completedSteps.includes(2) ? 'completed' : ''}`}
+                  className={`${styles.btnTimerSelect} ${state.currentTimerStep === 2 ? styles.active : ''} ${state.completedSteps.includes(2) ? styles.completed : ''}`}
                   disabled={state.isTimerRunning}
                 >
                   2분 {state.completedSteps.includes(2) && '✓'}
                 </button>
                 <button
                   onClick={() => handleTimerSelect(3)}
-                  className={`btn-timer-select ${state.currentTimerStep === 3 ? 'active' : ''} ${state.completedSteps.includes(3) ? 'completed' : ''}`}
+                  className={`${styles.btnTimerSelect} ${state.currentTimerStep === 3 ? styles.active : ''} ${state.completedSteps.includes(3) ? styles.completed : ''}`}
                   disabled={state.isTimerRunning}
                 >
                   1분 {state.completedSteps.includes(3) && '✓'}
@@ -366,10 +408,10 @@ export const RetellingPage: React.FC = () => {
 
           {/* Timer section */}
           {state.step !== 'complete' && !state.isProcessingSTT && (
-            <div className="timer-section">
+            <div className={styles.timerSection}>
               {state.isRecording && (
-                <div className="recording-indicator">
-                  <span className="recording-dot"></span>
+                <div className={styles.recordingIndicator}>
+                  <span className={styles.recordingDot}></span>
                   녹음 중...
                 </div>
               )}
@@ -389,31 +431,39 @@ export const RetellingPage: React.FC = () => {
 
           {/* STT Processing */}
           {state.isProcessingSTT && (
-            <div className="stt-processing">
+            <div className={styles.sttProcessing}>
               <LoadingSpinner message="음성을 텍스트로 변환 중..." fullScreen={false} />
             </div>
           )}
 
           {/* Completion message */}
           {state.step === 'complete' && (
-            <div className="completion-message">
+            <div className={styles.completionMessage}>
               <h2>모든 단계를 완료했습니다!</h2>
               <p>3분, 2분, 1분 리텔링을 모두 완료하셨습니다.</p>
-              <div className="completion-buttons">
+              <div className={styles.completionButtons}>
                 <button
-                  onClick={() =>
+                  onClick={async () => {
+                    // 1. DB의 리텔링 데이터 삭제
+                    if (state.topic) {
+                      await window.electron.invoke('delete-retellings', {
+                        topicId: state.topic.id,
+                      });
+                    }
+                    // 2. UI 상태 초기화 (transcribedTexts 포함)
                     setState((prev) => ({
                       ...prev,
                       currentTimerStep: 1,
                       completedSteps: [],
                       step: 'ready',
-                    }))
-                  }
-                  className="btn-restart"
+                      transcribedTexts: { 1: null, 2: null, 3: null },
+                    }));
+                  }}
+                  className={styles.btnRestart}
                 >
                   다시 시작
                 </button>
-                <button onClick={() => navigate('/correction')} className="btn-next-step">
+                <button onClick={() => navigate('/correction')} className={styles.btnNextStep}>
                   다음 단계로 (첨삭)
                 </button>
               </div>
