@@ -39,3 +39,6 @@ npm-debug.log*
 
 # Electron
 *.asar
+
+nul
+test-data/data
