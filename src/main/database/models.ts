@@ -223,6 +223,40 @@ export interface SaveCorrectionRequest {
 
 // ==================== Step 3: 리텔링 관련 타입 ====================
 
+// 리텔링 타이머 스텝 (UI용) - 1=3분, 2=2분, 3=1분
+export type RetellingTimerStep = 1 | 2 | 3;
+
+// 리텔링 duration (DB용) - 3=3분, 2=2분, 1=1분
+export type RetellingDuration = 3 | 2 | 1;
+
+/**
+ * UI의 타이머 스텝을 DB의 duration으로 변환
+ * @param step UI 타이머 스텝 (1=3분, 2=2분, 3=1분)
+ * @returns DB duration (3=3분, 2=2분, 1=1분)
+ */
+export function stepToDuration(step: RetellingTimerStep): RetellingDuration {
+  const mapping: Record<RetellingTimerStep, RetellingDuration> = {
+    1: 3, // 첫 번째 스텝 = 3분
+    2: 2, // 두 번째 스텝 = 2분
+    3: 1, // 세 번째 스텝 = 1분
+  };
+  return mapping[step];
+}
+
+/**
+ * DB의 duration을 UI의 타이머 스텝으로 변환
+ * @param duration DB duration (3=3분, 2=2분, 1=1분)
+ * @returns UI 타이머 스텝 (1=3분, 2=2분, 3=1분)
+ */
+export function durationToStep(duration: RetellingDuration): RetellingTimerStep {
+  const mapping: Record<RetellingDuration, RetellingTimerStep> = {
+    3: 1, // 3분 = 첫 번째 스텝
+    2: 2, // 2분 = 두 번째 스텝
+    1: 3, // 1분 = 세 번째 스텝
+  };
+  return mapping[duration];
+}
+
 // 리텔링 엔티티 (DB 레코드)
 export interface Retelling {
   id: number;
@@ -230,6 +264,7 @@ export interface Retelling {
   duration: 3 | 2 | 1;
   audioPath: string | null;
   transcribedText: string | null;
+  actualDuration: number | null;
   createdAt: Date;
 }
 
@@ -243,8 +278,10 @@ export interface CreateRetellingDTO {
 
 // 리텔링 녹음 및 STT 변환 요청 (IPC)
 export interface TranscribeRetellingRequest {
+  topicId: number;
   duration: 3 | 2 | 1;
   audioData: Uint8Array;
+  actualDuration?: number;
 }
 
 // 리텔링 녹음 및 STT 변환 결과 (IPC)
@@ -262,6 +299,21 @@ export interface RetellingTextsResult {
   twoMin: string | null;
   oneMin: string | null;
   formattedText: string;
+}
+
+// 리텔링 히스토리 조회 요청 (IPC)
+export interface GetRetellingHistoryArgs {
+  topicId: number;
+  duration?: 3 | 2 | 1;
+}
+
+// 리텔링 히스토리 아이템 (IPC 응답용)
+export interface RetellingHistoryItem {
+  id: number;
+  duration: 3 | 2 | 1;
+  createdAt: Date;
+  actualDuration: number | null;
+  transcribedText: string | null;
 }
 
 // ==================== Step 5: AI 롤플레잉 관련 타입 ====================

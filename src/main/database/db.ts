@@ -28,6 +28,30 @@ export function getDatabase(): Database.Database {
   // 테이블 초기화
   initializeDatabase(dbInstance);
 
+  // 마이그레이션: actual_duration 컬럼 추가
+  try {
+    const columns = dbInstance.pragma("table_info('retellings')") as { name: string }[];
+    const hasActualDuration = columns.some((col) => col.name === 'actual_duration');
+
+    if (!hasActualDuration) {
+      console.log('Running migration: Add actual_duration to retellings');
+      dbInstance.exec('ALTER TABLE retellings ADD COLUMN actual_duration INTEGER;');
+    }
+  } catch (error) {
+    // SQLite 에러 코드를 확인하여 적절히 처리
+    const errorMessage = error instanceof Error ? error.message : String(error);
+
+    // 컬럼이 이미 존재하는 경우는 무시 (중복 마이그레이션)
+    if (errorMessage.includes('duplicate column name')) {
+      console.log('Migration skipped: actual_duration column already exists');
+    } else {
+      // 다른 에러는 경고 후 계속 진행 (graceful degradation)
+      // 하지만 DB 접근 자체가 실패한 경우는 심각한 에러이므로 로그 기록
+      console.error('Migration warning:', errorMessage);
+      console.warn('App will continue but retelling history feature may not work properly');
+    }
+  }
+
   return dbInstance;
 }
 

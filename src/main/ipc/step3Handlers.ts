@@ -7,6 +7,8 @@ import {
   RecordingFile,
   TranscribeRetellingResult,
   RetellingTextsResult,
+  RetellingHistoryItem,
+  GetRetellingHistoryArgs,
 } from '../database/models';
 import { getDatabase } from '../database/db';
 
@@ -55,6 +57,7 @@ export function registerStep3Handlers(): void {
   // Retelling handlers (녹음 + STT 변환 + DB 저장)
   ipcMain.handle('transcribe-retelling', handleTranscribeRetelling);
   ipcMain.handle('get-retelling-texts', handleGetRetellingTexts);
+  ipcMain.handle('get-retelling-history', handleGetRetellingHistory);
 }
 
 // ==================== Recording Handlers ====================
@@ -203,6 +206,7 @@ interface TranscribeRetellingArgs {
   topicId: number;
   duration: 3 | 2 | 1;
   audioData: Uint8Array;
+  actualDuration?: number;
 }
 
 interface GetRetellingTextsArgs {
@@ -217,7 +221,7 @@ async function handleTranscribeRetelling(
   args: TranscribeRetellingArgs
 ): Promise<IPCResponse<TranscribeRetellingResult>> {
   try {
-    const { topicId, duration, audioData } = args;
+    const { topicId, duration, audioData, actualDuration = 0 } = args;
 
     // 1. 녹음 파일 저장
     const audioBuffer = Buffer.isBuffer(audioData) ? audioData : Buffer.from(audioData);
@@ -246,16 +250,16 @@ async function handleTranscribeRetelling(
     if (existingRetelling) {
       // 업데이트
       db.prepare(
-        'UPDATE retellings SET audio_path = ?, transcribed_text = ?, created_at = CURRENT_TIMESTAMP WHERE id = ?'
-      ).run(filePath, transcribedText, existingRetelling.id);
+        'UPDATE retellings SET audio_path = ?, transcribed_text = ?, actual_duration = ?, created_at = CURRENT_TIMESTAMP WHERE id = ?'
+      ).run(filePath, transcribedText, actualDuration, existingRetelling.id);
       retellingId = existingRetelling.id;
     } else {
       // 새로 생성
       const result = db
         .prepare(
-          'INSERT INTO retellings (topic_id, duration, audio_path, transcribed_text) VALUES (?, ?, ?, ?)'
+          'INSERT INTO retellings (topic_id, duration, audio_path, transcribed_text, actual_duration) VALUES (?, ?, ?, ?, ?)'
         )
-        .run(topicId, duration, filePath, transcribedText);
+        .run(topicId, duration, filePath, transcribedText, actualDuration);
       retellingId = result.lastInsertRowid as number;
     }
 
@@ -264,7 +268,7 @@ async function handleTranscribeRetelling(
       data: {
         filePath,
         duration,
-        actualDuration: 0, // TODO: 실제 녹음 시간 계산
+        actualDuration,
         transcribedText,
         retellingId,
       },
@@ -346,6 +350,61 @@ async function handleGetRetellingTexts(
     return {
       success: false,
       error: '리텔링 텍스트 조회에 실패했습니다.',
+    };
+  }
+}
+
+/**
+ * 특정 토픽의 리텔링 히스토리 조회
+ */
+async function handleGetRetellingHistory(
+  _event: IpcMainInvokeEvent,
+  args: GetRetellingHistoryArgs
+): Promise<IPCResponse<RetellingHistoryItem[]>> {
+  try {
+    const { topicId, duration } = args;
+    const db = getDatabase();
+
+    let query = `
+      SELECT id, duration, created_at, actual_duration, transcribed_text
+      FROM retellings
+      WHERE topic_id = ?
+    `;
+
+    const params: (number | string)[] = [topicId];
+
+    if (duration !== undefined) {
+      query += ' AND duration = ?';
+      params.push(duration);
+    }
+
+    query += ' ORDER BY created_at DESC LIMIT 50';
+
+    const rows = db.prepare(query).all(...params) as {
+      id: number;
+      duration: number;
+      created_at: string;
+      actual_duration: number | null;
+      transcribed_text: string | null;
+    }[];
+
+    const history: RetellingHistoryItem[] = rows.map((row) => ({
+      id: row.id,
+      duration: row.duration as 3 | 2 | 1,
+      createdAt: new Date(row.created_at),
+      actualDuration: row.actual_duration,
+      transcribedText: row.transcribed_text,
+    }));
+
+    return {
+      success: true,
+      data: history,
+    };
+  } catch (error) {
+    console.error('Get retelling history error:', error);
+    return {
+      success: false,
+      error: '히스토리 조회에 실패했습니다.',
     };
   }
 }

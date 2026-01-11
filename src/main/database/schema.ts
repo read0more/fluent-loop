@@ -64,6 +64,7 @@ CREATE TABLE IF NOT EXISTS retellings (
   duration INTEGER NOT NULL CHECK (duration IN (3, 2, 1)),
   audio_path TEXT,
   transcribed_text TEXT,
+  actual_duration INTEGER,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (topic_id) REFERENCES topics(id) ON DELETE CASCADE
 );

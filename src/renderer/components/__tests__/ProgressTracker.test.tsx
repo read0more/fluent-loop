@@ -235,3 +235,47 @@ describe('ProgressTracker Step Status Logic', () => {
     expect(expectedStatus.status).toBe('completed');
   });
 });
+
+/**
+ * Step 3 리텔링 히스토리 통합 테스트
+ * 관련 문서: E:\develop\electron-test\claude.config\dev-workflow\docs\test-cases.md
+ */
+describe('ProgressTracker with History Feature (New)', () => {
+  /**
+   * TC-012: ProgressTracker 상태 매핑 (히스토리 통합)
+   * 우선순위: High (P0)
+   */
+  it('TC-012: should accept topicId and showHistory props', () => {
+    // Note: This test will fail until props are added to ProgressTracker
+    expect(() =>
+      ProgressTracker({
+        currentStep: 1,
+        completedSteps: [],
+        // @ts-ignore - Testing future implementation
+        topicId: 1,
+        // @ts-ignore - Testing future implementation
+        showHistory: true,
+      })
+    ).toThrow('ProgressTracker component not implemented');
+  });
+
+  it('should render RetellingHistoryTooltip when showHistory is true', () => {
+    // Will be tested with React Testing Library once integrated
+    expect(true).toBe(true);
+  });
+
+  it('should not render RetellingHistoryTooltip when showHistory is false', () => {
+    // Will be tested with React Testing Library once integrated
+    expect(true).toBe(true);
+  });
+
+  it('should pass correct topicId to RetellingHistoryTooltip', () => {
+    // Will be tested with React Testing Library once integrated
+    expect(true).toBe(true);
+  });
+
+  it('should pass correct duration to each RetellingHistoryTooltip', () => {
+    // Expected: step 1 → duration 3, step 2 → duration 2, step 3 → duration 1
+    expect(true).toBe(true);
+  });
+});

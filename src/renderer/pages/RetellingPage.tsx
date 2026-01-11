@@ -4,7 +4,7 @@ import { Timer } from '../components/Timer';
 import { KeywordDisplay } from '../components/KeywordDisplay';
 import { ProgressTracker } from '../components/ProgressTracker';
 import { LoadingSpinner } from '../components/LoadingSpinner';
-import { Topic, TranscribeRetellingResult } from '../../main/database/models';
+import { Topic, TranscribeRetellingResult, stepToDuration } from '../../main/database/models';
 
 export type RetellingStep = 'loading' | 'no-topic' | 'ready' | 'timer-running' | 'complete';
 
@@ -43,6 +43,7 @@ export const RetellingPage: React.FC = () => {
   // 녹음 관련 refs
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
+  const recordingStartTimeRef = useRef<number | null>(null);
 
   // Load active topic
   const loadActiveTopic = async () => {
@@ -163,6 +164,10 @@ export const RetellingPage: React.FC = () => {
       };
 
       mediaRecorderRef.current = mediaRecorder;
+
+      // 녹음 시작 시각 기록
+      recordingStartTimeRef.current = Date.now();
+
       mediaRecorder.start(1000); // 1초마다 데이터 수집
 
       setState((prev) => ({ ...prev, isRecording: true }));
@@ -180,7 +185,12 @@ export const RetellingPage: React.FC = () => {
     if (!mediaRecorderRef.current || !state.topic) return;
 
     const currentStep = state.currentTimerStep;
-    const duration = currentStep === 1 ? 3 : currentStep === 2 ? 2 : 1;
+    const duration = stepToDuration(currentStep);
+
+    // 실제 녹음 시간 계산
+    const actualDuration = recordingStartTimeRef.current
+      ? Math.floor((Date.now() - recordingStartTimeRef.current) / 1000)
+      : 0;
 
     return new Promise<void>((resolve) => {
       const mediaRecorder = mediaRecorderRef.current!;
@@ -204,6 +214,7 @@ export const RetellingPage: React.FC = () => {
             topicId: state.topic!.id,
             duration,
             audioData,
+            actualDuration,
           });
 
           if (response.success && response.data) {
@@ -230,6 +241,9 @@ export const RetellingPage: React.FC = () => {
             isProcessingSTT: false,
             error: 'STT 변환 중 오류가 발생했습니다.',
           }));
+        } finally {
+          // 시작 시각 초기화
+          recordingStartTimeRef.current = null;
         }
 
         resolve();
@@ -329,7 +343,12 @@ export const RetellingPage: React.FC = () => {
           </div>
 
           {/* Progress tracker */}
-          <ProgressTracker currentStep={state.currentTimerStep} completedSteps={state.completedSteps} />
+          <ProgressTracker
+            currentStep={state.currentTimerStep}
+            completedSteps={state.completedSteps}
+            topicId={state.topic.id}
+            showHistory={true}
+          />
 
           {/* Keywords */}
           <KeywordDisplay keywords={state.topic.keywords} />

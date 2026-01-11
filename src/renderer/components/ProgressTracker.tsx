@@ -1,10 +1,13 @@
 import React from 'react';
+import { RetellingHistoryTooltip } from './RetellingHistoryTooltip';
 
 export interface ProgressTrackerProps {
   currentStep: 1 | 2 | 3;
   completedSteps: number[];
   labels?: string[];
   showCheckmarks?: boolean;
+  topicId?: number;
+  showHistory?: boolean;
 }
 
 export interface StepStatus {
@@ -39,6 +42,8 @@ export const ProgressTracker: React.FC<ProgressTrackerProps> = ({
   completedSteps,
   labels = ['1차: 3분', '2차: 2분', '3차: 1분'],
   showCheckmarks = true,
+  topicId,
+  showHistory = false,
 }) => {
   const getStepStatus = (step: number): 'pending' | 'active' | 'completed' => {
     if (completedSteps.includes(step)) {
@@ -60,7 +65,7 @@ export const ProgressTracker: React.FC<ProgressTrackerProps> = ({
     <div className="progress-tracker">
       {steps.map((stepInfo, index) => (
         <React.Fragment key={stepInfo.step}>
-          <div className={`progress-step ${stepInfo.status}`}>
+          <div className={`progress-step ${stepInfo.status}`} data-testid={`progress-step-${stepInfo.step}`}>
             <div className="step-indicator">
               {showCheckmarks && stepInfo.status === 'completed' ? (
                 <CheckIcon />
@@ -68,7 +73,12 @@ export const ProgressTracker: React.FC<ProgressTrackerProps> = ({
                 <span className="step-number">{stepInfo.step}</span>
               )}
             </div>
-            <span className="step-label">{stepInfo.label}</span>
+            <span className="step-label">
+              {stepInfo.label}
+              {showHistory && topicId && (
+                <RetellingHistoryTooltip topicId={topicId} duration={stepInfo.step as 1 | 2 | 3} />
+              )}
+            </span>
           </div>
 
           {index < steps.length - 1 && <div className="progress-line" />}
