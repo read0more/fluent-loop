@@ -191,6 +191,8 @@ export function registerStep4Handlers(): void {
    * FR-001: 최근 첨삭 결과 조회
    * TC-005: correction:get-latest 정상 조회
    * TC-006: correction:get-latest DB 에러 처리
+   *
+   * 리텔링 이후에 생성된 첨삭 결과만 반환 (리텔링 변경 시 이전 첨삭 무효화)
    */
   ipcMain.handle(
     'correction:get-latest',
@@ -202,8 +204,15 @@ export function registerStep4Handlers(): void {
       try {
         const { sessionId, topicId } = args;
 
-        // DB에서 최근 첨삭 결과 조회 (최대 50개)
-        const corrections = correctionService.getCorrectionsHistory(topicId, sessionId, 50);
+        // topicId가 없으면 빈 배열 반환
+        if (topicId === undefined || topicId === null) {
+          response.success = true;
+          response.data = [];
+          return response;
+        }
+
+        // 리텔링 이후에 생성된 첨삭만 조회 (최대 50개)
+        const corrections = correctionService.getValidCorrectionsHistory(topicId, sessionId, 50);
 
         // Correction[] -> CorrectionResult[] 변환
         const correctionResults: CorrectionResult[] = corrections.map((c) => ({

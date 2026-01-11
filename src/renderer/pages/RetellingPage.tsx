@@ -356,7 +356,29 @@ export const RetellingPage: React.FC = () => {
           {/* Timer selection */}
           {state.step !== 'complete' && (
             <div className="timer-selection">
-              <h3>타이머 선택</h3>
+              <div className="timer-selection-header">
+                <h3>타이머 선택</h3>
+                <button
+                  onClick={async () => {
+                    if (state.topic) {
+                      await window.electron.invoke('delete-retellings', {
+                        topicId: state.topic.id,
+                      });
+                    }
+                    setState((prev) => ({
+                      ...prev,
+                      currentTimerStep: 1,
+                      completedSteps: [],
+                      step: 'ready',
+                      transcribedTexts: { 1: null, 2: null, 3: null },
+                    }));
+                  }}
+                  className="btn-restart-small"
+                  disabled={state.isTimerRunning}
+                >
+                  다시 시작
+                </button>
+              </div>
               <div className="timer-buttons">
                 <button
                   onClick={() => handleTimerSelect(1)}
