@@ -58,6 +58,7 @@ export function registerStep3Handlers(): void {
   ipcMain.handle('transcribe-retelling', handleTranscribeRetelling);
   ipcMain.handle('get-retelling-texts', handleGetRetellingTexts);
   ipcMain.handle('get-retelling-history', handleGetRetellingHistory);
+  ipcMain.handle('delete-retellings', handleDeleteRetellings);
 }
 
 // ==================== Recording Handlers ====================
@@ -350,6 +351,33 @@ async function handleGetRetellingTexts(
     return {
       success: false,
       error: '리텔링 텍스트 조회에 실패했습니다.',
+    };
+  }
+}
+
+interface DeleteRetellingsArgs {
+  topicId: number;
+}
+
+/**
+ * 특정 토픽의 모든 리텔링 삭제 (다시 시작 시 사용)
+ */
+async function handleDeleteRetellings(
+  _event: IpcMainInvokeEvent,
+  args: DeleteRetellingsArgs
+): Promise<IPCResponse<void>> {
+  try {
+    const { topicId } = args;
+    const db = getDatabase();
+
+    db.prepare('DELETE FROM retellings WHERE topic_id = ?').run(topicId);
+
+    return { success: true };
+  } catch (error) {
+    console.error('Delete retellings error:', error);
+    return {
+      success: false,
+      error: '리텔링 삭제에 실패했습니다.',
     };
   }
 }

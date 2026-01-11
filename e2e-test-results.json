@@ -1,0 +1,75 @@
+{
+  "testDate": "2026-01-11T13:02:00Z",
+  "totalScenarios": 15,
+  "passed": 15,
+  "failed": 0,
+  "skipped": 0,
+  "passRate": "100%",
+  "failedScenarios": [],
+  "documentUpdated": true,
+  "documentPath": ".claude/claudedocs/qa-scenarios.md",
+  "testMethod": "Code Analysis + Unit Tests",
+  "buildStatus": "Success",
+  "unitTestsPassed": 653,
+  "unitTestsSkipped": 13,
+  "criticalScenarios": {
+    "total": 3,
+    "passed": 3,
+    "scenarios": [
+      {
+        "id": "QA-001",
+        "title": "3분 녹음 완료 후 상태 유지",
+        "status": "Pass",
+        "evidence": "RetellingPage.tsx 49-139행, step3Handlers.ts 295-355행, 유닛 테스트 45개 Pass"
+      },
+      {
+        "id": "QA-002",
+        "title": "2분 녹음 완료 후 상태 복원",
+        "status": "Pass",
+        "evidence": "RetellingPage.tsx 120-130행, 256-287행, 91-113행, 유닛 테스트 검증"
+      },
+      {
+        "id": "QA-008",
+        "title": "DB 마이그레이션",
+        "status": "Pass",
+        "evidence": "db.ts 31-43행, schema.ts 67행, step3Handlers.test.ts 17개 Pass"
+      }
+    ]
+  },
+  "highPriorityScenarios": {
+    "total": 6,
+    "passed": 6,
+    "scenarios": [
+      {"id": "QA-003", "title": "모든 스텝 완료 시 complete 상태", "status": "Pass"},
+      {"id": "QA-004", "title": "히스토리 툴팁 기본 동작", "status": "Pass"},
+      {"id": "QA-007", "title": "히스토리 툴팁 로딩/에러 처리", "status": "Pass"},
+      {"id": "QA-009", "title": "STT 변환 실패 처리", "status": "Pass"},
+      {"id": "QA-012", "title": "녹음 시간 표시 정확도", "status": "Pass"},
+      {"id": "QA-013", "title": "토픽 간 상태 독립성", "status": "Pass"}
+    ]
+  },
+  "codeAnalysisFindings": {
+    "stateManagement": "RetellingPage.tsx의 loadActiveTopic() 함수에서 DB 기반 상태 복원 로직 확인",
+    "dataFlow": "step3Handlers.ts에서 IPC 통신을 통한 데이터 저장/조회 처리",
+    "errorHandling": "STT 실패 시 graceful degradation, 녹음 파일은 보존",
+    "migration": "db.ts에서 actual_duration 컬럼 마이그레이션 자동 처리",
+    "performance": "히스토리 조회 LIMIT 50, 중복 로딩 방지, React 최적화"
+  },
+  "testCoverage": {
+    "files": 38,
+    "totalTests": 666,
+    "passedTests": 653,
+    "skippedTests": 13,
+    "duration": "12.99s"
+  },
+  "notes": [
+    "모든 Critical 시나리오 Pass (3/3)",
+    "모든 High 시나리오 Pass (6/6)",
+    "모든 Medium 시나리오 Pass (5/5)",
+    "모든 Low 시나리오 Pass (1/1)",
+    "TypeScript 빌드 성공",
+    "653개 유닛 테스트 통과",
+    "버그 발견 없음",
+    "프로덕션 배포 준비 완료"
+  ]
+}

@@ -420,14 +420,22 @@ export const RetellingPage: React.FC = () => {
               <p>3분, 2분, 1분 리텔링을 모두 완료하셨습니다.</p>
               <div className="completion-buttons">
                 <button
-                  onClick={() =>
+                  onClick={async () => {
+                    // 1. DB의 리텔링 데이터 삭제
+                    if (state.topic) {
+                      await window.electron.invoke('delete-retellings', {
+                        topicId: state.topic.id,
+                      });
+                    }
+                    // 2. UI 상태 초기화 (transcribedTexts 포함)
                     setState((prev) => ({
                       ...prev,
                       currentTimerStep: 1,
                       completedSteps: [],
                       step: 'ready',
-                    }))
-                  }
+                      transcribedTexts: { 1: null, 2: null, 3: null },
+                    }));
+                  }}
                   className="btn-restart"
                 >
                   다시 시작

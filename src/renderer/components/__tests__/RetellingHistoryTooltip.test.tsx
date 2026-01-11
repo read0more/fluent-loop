@@ -1,5 +1,5 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
+import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react';
 import React from 'react';
 import { RetellingHistoryTooltip } from '../RetellingHistoryTooltip';
 
@@ -10,24 +10,6 @@ import { RetellingHistoryTooltip } from '../RetellingHistoryTooltip';
  * 테스트 유형: 단위 테스트
  * 관련 문서: E:\develop\electron-test\claude.config\dev-workflow\docs\test-cases.md
  */
-
-// CSS Module mock
-vi.mock('../RetellingHistoryTooltip.module.scss', () => ({
-  default: {
-    historyTooltipTrigger: 'historyTooltipTrigger',
-    historyIcon: 'historyIcon',
-    historyTooltip: 'historyTooltip',
-    tooltipHeader: 'tooltipHeader',
-    tooltipContent: 'tooltipContent',
-    loading: 'loading',
-    error: 'error',
-    noData: 'noData',
-    historyList: 'historyList',
-    historyItem: 'historyItem',
-    date: 'date',
-    duration: 'duration',
-  },
-}));
 
 // Mock window.electron
 const mockInvoke = vi.fn();
@@ -43,6 +25,10 @@ describe('RetellingHistoryTooltip', () => {
       writable: true,
       configurable: true,
     });
+  });
+
+  afterEach(() => {
+    cleanup();
   });
 
   /**
@@ -115,19 +101,22 @@ describe('RetellingHistoryTooltip', () => {
    * TC-008: RetellingHistoryTooltip 로딩 상태
    * 우선순위: High (P0)
    */
-  it('TC-008: should show loading state on hover', async () => {
+  it('TC-008: should show loading state on click', async () => {
     mockInvoke.mockResolvedValue({ success: true, data: [] });
 
     render(<RetellingHistoryTooltip topicId={1} duration={3} />);
     const trigger = screen.getByTestId('history-tooltip-trigger');
 
-    fireEvent.mouseEnter(trigger);
+    fireEvent.click(trigger);
 
     // Loading state should be visible immediately
     expect(screen.getByText('로딩 중...')).toBeInTheDocument();
 
     // Wait for loading to complete - use a single expectation
-    await waitFor(() => expect(screen.getByText('기록이 없습니다.')).toBeInTheDocument(), { timeout: 2000 });
+    await waitFor(
+      () => expect(screen.getByText('기록이 없습니다.')).toBeInTheDocument(),
+      { timeout: 2000 }
+    );
   });
 
   /**
@@ -140,9 +129,11 @@ describe('RetellingHistoryTooltip', () => {
     render(<RetellingHistoryTooltip topicId={1} duration={3} />);
     const trigger = screen.getByTestId('history-tooltip-trigger');
 
-    fireEvent.mouseEnter(trigger);
+    fireEvent.click(trigger);
 
-    await waitFor(() => expect(screen.getByText('조회 실패')).toBeInTheDocument(), { timeout: 2000 });
+    await waitFor(() => expect(screen.getByText('조회 실패')).toBeInTheDocument(), {
+      timeout: 2000,
+    });
   });
 
   /**
@@ -155,16 +146,19 @@ describe('RetellingHistoryTooltip', () => {
     render(<RetellingHistoryTooltip topicId={1} duration={3} />);
     const trigger = screen.getByTestId('history-tooltip-trigger');
 
-    fireEvent.mouseEnter(trigger);
+    fireEvent.click(trigger);
 
-    await waitFor(() => expect(screen.getByText('기록이 없습니다.')).toBeInTheDocument(), { timeout: 2000 });
+    await waitFor(
+      () => expect(screen.getByText('기록이 없습니다.')).toBeInTheDocument(),
+      { timeout: 2000 }
+    );
   });
 
   /**
    * TC-011: RetellingHistoryTooltip 캐싱
    * 우선순위: Low (P2)
    */
-  it('TC-011: should cache history data and not refetch on second hover', async () => {
+  it('TC-011: should cache history data and not refetch on toggle', async () => {
     const mockHistory = [
       {
         id: 1,
@@ -180,19 +174,24 @@ describe('RetellingHistoryTooltip', () => {
     render(<RetellingHistoryTooltip topicId={1} duration={3} />);
     const trigger = screen.getByTestId('history-tooltip-trigger');
 
-    // 첫 번째 hover
-    fireEvent.mouseEnter(trigger);
+    // 첫 번째 click - open
+    fireEvent.click(trigger);
     await waitFor(() => expect(mockInvoke).toHaveBeenCalledTimes(1), { timeout: 2000 });
 
-    // hover 해제
-    fireEvent.mouseLeave(trigger);
-    await waitFor(() => expect(screen.queryByTestId('history-tooltip')).not.toBeInTheDocument(), { timeout: 2000 });
+    // 두 번째 click - close
+    fireEvent.click(trigger);
+    await waitFor(
+      () => expect(screen.queryByTestId('history-tooltip')).not.toBeInTheDocument(),
+      { timeout: 2000 }
+    );
 
-    // 두 번째 hover
-    fireEvent.mouseEnter(trigger);
-    await waitFor(() => expect(screen.getByTestId('history-tooltip')).toBeInTheDocument(), { timeout: 2000 });
+    // 세 번째 click - reopen
+    fireEvent.click(trigger);
+    await waitFor(() => expect(screen.getByTestId('history-tooltip')).toBeInTheDocument(), {
+      timeout: 2000,
+    });
 
-    // 여전히 1회만 호출
+    // 여전히 1회만 호출 (캐싱)
     expect(mockInvoke).toHaveBeenCalledTimes(1);
   });
 
@@ -230,9 +229,11 @@ describe('RetellingHistoryTooltip', () => {
     render(<RetellingHistoryTooltip topicId={1} duration={3} />);
     const trigger = screen.getByTestId('history-tooltip-trigger');
 
-    fireEvent.mouseEnter(trigger);
+    fireEvent.click(trigger);
 
-    await waitFor(() => expect(screen.getAllByTestId('history-item')).toHaveLength(3), { timeout: 2000 });
+    await waitFor(() => expect(screen.getAllByTestId('history-item')).toHaveLength(3), {
+      timeout: 2000,
+    });
 
     expect(screen.getByText(/2026-01-11 14:30/)).toBeInTheDocument();
     expect(screen.getByText(/2분 58초/)).toBeInTheDocument();
@@ -248,8 +249,11 @@ describe('RetellingHistoryTooltip', () => {
     render(<RetellingHistoryTooltip topicId={1} duration={3} />);
     const trigger = screen.getByTestId('history-tooltip-trigger');
 
-    fireEvent.mouseEnter(trigger);
+    fireEvent.click(trigger);
 
-    await waitFor(() => expect(screen.getByText('기록을 불러올 수 없습니다.')).toBeInTheDocument(), { timeout: 2000 });
+    await waitFor(
+      () => expect(screen.getByText('기록을 불러올 수 없습니다.')).toBeInTheDocument(),
+      { timeout: 2000 }
+    );
   });
 });
