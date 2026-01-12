@@ -235,12 +235,13 @@
 }
 
 .dialogBox {
-  background: var(--bg-surface);
+  background: var(--bg-gradient-start);
   border-radius: var(--radius-2xl);
   padding: var(--spacing-3xl);
   max-width: 450px;
   width: 90%;
   text-align: center;
+  border: 1px solid var(--border-light);
 
   h3 {
     color: var(--color-primary);

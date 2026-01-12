@@ -28,17 +28,44 @@ body {
    Global Error Message
    =========================================== */
 .error-message {
+  display: flex;
+  align-items: center;
+  gap: 12px;
   background: rgba(244, 67, 54, 0.15);
   border: 1px solid #f44336;
   border-radius: 8px;
-  padding: 20px;
+  padding: 16px 20px;
   margin-bottom: 20px;
-  text-align: center;
+  color: #ff6b6b;
 }
 
 .error-message p {
   color: #ff6b6b;
   margin-bottom: 15px;
+}
+
+.error-icon {
+  flex-shrink: 0;
+  font-size: 1.2em;
+}
+
+.error-close {
+  flex-shrink: 0;
+  margin-left: auto;
+  background: transparent;
+  border: none;
+  color: #ff6b6b;
+  font-size: 1.2em;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  line-height: 1;
+  transition: all 0.2s;
+}
+
+.error-close:hover {
+  background: rgba(244, 67, 54, 0.2);
+  color: #ff8a80;
 }
 
 .btn-retry {
