@@ -2,11 +2,13 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { CorrectedMessageItem } from '../components/step6/CorrectedMessageItem';
+import { ConversationModal } from '../components/step6/ConversationModal';
 import {
   Topic,
   ConversationCorrectionResult,
   IPCResponse,
 } from '../../main/database/models';
+import { correctionsToMessages } from '../utils/conversationHelpers';
 import styles from './ConversationCorrectionPage.module.scss';
 
 interface ConversationCorrectionPageState {
@@ -19,6 +21,7 @@ interface ConversationCorrectionPageState {
   error: string | null;
   isPlayingAll: boolean;
   currentPlayingIndex: number;
+  showConversationModal: boolean;  // 대화내용 모달 표시 여부
 }
 
 export const ConversationCorrectionPage: React.FC = () => {
@@ -35,6 +38,7 @@ export const ConversationCorrectionPage: React.FC = () => {
     error: null,
     isPlayingAll: false,
     currentPlayingIndex: -1,
+    showConversationModal: false,
   });
 
   // localStorage에서 대화 정보 로드
@@ -181,6 +185,16 @@ export const ConversationCorrectionPage: React.FC = () => {
     setState((prev) => ({ ...prev, isPlayingAll: false, currentPlayingIndex: -1 }));
   }, []);
 
+  // 대화내용 보기 모달 열기
+  const handleShowConversation = useCallback(() => {
+    setState((prev) => ({ ...prev, showConversationModal: true }));
+  }, []);
+
+  // 모달 닫기
+  const handleCloseModal = useCallback(() => {
+    setState((prev) => ({ ...prev, showConversationModal: false }));
+  }, []);
+
   // 에러 닫기
   const clearError = () => {
     setState((prev) => ({ ...prev, error: null }));
@@ -252,6 +266,15 @@ export const ConversationCorrectionPage: React.FC = () => {
           className="btn-primary"
         >
           {state.isCorrecting ? '첨삭 중...' : '첨삭 요청'}
+        </button>
+
+        <button
+          onClick={handleShowConversation}
+          disabled={state.corrections.length === 0}
+          className="btn-secondary"
+          title={state.corrections.length === 0 ? '표시할 대화내용이 없습니다' : '5단계 대화 원본 보기'}
+        >
+          대화내용 보기
         </button>
 
         {state.corrections.length > 0 && (
@@ -339,6 +362,13 @@ export const ConversationCorrectionPage: React.FC = () => {
           <p>여러분의 영어 문장에서 문법, 어휘, 자연스러움을 검토하고 개선점을 알려드립니다.</p>
         </div>
       )}
+
+      {/* 대화내용 모달 */}
+      <ConversationModal
+        isOpen={state.showConversationModal}
+        onClose={handleCloseModal}
+        messages={correctionsToMessages(state.corrections)}
+      />
     </div>
   );
 };

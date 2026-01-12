@@ -7,17 +7,18 @@ import styles from './ChatContainer.module.scss';
 
 export interface ChatContainerProps {
   messages: Message[];
-  isAIResponding: boolean;
-  onReplayTTS: (messageId: number) => void;
+  isAIResponding?: boolean;  // optional (default: false)
+  onReplayTTS?: (messageId: number) => void;  // optional
 }
 
 /**
  * 채팅 메시지 목록 컨테이너
  * 자동 스크롤 및 로딩 상태 표시
+ * Step 5 (대화) 및 Step 6 (첨삭 모달)에서 재사용
  */
 export const ChatContainer: React.FC<ChatContainerProps> = ({
   messages,
-  isAIResponding,
+  isAIResponding = false,
   onReplayTTS,
 }) => {
   const { containerRef } = useChatScroll([messages]);
@@ -35,7 +36,7 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({
           key={message.id}
           message={message}
           onReplayTTS={
-            message.speaker === 'ai' ? () => onReplayTTS(message.id) : undefined
+            message.speaker === 'ai' && onReplayTTS ? () => onReplayTTS(message.id) : undefined
           }
         />
       ))}
