@@ -853,7 +853,7 @@ Guidelines:
 
     try {
       const output = await this.executeClaude(prompt);
-      return output.trim();
+      return this.parseConversationResponse(output);
     } catch (error) {
       if (error instanceof AppError) {
         throw error;
@@ -864,6 +864,45 @@ Guidelines:
         'AI 응답 생성에 실패했습니다. 다시 시도해주세요.',
         error as Error
       );
+    }
+  }
+
+  /**
+   * 대화 응답 파싱 (Claude CLI JSON wrapper 처리)
+   * Strategy 0: CLI wrapper 추출
+   * Strategy 1: Plain text fallback
+   */
+  private parseConversationResponse(output: string): string {
+    const originalOutput = output;
+    try {
+      const result = output.trim();
+
+      // Strategy 0: Handle Claude CLI JSON wrapper format
+      if (result.includes('"result"') && result.includes('"type"')) {
+        try {
+          console.log('[ClaudeService] Conversation: Detecting Claude CLI wrapper format...');
+          const cliResponse = JSON.parse(result);
+          if (cliResponse.result !== undefined && typeof cliResponse.result === 'string') {
+            console.log('[ClaudeService] Conversation: Extracting result from CLI wrapper...');
+            return cliResponse.result;
+          }
+        } catch {
+          console.log(
+            '[ClaudeService] Conversation: Failed to parse CLI wrapper, returning trimmed output...'
+          );
+        }
+      }
+
+      return result;
+    } catch (error) {
+      console.log('[ClaudeService] Conversation parsing error:', error);
+      this.logClaudeInteraction(
+        'generateConversationResponse-FAILED',
+        originalOutput,
+        error as Error
+      );
+      // Fallback: return original trimmed output
+      return output.trim();
     }
   }
 

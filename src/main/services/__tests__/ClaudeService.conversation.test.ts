@@ -1,262 +1,448 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
+import { ClaudeService } from '../ClaudeService';
+import type { TopicContext, ConversationMessage } from '../ClaudeService';
+import { AppError, ErrorCode } from '../../errors/AppError';
 
-// Types
-type CEFRLevel = 'A1' | 'A2' | 'B1' | 'B2' | 'C1' | 'C2';
-
-interface TopicContext {
-  englishContent: string;
-  cefrLevel: CEFRLevel;
-  keywords: string[];
-}
-
-interface ConversationMessage {
-  speaker: 'user' | 'ai';
-  content: string;
-}
-
-// Mock ClaudeService extension for conversation (will be implemented later)
-class ClaudeService {
-  async generateConversationResponse(
-    topicContext: TopicContext,
-    conversationHistory: ConversationMessage[],
-    isFirstMessage?: boolean
-  ): Promise<string> {
-    throw new Error('Not implemented');
-  }
-
-  async generateEnglishScript(koreanText: string, cefrLevel: CEFRLevel): Promise<unknown> {
-    throw new Error('Not implemented');
-  }
-
-  async extractKeywords(englishText: string): Promise<string[]> {
-    throw new Error('Not implemented');
-  }
-
-  async correctSentence(sentence: string, cefrLevel: CEFRLevel): Promise<unknown> {
-    throw new Error('Not implemented');
-  }
-}
-
-describe('ClaudeService - Conversation Response Generation', () => {
-  let claudeService: ClaudeService;
+describe('ClaudeService - AI 대화 응답 JSON Wrapper 파싱 수정', () => {
+  let service: ClaudeService;
 
   beforeEach(() => {
-    claudeService = new ClaudeService();
+    service = new ClaudeService();
     vi.clearAllMocks();
   });
 
-  describe('TC-004: generateConversationResponse() - 첫 메시지 생성', () => {
-    it('should generate first message as a question related to topic', async () => {
-      // Arrange
-      const topicContext: TopicContext = {
-        englishContent: 'Climate change is a global issue caused by greenhouse gas emissions...',
-        cefrLevel: 'B1',
-        keywords: ['climate', 'global warming', 'environment'],
-      };
-      const conversationHistory: ConversationMessage[] = [];
-      const isFirstMessage = true;
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
 
-      // Act & Assert
-      await expect(
-        claudeService.generateConversationResponse(topicContext, conversationHistory, isFirstMessage)
-      ).rejects.toThrow('Not implemented');
+  // ==========================================
+  // 1. 단위 테스트 (Unit Tests)
+  // ==========================================
+
+  describe('1.1 parseConversationResponse 메서드 테스트', () => {
+    // TC-001: Claude CLI JSON wrapper 파싱
+    it('TC-001: Claude CLI JSON wrapper 파싱', () => {
+      const input =
+        '{"result":"Hello! How are you today?","type":"text","model":"claude-sonnet-4-5-20250929"}';
+      const output = (service as any).parseConversationResponse(input);
+
+      expect(output).toBe('Hello! How are you today?');
+      expect(output).not.toContain('"result"');
+      expect(output).not.toContain('"type"');
     });
 
-    it('should keep first message brief (1-2 sentences)', async () => {
-      // This test will verify message length constraint
-      expect(true).toBe(true);
+    // TC-002: Plain text 응답 처리 (wrapper 없음)
+    it('TC-002: Plain text 응답 처리 (wrapper 없음)', () => {
+      const input = 'Hello! How are you today?';
+      const output = (service as any).parseConversationResponse(input);
+
+      expect(output).toBe('Hello! How are you today?');
     });
 
-    it('should end first message with a question', async () => {
-      // This test will verify question format
-      expect(true).toBe(true);
+    // TC-003: Malformed JSON 처리 (닫는 괄호 누락)
+    it('TC-003: Malformed JSON 처리 (닫는 괄호 누락)', () => {
+      const input = '{"result":"Hello! How are you?","type":"text"';
+      const output = (service as any).parseConversationResponse(input);
+
+      expect(output).toBe(input.trim());
     });
 
-    it('should use vocabulary appropriate for CEFR level', async () => {
-      // This test will verify CEFR-appropriate language
-      expect(true).toBe(true);
+    // TC-004: result 필드 누락
+    it('TC-004: result 필드 누락', () => {
+      const input = '{"type":"text","model":"claude-sonnet-4-5"}';
+      const output = (service as any).parseConversationResponse(input);
+
+      expect(output).toBe(input.trim());
     });
 
-    it('should mention topic keywords naturally', async () => {
-      // This test will verify topic relevance
-      expect(true).toBe(true);
+    // TC-005: result 필드 타입 불일치 (숫자)
+    it('TC-005: result 필드 타입 불일치 (숫자)', () => {
+      const input = '{"result":12345,"type":"text"}';
+      const output = (service as any).parseConversationResponse(input);
+
+      expect(output).toBe(input.trim());
+    });
+
+    // TC-006: Whitespace 처리 (앞뒤 공백)
+    it('TC-006: Whitespace 처리 (앞뒤 공백)', () => {
+      const input = '  \n{"result":"Hello!","type":"text"}\n  ';
+      const output = (service as any).parseConversationResponse(input);
+
+      expect(output).toBe('Hello!');
+      expect(output).not.toMatch(/^\s/);
+      expect(output).not.toMatch(/\s$/);
+    });
+
+    // TC-007: result 필드에 특수 문자 포함
+    it('TC-007: result 필드에 특수 문자 포함', () => {
+      const input = '{"result":"Hello!\\n\\"How are you?\\" 😊","type":"text"}';
+      const output = (service as any).parseConversationResponse(input);
+
+      expect(output).toContain('\n');
+      expect(output).toContain('"');
+      expect(output).toContain('😊');
+    });
+
+    // TC-008: result 필드가 빈 문자열
+    it('TC-008: result 필드가 빈 문자열', () => {
+      const input = '{"result":"","type":"text"}';
+      const output = (service as any).parseConversationResponse(input);
+
+      expect(output).toBe('');
+      expect(output.length).toBe(0);
+    });
+
+    // TC-009: result 필드가 매우 긴 텍스트
+    it('TC-009: result 필드가 매우 긴 텍스트', () => {
+      const longText = 'A'.repeat(1000);
+      const input = `{"result":"${longText}","type":"text"}`;
+      const output = (service as any).parseConversationResponse(input);
+
+      expect(output).toBe(longText);
+      expect(output.length).toBe(1000);
+    });
+
+    // TC-010: Strategy 0 감지 로직 (includes 조건)
+    it('TC-010: Strategy 0 감지 로직 (includes 조건)', () => {
+      const consoleSpy = vi.spyOn(console, 'log');
+      const input = '{"result":"test","type":"text"}';
+
+      (service as any).parseConversationResponse(input);
+
+      expect(consoleSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Conversation: Detecting Claude CLI wrapper format')
+      );
+    });
+
+    // TC-011: Strategy 0 미감지 (result 없음)
+    it('TC-011: Strategy 0 미감지 (result 없음)', () => {
+      const consoleSpy = vi.spyOn(console, 'log');
+      const input = '{"message":"Hello","type":"text"}';
+
+      const output = (service as any).parseConversationResponse(input);
+
+      expect(consoleSpy).not.toHaveBeenCalledWith(
+        expect.stringContaining('Conversation: Detecting Claude CLI wrapper format')
+      );
+      expect(output).toBe(input.trim());
+    });
+
+    // TC-012: Nested JSON wrapper
+    it('TC-012: Nested JSON wrapper', () => {
+      const input = '{"result":"{\\"nested\\":\\"value\\"}","type":"text"}';
+      const output = (service as any).parseConversationResponse(input);
+
+      expect(output).toBe('{"nested":"value"}');
+      expect(typeof output).toBe('string');
+    });
+
+    // TC-013: UTF-8 다국어 텍스트
+    it('TC-013: UTF-8 다국어 텍스트', () => {
+      const input = '{"result":"안녕하세요! こんにちは! 你好!","type":"text"}';
+      const output = (service as any).parseConversationResponse(input);
+
+      expect(output).toBe('안녕하세요! こんにちは! 你好!');
+    });
+
+    // TC-014: JSON 파싱 예외 발생 시 로깅
+    it('TC-014: JSON 파싱 예외 발생 시 로깅', () => {
+      const logSpy = vi.spyOn(service as any, 'logClaudeInteraction');
+      const input = '{invalid json}';
+
+      const output = (service as any).parseConversationResponse(input);
+
+      // Strategy 0 내부 try-catch로 처리되므로 logClaudeInteraction 호출 안 됨
+      expect(logSpy).not.toHaveBeenCalled();
+      expect(output).toBe(input.trim());
+    });
+
+    // TC-015: parseConversationResponse 메서드 존재 확인
+    it('TC-015: parseConversationResponse 메서드 존재 확인', () => {
+      expect((service as any).parseConversationResponse).toBeDefined();
+      expect(typeof (service as any).parseConversationResponse).toBe('function');
+    });
+
+    // TC-016: 대소문자 혼합 (ReSuLt 등)
+    it('TC-016: 대소문자 혼합 (ReSuLt 등)', () => {
+      const input = '{"Result":"Hello","Type":"text"}';
+      const output = (service as any).parseConversationResponse(input);
+
+      // includes는 대소문자 구분하므로 Strategy 0 미감지
+      expect(output).toBe(input.trim());
     });
   });
 
-  describe('TC-005: generateConversationResponse() - 후속 응답 생성', () => {
-    it('should generate response considering conversation history', async () => {
-      // Arrange
+  // ==========================================
+  // 2. 통합 테스트 (Integration Tests)
+  // ==========================================
+
+  describe('2.1 generateConversationResponse 통합 테스트', () => {
+    // TC-017: 첫 메시지 생성 및 JSON wrapper 제거
+    it('TC-017: 첫 메시지 생성 및 JSON wrapper 제거', async () => {
+      vi.spyOn(service as any, 'executeClaude').mockResolvedValue(
+        '{"result":"What do you like to do?","type":"text"}'
+      );
+
       const topicContext: TopicContext = {
-        englishContent: 'Climate change is a global issue...',
+        englishContent: 'Talking about hobbies',
         cefrLevel: 'B1',
-        keywords: ['climate', 'warming', 'environment'],
+        keywords: ['hobby'],
       };
-      const conversationHistory: ConversationMessage[] = [
-        { speaker: 'ai', content: 'What do you think about climate change?' },
-        { speaker: 'user', content: 'I think it is very serious.' },
+
+      const response = await service.generateConversationResponse(topicContext, [], true);
+
+      expect(response).toBe('What do you like to do?');
+      expect(response).not.toContain('"result"');
+      expect(response).not.toContain('"type"');
+    });
+
+    // TC-018: 후속 메시지 생성 및 파싱
+    it('TC-018: 후속 메시지 생성 및 파싱', async () => {
+      vi.spyOn(service as any, 'executeClaude').mockResolvedValue(
+        '{"result":"That\'s great! What kind of books?","type":"text"}'
+      );
+
+      const topicContext: TopicContext = {
+        englishContent: 'Hobbies',
+        cefrLevel: 'B1',
+        keywords: ['hobby'],
+      };
+
+      const history: ConversationMessage[] = [
+        { speaker: 'ai', content: 'What do you like?' },
+        { speaker: 'user', content: 'I like reading.' },
       ];
-      const isFirstMessage = false;
 
-      // Act & Assert
-      await expect(
-        claudeService.generateConversationResponse(topicContext, conversationHistory, isFirstMessage)
-      ).rejects.toThrow('Not implemented');
+      const response = await service.generateConversationResponse(topicContext, history, false);
+
+      expect(response).toBe("That's great! What kind of books?");
+      expect(response).not.toContain('"result"');
     });
 
-    it('should respond naturally to user last message', async () => {
-      // This test will verify contextual response
-      expect(true).toBe(true);
-    });
+    // TC-019: executeClaude 실패 시 에러 전파
+    it('TC-019: executeClaude 실패 시 에러 전파', async () => {
+      vi.spyOn(service as any, 'executeClaude').mockRejectedValue(new Error('Claude CLI failed'));
 
-    it('should ask follow-up questions to continue conversation', async () => {
-      // This test will verify conversation flow
-      expect(true).toBe(true);
-    });
-
-    it('should maintain topic focus throughout conversation', async () => {
-      // This test will verify topic consistency
-      expect(true).toBe(true);
-    });
-
-    it('should keep response brief (1-3 sentences)', async () => {
-      // This test will verify response length
-      expect(true).toBe(true);
-    });
-  });
-
-  describe('TC-015: CEFR 레벨 맞춤 응답 생성', () => {
-    it('should use simple vocabulary for A2 level', async () => {
-      // Arrange
-      const topicContextA2: TopicContext = {
-        englishContent: 'Climate change is a problem...',
-        cefrLevel: 'A2',
-        keywords: ['climate', 'change', 'weather'],
+      const topicContext: TopicContext = {
+        englishContent: 'Test',
+        cefrLevel: 'A1',
+        keywords: [],
       };
 
-      // Act & Assert
-      await expect(
-        claudeService.generateConversationResponse(topicContextA2, [], true)
-      ).rejects.toThrow('Not implemented');
+      await expect(service.generateConversationResponse(topicContext, [], true)).rejects.toThrow(
+        AppError
+      );
+
+      try {
+        await service.generateConversationResponse(topicContext, [], true);
+      } catch (error) {
+        expect((error as AppError).code).toBe(ErrorCode.CLAUDE_API_ERROR);
+        expect((error as AppError).userMessage).toContain('AI 응답 생성에 실패했습니다');
+      }
     });
 
-    it('should use complex vocabulary for C1 level', async () => {
-      // Arrange
-      const topicContextC1: TopicContext = {
-        englishContent: 'Climate change is a multifaceted global challenge...',
-        cefrLevel: 'C1',
-        keywords: ['climate', 'anthropogenic', 'mitigation'],
+    // TC-020: Validation 실패 - englishContent 누락
+    it('TC-020: Validation 실패 - englishContent 누락', async () => {
+      const topicContext: TopicContext = {
+        englishContent: '',
+        cefrLevel: 'B1',
+        keywords: [],
       };
 
-      // Act & Assert
-      await expect(
-        claudeService.generateConversationResponse(topicContextC1, [], true)
-      ).rejects.toThrow('Not implemented');
+      await expect(service.generateConversationResponse(topicContext, [], true)).rejects.toThrow(
+        AppError
+      );
+
+      try {
+        await service.generateConversationResponse(topicContext, [], true);
+      } catch (error) {
+        expect((error as AppError).code).toBe(ErrorCode.VALIDATION_ERROR);
+        expect((error as AppError).userMessage).toContain('토픽 정보가 필요합니다');
+      }
     });
 
-    it('should generate shorter sentences for lower CEFR levels', async () => {
-      // This test will compare sentence length across levels
-      expect(true).toBe(true);
+    // TC-021: Validation 실패 - cefrLevel 누락
+    it('TC-021: Validation 실패 - cefrLevel 누락', async () => {
+      const topicContext: any = {
+        englishContent: 'Test',
+        keywords: [],
+      };
+
+      await expect(service.generateConversationResponse(topicContext, [], true)).rejects.toThrow(
+        AppError
+      );
     });
 
-    it('should generate longer, more complex sentences for higher CEFR levels', async () => {
-      // This test will verify complexity scaling
-      expect(true).toBe(true);
+    // TC-022: 여러 대화 턴 시뮬레이션
+    it('TC-022: 여러 대화 턴 시뮬레이션', async () => {
+      let callCount = 0;
+      vi.spyOn(service as any, 'executeClaude').mockImplementation(() => {
+        const responses = [
+          '{"result":"First message","type":"text"}',
+          '{"result":"Second message","type":"text"}',
+          '{"result":"Third message","type":"text"}',
+        ];
+        return Promise.resolve(responses[callCount++]);
+      });
+
+      const topicContext: TopicContext = {
+        englishContent: 'Hobbies',
+        cefrLevel: 'B1',
+        keywords: ['hobby'],
+      };
+
+      const history: ConversationMessage[] = [];
+
+      // Turn 1
+      const response1 = await service.generateConversationResponse(topicContext, history, true);
+      expect(response1).toBe('First message');
+      history.push({ speaker: 'ai', content: response1 });
+      history.push({ speaker: 'user', content: 'User reply 1' });
+
+      // Turn 2
+      const response2 = await service.generateConversationResponse(topicContext, history, false);
+      expect(response2).toBe('Second message');
+      history.push({ speaker: 'ai', content: response2 });
+      history.push({ speaker: 'user', content: 'User reply 2' });
+
+      // Turn 3
+      const response3 = await service.generateConversationResponse(topicContext, history, false);
+      expect(response3).toBe('Third message');
+
+      expect(history.length).toBe(4); // 2 AI + 2 User
+    });
+
+    // TC-023: parseConversationResponse가 빈 값 반환 시
+    it('TC-023: parseConversationResponse가 빈 값 반환 시', async () => {
+      vi.spyOn(service as any, 'executeClaude').mockResolvedValue('{"result":"","type":"text"}');
+
+      const topicContext: TopicContext = {
+        englishContent: 'Test',
+        cefrLevel: 'A1',
+        keywords: [],
+      };
+
+      const response = await service.generateConversationResponse(topicContext, [], true);
+
+      expect(response).toBe('');
+      expect(response.length).toBe(0);
+    });
+
+    // TC-024: executeClaude가 plain text 반환 (wrapper 없음)
+    it('TC-024: executeClaude가 plain text 반환 (wrapper 없음)', async () => {
+      vi.spyOn(service as any, 'executeClaude').mockResolvedValue('Hello! How are you?');
+
+      const topicContext: TopicContext = {
+        englishContent: 'Test',
+        cefrLevel: 'A1',
+        keywords: [],
+      };
+
+      const response = await service.generateConversationResponse(topicContext, [], true);
+
+      expect(response).toBe('Hello! How are you?');
     });
   });
 
-  describe('TC-036: Claude API 응답 생성 실패 (Error)', () => {
-    it('should throw CLAUDE_API_ERROR when API call fails', async () => {
-      // This test will verify API error handling
-      expect(true).toBe(true);
+  // ==========================================
+  // 3. 경계값 테스트 (Boundary Tests)
+  // ==========================================
+
+  describe('3. 경계값 테스트 (Boundary Tests)', () => {
+    // TC-025: result 필드가 null
+    it('TC-025: result 필드가 null', () => {
+      const input = '{"result":null,"type":"text"}';
+      const output = (service as any).parseConversationResponse(input);
+
+      expect(output).toBe(input.trim());
     });
 
-    it('should provide user-friendly error message', async () => {
-      // This test will verify error message quality
-      expect(true).toBe(true);
-    });
-  });
+    // TC-026: 매우 짧은 응답 (1글자)
+    it('TC-026: 매우 짧은 응답 (1글자)', () => {
+      const input = '{"result":"A","type":"text"}';
+      const output = (service as any).parseConversationResponse(input);
 
-  describe('TC-040: Claude API 타임아웃 (Error)', () => {
-    it('should throw CLAUDE_TIMEOUT error after 30 seconds', async () => {
-      // This test will verify timeout handling
-      expect(true).toBe(true);
-    }, 35000);
-
-    it('should terminate Claude CLI process on timeout', async () => {
-      // This test will verify process cleanup
-      expect(true).toBe(true);
-    });
-  });
-
-  describe('TC-041: 네트워크 오류 (Error)', () => {
-    it('should retry up to 3 times on network error', async () => {
-      // This test will verify retry logic
-      expect(true).toBe(true);
+      expect(output).toBe('A');
+      expect(output.length).toBe(1);
     });
 
-    it('should throw NETWORK_ERROR after 3 failed retries', async () => {
-      // This test will verify final error
-      expect(true).toBe(true);
+    // TC-027: 입력이 빈 문자열
+    it('TC-027: 입력이 빈 문자열', () => {
+      const output = (service as any).parseConversationResponse('');
+
+      expect(output).toBe('');
+      expect(output.length).toBe(0);
     });
 
-    it('should use exponential backoff between retries', async () => {
-      // This test will verify retry timing
-      expect(true).toBe(true);
+    // TC-028: 입력이 공백만 포함
+    it('TC-028: 입력이 공백만 포함', () => {
+      const output = (service as any).parseConversationResponse('   \n\t  ');
+
+      expect(output).toBe('');
+      expect(output.length).toBe(0);
     });
   });
 
-  describe('TC-042: 대화 컨텍스트 오버플로우 (Error)', () => {
-    it('should handle token limit exceeded error', async () => {
-      // Arrange
-      const longHistory: ConversationMessage[] = Array.from({ length: 50 }, (_, i) => ({
-        speaker: (i % 2 === 0 ? 'ai' : 'user') as 'ai' | 'user',
-        content: `Message ${i + 1}. This is a test message to simulate a long conversation.`,
-      }));
+  // ==========================================
+  // 4. 에러 케이스 (Error Cases)
+  // ==========================================
 
-      // Act & Assert
-      await expect(
-        claudeService.generateConversationResponse(
-          {
-            englishContent: 'Test topic...',
-            cefrLevel: 'B1',
-            keywords: ['test'],
-          },
-          longHistory,
-          false
-        )
-      ).rejects.toThrow('Not implemented');
+  describe('4. 에러 케이스 (Error Cases)', () => {
+    // TC-029: 순환 참조 JSON
+    it('TC-029: 순환 참조 JSON (malformed)', () => {
+      const input = '{"result":"test","type":{"circular":';
+      const output = (service as any).parseConversationResponse(input);
+
+      expect(output).toBe(input.trim());
     });
 
-    it('should limit history to last 10 messages automatically', async () => {
-      // This test will verify automatic context limiting
-      expect(true).toBe(true);
-    });
-  });
+    // TC-030: Strategy 0 내부 예외 발생 시 catch 처리
+    it('TC-030: Strategy 0 내부 예외 발생 시 catch 처리', () => {
+      const consoleSpy = vi.spyOn(console, 'log');
+      const input = '{"result":"test","type":"text"'; // 닫는 괄호 누락
 
-  describe('Prompt Engineering Validation', () => {
-    it('should include system prompt with role definition', async () => {
-      // This test will verify system prompt structure
-      expect(true).toBe(true);
-    });
+      const output = (service as any).parseConversationResponse(input);
 
-    it('should include topic context in prompt', async () => {
-      // This test will verify topic context inclusion
-      expect(true).toBe(true);
+      expect(consoleSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Failed to parse CLI wrapper')
+      );
+      expect(output).toBe(input.trim());
     });
 
-    it('should include CEFR level instruction in prompt', async () => {
-      // This test will verify CEFR level instruction
-      expect(true).toBe(true);
+    // TC-031: 외부 try-catch로 예외 전파 (가정)
+    it('TC-031: 외부 try-catch로 예외 전파 (가정)', () => {
+      const logSpy = vi.spyOn(service as any, 'logClaudeInteraction');
+
+      const output = (service as any).parseConversationResponse('test');
+
+      expect(logSpy).not.toHaveBeenCalled();
+      expect(output).toBe('test');
     });
 
-    it('should include conversation history in correct format', async () => {
-      // This test will verify history formatting
-      expect(true).toBe(true);
-    });
+    // TC-032: TTS에서 JSON wrapper 읽지 않는지 확인
+    it('TC-032: TTS에서 JSON wrapper 읽지 않는지 확인', async () => {
+      const mockTTSService = {
+        speak: vi.fn(),
+      };
 
-    it('should include "do not correct" instruction', async () => {
-      // This test will verify non-judgmental instruction
-      expect(true).toBe(true);
+      vi.spyOn(service as any, 'executeClaude').mockResolvedValue(
+        '{"result":"Hello! How are you?","type":"text"}'
+      );
+
+      const topicContext: TopicContext = {
+        englishContent: 'Test',
+        cefrLevel: 'A1',
+        keywords: [],
+      };
+
+      const response = await service.generateConversationResponse(topicContext, [], true);
+
+      // ConversationView에서 TTS 호출 시뮬레이션
+      mockTTSService.speak(response);
+
+      expect(mockTTSService.speak).toHaveBeenCalledWith('Hello! How are you?');
+      expect(mockTTSService.speak).not.toHaveBeenCalledWith(expect.stringContaining('"result"'));
     });
   });
 });
