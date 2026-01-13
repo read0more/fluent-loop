@@ -250,6 +250,11 @@ export const CorrectionPage: React.FC = () => {
       return;
     }
 
+    // TTS 캐시 삭제 (새로운 첨삭 세션 시작)
+    await window.electron.invoke('clear-tts-cache').catch((err) => {
+      console.warn('Failed to clear TTS cache:', err);
+    });
+
     // TC-008: 기존 첨삭 결과 초기화
     setState((prev) => ({
       ...prev,

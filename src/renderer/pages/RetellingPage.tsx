@@ -361,6 +361,11 @@ export const RetellingPage: React.FC = () => {
                 <h3>타이머 선택</h3>
                 <button
                   onClick={async () => {
+                    // TTS 캐시 삭제 (새로운 학습 세션 시작)
+                    await window.electron.invoke('clear-tts-cache').catch((err) => {
+                      console.warn('Failed to clear TTS cache:', err);
+                    });
+
                     if (state.topic) {
                       await window.electron.invoke('delete-retellings', {
                         topicId: state.topic.id,

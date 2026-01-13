@@ -30,10 +30,10 @@ function createWindow(): void {
 }
 
 // 앱 준비 완료
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   // IPC 핸들러 등록
   registerTopicHandlers();
-  registerStep2Handlers();
+  await registerStep2Handlers();
   registerStep3Handlers();
   registerStep4Handlers();
   registerStep5Handlers();

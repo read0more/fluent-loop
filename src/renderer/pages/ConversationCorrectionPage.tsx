@@ -126,6 +126,11 @@ export const ConversationCorrectionPage: React.FC = () => {
   const handleCorrectConversation = useCallback(async () => {
     if (!state.conversationId) return;
 
+    // TTS 캐시 삭제 (새로운 첨삭 세션 시작)
+    await window.electron.invoke('clear-tts-cache').catch((err) => {
+      console.warn('Failed to clear TTS cache:', err);
+    });
+
     setState((prev) => ({ ...prev, isCorrecting: true, error: null }));
 
     try {
