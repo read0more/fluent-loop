@@ -7,15 +7,25 @@ import {
   Topic,
   ConversationCorrectionResult,
   IPCResponse,
+  Message,
 } from '../../main/database/models';
-import { correctionsToMessages } from '../utils/conversationHelpers';
 import styles from './ConversationCorrectionPage.module.scss';
+
+// localStorage 키
+const STEP6_CORRECTIONS_STORAGE_KEY = 'step6_corrections';
+
+// 저장할 데이터 구조
+interface Step6CorrectionsDraft {
+  conversationId: number;
+  corrections: ConversationCorrectionResult[];
+}
 
 interface ConversationCorrectionPageState {
   conversationId: number | null;
   topicId: number | null;
   topic: Topic | null;
   corrections: ConversationCorrectionResult[];
+  originalMessages: Message[];  // 원본 대화 메시지
   isLoading: boolean;
   isCorrecting: boolean;
   error: string | null;
@@ -33,6 +43,7 @@ export const ConversationCorrectionPage: React.FC = () => {
     topicId: null,
     topic: null,
     corrections: [],
+    originalMessages: [],
     isLoading: true,
     isCorrecting: false,
     error: null,
@@ -63,9 +74,33 @@ export const ConversationCorrectionPage: React.FC = () => {
       const conversationId = Number(conversationIdStr);
       const topicId = Number(topicIdStr);
 
+      // 저장된 첨삭 결과 확인 (conversationId가 동일한 경우에만 복원)
+      let savedCorrections: ConversationCorrectionResult[] = [];
+      const savedDraft = localStorage.getItem(STEP6_CORRECTIONS_STORAGE_KEY);
+
+      if (savedDraft) {
+        try {
+          const draft: Step6CorrectionsDraft = JSON.parse(savedDraft);
+          if (draft.conversationId === conversationId) {
+            savedCorrections = draft.corrections;
+          } else {
+            // conversationId가 다르면 (새 대화) 저장된 데이터 삭제
+            localStorage.removeItem(STEP6_CORRECTIONS_STORAGE_KEY);
+          }
+        } catch {
+          localStorage.removeItem(STEP6_CORRECTIONS_STORAGE_KEY);
+        }
+      }
+
       // 토픽 정보 로드
       const topicResponse: IPCResponse<Topic> = await window.electron.invoke(
         'get-active-topic'
+      );
+
+      // 대화 히스토리 로드
+      const historyResponse: IPCResponse<{ messages: Message[] }> = await window.electron.invoke(
+        'get-conversation-history',
+        { conversationId }
       );
 
       setState((prev) => ({
@@ -73,6 +108,8 @@ export const ConversationCorrectionPage: React.FC = () => {
         conversationId,
         topicId,
         topic: topicResponse.success ? topicResponse.data || null : null,
+        originalMessages: historyResponse.success && historyResponse.data ? historyResponse.data.messages : [],
+        corrections: savedCorrections,
         isLoading: false,
       }));
     } catch (error) {
@@ -98,9 +135,18 @@ export const ConversationCorrectionPage: React.FC = () => {
         });
 
       if (response.success && response.data) {
+        const corrections = response.data || [];
+
+        // localStorage에 첨삭 결과 저장
+        const draft: Step6CorrectionsDraft = {
+          conversationId: state.conversationId!,
+          corrections,
+        };
+        localStorage.setItem(STEP6_CORRECTIONS_STORAGE_KEY, JSON.stringify(draft));
+
         setState((prev) => ({
           ...prev,
-          corrections: response.data || [],
+          corrections,
           isCorrecting: false,
         }));
       } else {
@@ -270,9 +316,9 @@ export const ConversationCorrectionPage: React.FC = () => {
 
         <button
           onClick={handleShowConversation}
-          disabled={state.corrections.length === 0}
+          disabled={state.originalMessages.length === 0}
           className="btn-secondary"
-          title={state.corrections.length === 0 ? '표시할 대화내용이 없습니다' : '5단계 대화 원본 보기'}
+          title={state.originalMessages.length === 0 ? '표시할 대화내용이 없습니다' : '5단계 대화 원본 보기'}
         >
           대화내용 보기
         </button>
@@ -367,7 +413,7 @@ export const ConversationCorrectionPage: React.FC = () => {
       <ConversationModal
         isOpen={state.showConversationModal}
         onClose={handleCloseModal}
-        messages={correctionsToMessages(state.corrections)}
+        messages={state.originalMessages}
       />
     </div>
   );

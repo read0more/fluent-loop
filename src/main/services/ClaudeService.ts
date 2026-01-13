@@ -6,6 +6,7 @@ import {
   TopicGenerationResult,
   CEFRLevel,
   CorrectionResult,
+  CorrectionCategory,
   ConversationCorrectionResult,
   Message,
 } from '../database/models';
@@ -345,17 +346,18 @@ Do NOT include:
   }
 
   private validateAndExtractResult(parsed: unknown): TopicGenerationResult {
-    if (!parsed.english_script || !parsed.keywords) {
+    const data = parsed as { english_script?: string; keywords?: string[] };
+    if (!data.english_script || !data.keywords) {
       throw new Error('Missing required fields: english_script or keywords');
     }
 
-    if (!Array.isArray(parsed.keywords)) {
+    if (!Array.isArray(data.keywords)) {
       throw new Error('keywords must be an array');
     }
 
     return {
-      englishText: parsed.english_script,
-      keywords: parsed.keywords,
+      englishText: data.english_script,
+      keywords: data.keywords,
     };
   }
 
@@ -386,19 +388,25 @@ Do NOT include:
    * 첨삭 결과 검증 및 추출
    */
   private validateAndExtractCorrectionResult(parsed: unknown): CorrectionResult {
-    if (!parsed.original || !parsed.corrected || parsed.explanation === undefined) {
+    const data = parsed as {
+      original?: string;
+      corrected?: string;
+      explanation?: string;
+      categories?: CorrectionCategory[];
+    };
+    if (!data.original || !data.corrected || data.explanation === undefined) {
       throw new Error('Missing required fields: original, corrected, or explanation');
     }
 
-    if (!Array.isArray(parsed.categories)) {
+    if (!Array.isArray(data.categories)) {
       throw new Error('categories must be an array');
     }
 
     return {
-      original: parsed.original,
-      corrected: parsed.corrected,
-      explanation: parsed.explanation,
-      categories: parsed.categories,
+      original: data.original,
+      corrected: data.corrected,
+      explanation: data.explanation,
+      categories: data.categories,
     };
   }
 
@@ -798,7 +806,7 @@ Guidelines:
 
     for (let i = 0; i < sentences.length; i++) {
       // index로 매칭하거나, 순서대로 매칭
-      const item = parsed.find((p: unknown) => p.index === i) || parsed[i];
+      const item = parsed.find((p: unknown) => (p as { index?: number }).index === i) || parsed[i];
 
       if (!item) {
         // 해당 문장에 대한 결과가 없으면 원본 그대로 반환

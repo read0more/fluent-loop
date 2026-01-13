@@ -128,10 +128,15 @@ describe('ConversationCorrectionPage - UI Tests', () => {
         weekStartDate: null,
       };
 
-      mockElectronAPI.invoke.mockResolvedValueOnce({
-        success: true,
-        data: mockTopic,
-      } as IPCResponse<Topic>);
+      mockElectronAPI.invoke.mockImplementation((channel: string) => {
+        if (channel === 'get-active-topic') {
+          return Promise.resolve({ success: true, data: mockTopic });
+        }
+        if (channel === 'get-conversation-history') {
+          return Promise.resolve({ success: true, data: { messages: [] } });
+        }
+        return Promise.resolve({ success: false });
+      });
 
       // Act
       renderWithRouter(<ConversationCorrectionPage />);
@@ -150,10 +155,15 @@ describe('ConversationCorrectionPage - UI Tests', () => {
       localStorageMock.setItem('lastConversationId', '1');
       localStorageMock.setItem('lastTopicId', '1');
 
-      mockElectronAPI.invoke.mockResolvedValueOnce({
-        success: true,
-        data: {},
-      } as IPCResponse<Topic>);
+      mockElectronAPI.invoke.mockImplementation((channel: string) => {
+        if (channel === 'get-active-topic') {
+          return Promise.resolve({ success: true, data: {} });
+        }
+        if (channel === 'get-conversation-history') {
+          return Promise.resolve({ success: true, data: { messages: [] } });
+        }
+        return Promise.resolve({ success: false });
+      });
 
       // Act
       renderWithRouter(<ConversationCorrectionPage />);
@@ -188,15 +198,18 @@ describe('ConversationCorrectionPage - UI Tests', () => {
         },
       ];
 
-      mockElectronAPI.invoke
-        .mockResolvedValueOnce({
-          success: true,
-          data: {},
-        } as IPCResponse<Topic>)
-        .mockResolvedValueOnce({
-          success: true,
-          data: mockCorrections,
-        } as IPCResponse<ConversationCorrectionResult[]>);
+      mockElectronAPI.invoke.mockImplementation((channel: string) => {
+        if (channel === 'get-active-topic') {
+          return Promise.resolve({ success: true, data: {} });
+        }
+        if (channel === 'get-conversation-history') {
+          return Promise.resolve({ success: true, data: { messages: [{ role: 'user', content: 'Hello' }] } });
+        }
+        if (channel === 'correct-conversation') {
+          return Promise.resolve({ success: true, data: mockCorrections });
+        }
+        return Promise.resolve({ success: false });
+      });
 
       // Act
       renderWithRouter(<ConversationCorrectionPage />);
@@ -231,24 +244,20 @@ describe('ConversationCorrectionPage - UI Tests', () => {
       localStorageMock.setItem('lastTopicId', '1');
 
       // Mock slow response
-      mockElectronAPI.invoke
-        .mockResolvedValueOnce({
-          success: true,
-          data: {},
-        } as IPCResponse<Topic>)
-        .mockImplementationOnce(
-          () =>
-            new Promise((resolve) =>
-              setTimeout(
-                () =>
-                  resolve({
-                    success: true,
-                    data: [],
-                  } as IPCResponse<ConversationCorrectionResult[]>),
-                100
-              )
-            )
-        );
+      mockElectronAPI.invoke.mockImplementation((channel: string) => {
+        if (channel === 'get-active-topic') {
+          return Promise.resolve({ success: true, data: {} });
+        }
+        if (channel === 'get-conversation-history') {
+          return Promise.resolve({ success: true, data: { messages: [] } });
+        }
+        if (channel === 'correct-conversation') {
+          return new Promise((resolve) =>
+            setTimeout(() => resolve({ success: true, data: [] }), 100)
+          );
+        }
+        return Promise.resolve({ success: false });
+      });
 
       // Act
       renderWithRouter(<ConversationCorrectionPage />);
@@ -285,24 +294,20 @@ describe('ConversationCorrectionPage - UI Tests', () => {
       localStorageMock.setItem('lastConversationId', '1');
       localStorageMock.setItem('lastTopicId', '1');
 
-      mockElectronAPI.invoke
-        .mockResolvedValueOnce({
-          success: true,
-          data: {},
-        } as IPCResponse<Topic>)
-        .mockImplementationOnce(
-          () =>
-            new Promise((resolve) =>
-              setTimeout(
-                () =>
-                  resolve({
-                    success: true,
-                    data: [],
-                  } as IPCResponse<ConversationCorrectionResult[]>),
-                100
-              )
-            )
-        );
+      mockElectronAPI.invoke.mockImplementation((channel: string) => {
+        if (channel === 'get-active-topic') {
+          return Promise.resolve({ success: true, data: {} });
+        }
+        if (channel === 'get-conversation-history') {
+          return Promise.resolve({ success: true, data: { messages: [] } });
+        }
+        if (channel === 'correct-conversation') {
+          return new Promise((resolve) =>
+            setTimeout(() => resolve({ success: true, data: [] }), 100)
+          );
+        }
+        return Promise.resolve({ success: false });
+      });
 
       // Act
       renderWithRouter(<ConversationCorrectionPage />);
@@ -349,15 +354,18 @@ describe('ConversationCorrectionPage - UI Tests', () => {
         },
       ];
 
-      mockElectronAPI.invoke
-        .mockResolvedValueOnce({
-          success: true,
-          data: {},
-        } as IPCResponse<Topic>)
-        .mockResolvedValueOnce({
-          success: true,
-          data: mockCorrections,
-        } as IPCResponse<ConversationCorrectionResult[]>);
+      mockElectronAPI.invoke.mockImplementation((channel: string) => {
+        if (channel === 'get-active-topic') {
+          return Promise.resolve({ success: true, data: {} });
+        }
+        if (channel === 'get-conversation-history') {
+          return Promise.resolve({ success: true, data: { messages: [] } });
+        }
+        if (channel === 'correct-conversation') {
+          return Promise.resolve({ success: true, data: mockCorrections });
+        }
+        return Promise.resolve({ success: false });
+      });
 
       // Act
       renderWithRouter(<ConversationCorrectionPage />);
@@ -386,10 +394,15 @@ describe('ConversationCorrectionPage - UI Tests', () => {
       localStorageMock.setItem('lastConversationId', '1');
       localStorageMock.setItem('lastTopicId', '1');
 
-      mockElectronAPI.invoke.mockResolvedValueOnce({
-        success: true,
-        data: {},
-      } as IPCResponse<Topic>);
+      mockElectronAPI.invoke.mockImplementation((channel: string) => {
+        if (channel === 'get-active-topic') {
+          return Promise.resolve({ success: true, data: {} });
+        }
+        if (channel === 'get-conversation-history') {
+          return Promise.resolve({ success: true, data: { messages: [] } });
+        }
+        return Promise.resolve({ success: false });
+      });
 
       // Act
       renderWithRouter(<ConversationCorrectionPage />);
