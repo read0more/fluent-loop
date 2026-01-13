@@ -6,6 +6,7 @@ import {
   TopicGenerationResult,
   CEFRLevel,
   CorrectionResult,
+  CorrectionCategory,
   ConversationCorrectionResult,
   Message,
 } from '../database/models';
@@ -344,18 +345,19 @@ Do NOT include:
     }
   }
 
-  private validateAndExtractResult(parsed: any): TopicGenerationResult {
-    if (!parsed.english_script || !parsed.keywords) {
+  private validateAndExtractResult(parsed: unknown): TopicGenerationResult {
+    const data = parsed as { english_script?: string; keywords?: string[] };
+    if (!data.english_script || !data.keywords) {
       throw new Error('Missing required fields: english_script or keywords');
     }
 
-    if (!Array.isArray(parsed.keywords)) {
+    if (!Array.isArray(data.keywords)) {
       throw new Error('keywords must be an array');
     }
 
     return {
-      englishText: parsed.english_script,
-      keywords: parsed.keywords,
+      englishText: data.english_script,
+      keywords: data.keywords,
     };
   }
 
@@ -385,20 +387,26 @@ Do NOT include:
   /**
    * 첨삭 결과 검증 및 추출
    */
-  private validateAndExtractCorrectionResult(parsed: any): CorrectionResult {
-    if (!parsed.original || !parsed.corrected || parsed.explanation === undefined) {
+  private validateAndExtractCorrectionResult(parsed: unknown): CorrectionResult {
+    const data = parsed as {
+      original?: string;
+      corrected?: string;
+      explanation?: string;
+      categories?: CorrectionCategory[];
+    };
+    if (!data.original || !data.corrected || data.explanation === undefined) {
       throw new Error('Missing required fields: original, corrected, or explanation');
     }
 
-    if (!Array.isArray(parsed.categories)) {
+    if (!Array.isArray(data.categories)) {
       throw new Error('categories must be an array');
     }
 
     return {
-      original: parsed.original,
-      corrected: parsed.corrected,
-      explanation: parsed.explanation,
-      categories: parsed.categories,
+      original: data.original,
+      corrected: data.corrected,
+      explanation: data.explanation,
+      categories: data.categories,
     };
   }
 
@@ -787,7 +795,7 @@ Guidelines:
    * 배치 첨삭 결과 검증 및 추출
    */
   private validateAndExtractBatchCorrectionResult(
-    parsed: any,
+    parsed: unknown,
     sentences: string[]
   ): CorrectionResult[] {
     if (!Array.isArray(parsed)) {
@@ -798,7 +806,7 @@ Guidelines:
 
     for (let i = 0; i < sentences.length; i++) {
       // index로 매칭하거나, 순서대로 매칭
-      const item = parsed.find((p: any) => p.index === i) || parsed[i];
+      const item = parsed.find((p: unknown) => (p as { index?: number }).index === i) || parsed[i];
 
       if (!item) {
         // 해당 문장에 대한 결과가 없으면 원본 그대로 반환
@@ -1111,16 +1119,31 @@ JSON Array Output:`;
     output: string,
     allMessages: Message[]
   ): ConversationCorrectionResult[] {
+    const originalOutput = output; // 에러 로깅용 원본 보관
+
     try {
       let jsonStr = output.trim();
 
-      // ```json ... ``` 제거
+      // Strategy 0: CLI wrapper 형식 감지 ({"type": "text", "result": "[...]"})
+      if (jsonStr.includes('"result"') && jsonStr.includes('"type"')) {
+        try {
+          const cliResponse = JSON.parse(jsonStr);
+          if (cliResponse.result && typeof cliResponse.result === 'string') {
+            jsonStr = cliResponse.result;
+          }
+        } catch (cliWrapperError) {
+          // CLI wrapper 파싱 실패, 다음 전략 시도
+          console.warn('CLI wrapper 파싱 실패, 다음 전략 시도:', cliWrapperError);
+        }
+      }
+
+      // Strategy 1: 마크다운 코드블록 제거 (```json ... ```)
       const jsonMatch = jsonStr.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
       if (jsonMatch) {
         jsonStr = jsonMatch[1];
       }
 
-      // JSON 배열 파싱
+      // Strategy 2: JSON 배열 파싱
       const parsed = JSON.parse(jsonStr);
 
       if (!Array.isArray(parsed)) {
@@ -1186,6 +1209,9 @@ JSON Array Output:`;
 
       return results;
     } catch (error) {
+      // 에러 로깅 (원본 응답 저장)
+      this.logClaudeInteraction('correctConversation-FAILED', originalOutput, error as Error);
+
       // AppError는 그대로 재throw
       if (error instanceof AppError) {
         throw error;
@@ -1195,7 +1221,7 @@ JSON Array Output:`;
       throw new AppError(
         ErrorCode.CLAUDE_PARSING_ERROR,
         'Failed to parse conversation correction response',
-        '대화 첨삭 결과 파싱에 실패했습니다. 다시 시도해주세요.',
+        `대화 첨삭 결과 파싱에 실패했습니다. 로그: .claude/logs/ 폴더를 확인하세요. 에러: ${(error as Error).message}`,
         error as Error
       );
     }

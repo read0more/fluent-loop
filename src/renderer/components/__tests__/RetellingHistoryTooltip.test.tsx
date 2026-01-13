@@ -244,6 +244,9 @@ describe('RetellingHistoryTooltip', () => {
    * 우선순위: Medium (P1)
    */
   it('TC-027: should handle IPC timeout error', async () => {
+    // Mock console.error to suppress error output
+    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
     mockInvoke.mockRejectedValue(new Error('Timeout'));
 
     render(<RetellingHistoryTooltip topicId={1} duration={3} />);
@@ -255,5 +258,8 @@ describe('RetellingHistoryTooltip', () => {
       () => expect(screen.getByText('기록을 불러올 수 없습니다.')).toBeInTheDocument(),
       { timeout: 2000 }
     );
+
+    // Restore console.error
+    consoleErrorSpy.mockRestore();
   });
 });

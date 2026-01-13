@@ -72,6 +72,13 @@
   padding: var(--spacing-xl);
   background: rgba(255, 255, 255, 0.03);
   border-radius: var(--radius-xl);
+
+  button {
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+  }
 }
 
 .correctionStats {
