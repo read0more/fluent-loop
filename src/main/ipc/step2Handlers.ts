@@ -1,5 +1,6 @@
 import { ipcMain, IpcMainInvokeEvent, dialog } from 'electron';
 import { TTSService } from '../services/TTSService';
+import { TTSCacheService } from '../services/TTSCacheService';
 import { AudioService } from '../services/AudioService';
 import { SettingsService } from '../services/SettingsService';
 import { getDatabase } from '../database/db';
@@ -8,6 +9,7 @@ import { IPCResponse, TTSResult, Voice, RecordingFile, AppSettings } from '../da
 
 // 서비스 인스턴스
 let ttsService: TTSService;
+let ttsCacheService: TTSCacheService;
 let audioService: AudioService;
 let settingsService: SettingsService;
 
@@ -15,15 +17,18 @@ let settingsService: SettingsService;
 let isRecordingStep2 = false;
 let recordingStartTimeStep2: number | null = null;
 
-export function registerStep2Handlers(): void {
+export async function registerStep2Handlers(): Promise<void> {
   // 서비스 초기화
-  ttsService = new TTSService();
+  ttsCacheService = new TTSCacheService();
+  await ttsCacheService.initialize();
+  ttsService = new TTSService('http://localhost:8000', ttsCacheService);
   audioService = new AudioService();
   settingsService = new SettingsService(getDatabase());
 
   // TTS 관련 핸들러
   ipcMain.handle('synthesize-tts', handleSynthesizeTTS);
   ipcMain.handle('get-tts-voices', handleGetTTSVoices);
+  ipcMain.handle('clear-tts-cache', handleClearTTSCache);
 
   // 녹음 관련 핸들러
   ipcMain.handle('start-recording-step2', handleStartRecordingStep2);
@@ -96,6 +101,19 @@ async function handleGetTTSVoices(): Promise<IPCResponse<Voice[]>> {
     return {
       success: false,
       error: '음성 목록 조회에 실패했습니다.',
+    };
+  }
+}
+
+async function handleClearTTSCache(): Promise<IPCResponse<void>> {
+  try {
+    await ttsCacheService.clearCache();
+    return { success: true };
+  } catch (error) {
+    console.error('[IPC] Failed to clear TTS cache:', error);
+    return {
+      success: false,
+      error: '캐시 삭제에 실패했습니다.',
     };
   }
 }
