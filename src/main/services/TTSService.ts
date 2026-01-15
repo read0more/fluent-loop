@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { TTSResult, Voice } from '../database/models';
 import { AppError, ErrorCode } from '../errors/AppError';
+import { ITTSCacheService } from './TTSCacheService';
 
 interface AxiosLikeError {
   code?: string;
@@ -18,9 +19,11 @@ export interface ITTSService {
 
 export class TTSService implements ITTSService {
   private readonly baseUrl: string;
+  private readonly cacheService?: ITTSCacheService;
 
-  constructor(baseUrl: string = 'http://localhost:8000') {
+  constructor(baseUrl: string = 'http://localhost:8000', cacheService?: ITTSCacheService) {
     this.baseUrl = baseUrl;
+    this.cacheService = cacheService;
   }
 
   async checkHealth(): Promise<boolean> {
@@ -43,7 +46,21 @@ export class TTSService implements ITTSService {
 
   async synthesizeSpeech(text: string, voiceId?: string): Promise<TTSResult> {
     try {
-      // 텍스트 검증
+      // 1. 캐시 조회
+      const effectiveVoiceId = voiceId || 'en-US-AriaNeural';
+      if (this.cacheService) {
+        const cachedPath = this.cacheService.getCachedFile(text, effectiveVoiceId);
+        if (cachedPath) {
+          return {
+            success: true,
+            filePath: cachedPath,
+            duration: undefined, // 캐시에서는 duration 정보 없음
+            voiceId: voiceId,
+          };
+        }
+      }
+
+      // 2. 텍스트 검증
       if (!text || !text.trim()) {
         throw new AppError(
           ErrorCode.TTS_INVALID_REQUEST,
@@ -60,6 +77,7 @@ export class TTSService implements ITTSService {
         error?: string;
       }
 
+      // 3. Python 백엔드 호출
       const response = await axios.post<PythonTTSResponse>(
         `${this.baseUrl}/tts/synthesize`,
         {
@@ -90,7 +108,17 @@ export class TTSService implements ITTSService {
         );
       }
 
-      // snake_case → camelCase 변환
+      // 4. 캐시 저장
+      if (this.cacheService && response.data.success && response.data.file_path) {
+        try {
+          await this.cacheService.saveToCache(text, effectiveVoiceId, response.data.file_path);
+        } catch (cacheError) {
+          // 캐시 저장 실패는 무시 (TTS 결과는 정상 반환)
+          console.warn('[TTS] Failed to save cache:', cacheError);
+        }
+      }
+
+      // 5. 결과 반환
       return {
         success: response.data.success,
         filePath: response.data.file_path,

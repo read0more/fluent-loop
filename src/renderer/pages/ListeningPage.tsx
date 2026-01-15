@@ -42,6 +42,11 @@ export const ListeningPage: React.FC = () => {
     setState((prev) => ({ ...prev, step: 'loading', error: null }));
 
     try {
+      // TTS 캐시 삭제 (새로운 학습 세션 시작)
+      await window.electron.invoke('clear-tts-cache').catch((err) => {
+        console.warn('Failed to clear TTS cache:', err);
+      });
+
       const response = await window.electron.invoke('get-active-topic');
 
       if (response.success && response.data) {

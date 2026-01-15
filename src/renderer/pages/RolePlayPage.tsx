@@ -79,6 +79,11 @@ export const RolePlayPage: React.FC = () => {
   const handleStartConversation = async () => {
     if (!state.topic) return;
 
+    // TTS 캐시 삭제 (새로운 대화 세션 시작)
+    await window.electron.invoke('clear-tts-cache').catch((err) => {
+      console.warn('Failed to clear TTS cache:', err);
+    });
+
     await startConversation(state.topic.id);
     setState((prev) => ({
       ...prev,
