@@ -171,9 +171,10 @@ export const ConversationCorrectionPage: React.FC = () => {
     }
   }, [state.conversationId]);
 
-  // TTS 재생 헬퍼 함수
-  const playTTSAudio = useCallback(async (text: string): Promise<void> => {
-    const response = await window.electron.invoke('synthesize-tts', text);
+  // TTS 재생 헬퍼 함수 (speaker에 따라 다른 음성 사용)
+  const playTTSAudio = useCallback(async (text: string, speaker?: 'user' | 'ai'): Promise<void> => {
+    const request = speaker ? { text, speaker } : text;
+    const response = await window.electron.invoke('synthesize-tts', request);
     if (response.success && response.data?.filePath) {
       const audio = new Audio(`file://${response.data.filePath}`);
       await new Promise<void>((resolve, reject) => {
@@ -184,27 +185,27 @@ export const ConversationCorrectionPage: React.FC = () => {
     }
   }, []);
 
-  // TTS 재생
-  const handlePlayTTS = useCallback(async (text: string) => {
+  // TTS 재생 (speaker 정보 포함)
+  const handlePlayTTS = useCallback(async (text: string, speaker?: 'user' | 'ai') => {
     try {
-      await playTTSAudio(text);
+      await playTTSAudio(text, speaker);
     } catch (error) {
       console.error('TTS 재생 실패:', error);
     }
   }, [playTTSAudio]);
 
-  // 개별 문장 TTS 재생 (인덱스 표시용)
-  const handlePlaySingle = useCallback(async (text: string, index: number) => {
+  // 개별 문장 TTS 재생 (인덱스 표시용, speaker 정보 포함)
+  const handlePlaySingle = useCallback(async (text: string, index: number, speaker: 'user' | 'ai') => {
     setState((prev) => ({ ...prev, currentPlayingIndex: index }));
     try {
-      await playTTSAudio(text);
+      await playTTSAudio(text, speaker);
     } catch (error) {
       console.error('TTS 재생 실패:', error);
     }
     setState((prev) => ({ ...prev, currentPlayingIndex: -1 }));
   }, [playTTSAudio]);
 
-  // 전체 대화 순차 재생
+  // 전체 대화 순차 재생 (각 메시지의 speaker에 따라 다른 음성 사용)
   const handlePlayAll = useCallback(async () => {
     if (state.isPlayingAll || state.corrections.length === 0) return;
 
@@ -217,7 +218,8 @@ export const ConversationCorrectionPage: React.FC = () => {
 
       setState((prev) => ({ ...prev, currentPlayingIndex: i }));
       try {
-        await playTTSAudio(state.corrections[i].corrected);
+        const correction = state.corrections[i];
+        await playTTSAudio(correction.corrected, correction.speaker);
         // 문장 사이 짧은 딜레이
         await new Promise((resolve) => setTimeout(resolve, 300));
       } catch (error) {
@@ -359,7 +361,7 @@ export const ConversationCorrectionPage: React.FC = () => {
               key={correction.messageId}
               correction={correction}
               index={index}
-              onPlayTTS={handlePlayTTS}
+              onPlayTTS={(text) => handlePlayTTS(text, correction.speaker)}
             />
           ))}
         </div>
@@ -389,7 +391,7 @@ export const ConversationCorrectionPage: React.FC = () => {
                 <div className={styles.flowMessageHeader}>
                   <span className={styles.flowSpeaker}>{c.speaker === 'ai' ? 'AI' : 'You'}</span>
                   <button
-                    onClick={() => handlePlaySingle(c.corrected, index)}
+                    onClick={() => handlePlaySingle(c.corrected, index, c.speaker)}
                     className={styles.btnPlaySingle}
                     disabled={state.isPlayingAll}
                     title="이 문장 재생"

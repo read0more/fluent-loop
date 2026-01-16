@@ -1,0 +1,112 @@
+// App Startup Loader - 전체화면 로딩 오버레이
+
+.overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+
+.container {
+  text-align: center;
+  padding: 40px;
+}
+
+.logoArea {
+  margin-bottom: 40px;
+}
+
+.title {
+  color: #ffffff;
+  font-size: 2.5rem;
+  font-weight: 600;
+  margin: 0;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+}
+
+.loadingArea {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.spinner {
+  width: 60px;
+  height: 60px;
+  border: 4px solid rgba(255, 255, 255, 0.1);
+  border-top-color: #4da6ff;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 24px;
+}
+
+.message {
+  color: #e0e0e0;
+  font-size: 1.2rem;
+  margin: 0 0 12px 0;
+}
+
+.subMessage {
+  color: #a0a0a0;
+  font-size: 0.9rem;
+  margin: 0;
+  max-width: 400px;
+}
+
+.errorArea {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.errorIcon {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background-color: #e74c3c;
+  color: white;
+  font-size: 2rem;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 24px;
+}
+
+.errorMessage {
+  color: #ff6b6b;
+  font-size: 1.1rem;
+  margin: 0 0 24px 0;
+  max-width: 400px;
+}
+
+.retryButton {
+  background-color: #4da6ff;
+  color: white;
+  border: none;
+  padding: 12px 32px;
+  border-radius: 8px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background-color 0.2s, transform 0.1s;
+
+  &:hover {
+    background-color: #3d96ef;
+  }
+
+  &:active {
+    transform: scale(0.98);
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

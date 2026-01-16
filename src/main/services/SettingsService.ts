@@ -59,6 +59,7 @@ export class SettingsService implements ISettingsService {
 
       const settings: AppSettings = {
         ttsVoiceId: 'en-US-AriaNeural',
+        ttsVoiceIdUser: 'en-US-GuyNeural',
         recordingSavePath: path.join(app.getPath('userData'), 'data', 'recordings', 'step2'),
       };
 
@@ -91,6 +92,7 @@ export class SettingsService implements ISettingsService {
     try {
       const defaultSettings = {
         ttsVoiceId: 'en-US-AriaNeural',
+        ttsVoiceIdUser: 'en-US-GuyNeural',
         recordingSavePath: '',
       };
 

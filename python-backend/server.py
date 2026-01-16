@@ -2,12 +2,16 @@ from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from fastapi.responses import JSONResponse, FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+from dotenv import load_dotenv
 import uvicorn
 import os
 import tempfile
 from datetime import datetime
 from stt import WhisperSTT
-from tts import EdgeTTSService
+from tts import TTSProviderFactory, ITTSProvider
+
+# 환경 변수 로딩 (앱 시작 전)
+load_dotenv()
 
 # FastAPI 앱 생성
 app = FastAPI(
@@ -27,7 +31,12 @@ app.add_middleware(
 
 # 서비스 인스턴스 (앱 시작 시 로드)
 whisper_stt: WhisperSTT | None = None
-edge_tts: EdgeTTSService | None = None
+tts_provider: ITTSProvider | None = None
+
+# TTS 초기화 상태 추적
+tts_init_status: str = "pending"  # pending, downloading, ready, error
+tts_init_message: str = ""
+tts_provider_type: str = os.getenv("TTS_PROVIDER", "supertonic").lower()
 
 # TTS 요청 모델
 class TTSRequest(BaseModel):
@@ -37,21 +46,47 @@ class TTSRequest(BaseModel):
 @app.on_event("startup")
 async def startup_event():
     """앱 시작 시 Whisper 모델 및 TTS 서비스 로드"""
-    global whisper_stt, edge_tts
+    global whisper_stt, tts_provider
 
     # Whisper STT 초기화
-    model_size = os.getenv("WHISPER_MODEL", "base")
+    model_size = os.getenv("WHISPER_MODEL", "medium")
     use_gpu = os.getenv("USE_GPU", "false").lower() == "true"
 
     print(f"Initializing Whisper STT (model: {model_size}, gpu: {use_gpu})...")
     whisper_stt = WhisperSTT(model_size=model_size, use_gpu=use_gpu)
     print("Whisper STT initialized successfully")
 
-    # Edge TTS 초기화
-    default_voice = os.getenv("TTS_VOICE", "en-US-AriaNeural")
-    print(f"Initializing Edge TTS (voice: {default_voice})...")
-    edge_tts = EdgeTTSService(voice_id=default_voice)
-    print("Edge TTS initialized successfully")
+    # TTS Provider 초기화 (Factory 패턴)
+    global tts_init_status, tts_init_message
+    try:
+        print("Initializing TTS Provider...")
+
+        # Supertonic은 모델 다운로드가 필요할 수 있음
+        if tts_provider_type == "supertonic":
+            tts_init_status = "downloading"
+            tts_init_message = "TTS 모델 다운로드 중... (최초 실행 시 ~260MB)"
+            print(f"[TTS] {tts_init_message}")
+        else:
+            tts_init_status = "downloading"
+            tts_init_message = "TTS 서비스 초기화 중..."
+
+        tts_provider = TTSProviderFactory.create_provider()
+        provider_info = tts_provider.get_provider_info()
+
+        tts_init_status = "ready"
+        tts_init_message = "TTS 서비스 준비 완료"
+        print(f"TTS Provider initialized: {provider_info}")
+    except ValueError as e:
+        tts_init_status = "error"
+        tts_init_message = str(e)
+        print(f"[ERROR] Failed to initialize TTS provider: {e}")
+        print("[WARN] TTS service is disabled. STT (Whisper) is still available.")
+        # TTS 없이 서버는 계속 동작 (Whisper만 사용 가능)
+    except Exception as e:
+        tts_init_status = "error"
+        tts_init_message = str(e)
+        print(f"[ERROR] Unexpected error during TTS initialization: {e}")
+        print("[WARN] TTS service is disabled.")
 
 @app.get("/health")
 async def health_check():
@@ -68,15 +103,27 @@ async def health_check():
 
     model_info = whisper_stt.get_model_info()
 
-    return {
+    health_data = {
         "status": "ok",
         "whisper_loaded": True,
         "whisper_model": model_info["model_size"],
         "device": model_info["device"],
         "gpu_available": model_info["gpu_available"],
-        "tts_loaded": edge_tts is not None,
+        "tts_loaded": tts_provider is not None,
+        "tts_status": tts_init_status,
+        "tts_message": tts_init_message,
+        "tts_provider_type": tts_provider_type,
+        "tts_requires_download": tts_provider_type == "supertonic",
         "timestamp": datetime.now().isoformat()
     }
+
+    # TTS 프로바이더 정보 추가
+    if tts_provider:
+        provider_info = tts_provider.get_provider_info()
+        health_data["tts_provider"] = provider_info["provider"]
+        health_data["tts_voice"] = provider_info["default_voice"]
+
+    return health_data
 
 @app.post("/stt/transcribe")
 async def transcribe_audio(
@@ -192,13 +239,14 @@ async def synthesize_speech(request: TTSRequest):
             "success": bool,
             "file_path": str,
             "duration": float,
-            "voice_id": str
+            "voice_id": str,
+            "provider": str
         }
     """
-    if edge_tts is None:
+    if tts_provider is None:
         raise HTTPException(
             status_code=503,
-            detail="TTS service not loaded"
+            detail="TTS provider not initialized"
         )
 
     # 텍스트 검증
@@ -229,14 +277,15 @@ async def synthesize_speech(request: TTSRequest):
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         output_path = os.path.join(temp_dir, f"tts_{timestamp}.mp3")
 
-        # TTS 생성 (비동기)
-        result = await edge_tts.synthesize_async(
+        # TTS 생성 (프로바이더 추상화)
+        result = await tts_provider.synthesize_async(
             request.text,
             output_path,
             request.voice_id
         )
 
         if not result["success"]:
+            # 에러 응답 (기존과 동일)
             return JSONResponse(
                 status_code=400 if "voice" in result.get("error", "").lower() else 500,
                 content=result
@@ -272,14 +321,14 @@ async def get_available_voices():
             ]
         }
     """
-    if edge_tts is None:
+    if tts_provider is None:
         raise HTTPException(
             status_code=503,
-            detail="TTS service not loaded"
+            detail="TTS provider not initialized"
         )
 
     try:
-        voices = await edge_tts.get_available_voices_async()
+        voices = await tts_provider.get_available_voices_async()
 
         return {
             "voices": voices

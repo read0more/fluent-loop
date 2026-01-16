@@ -6,12 +6,14 @@ export interface VoiceSelectorProps {
   value: string;
   onChange: (voiceId: string) => void;
   disabled?: boolean;
+  label?: string;
 }
 
 export const VoiceSelector: React.FC<VoiceSelectorProps> = ({
   value,
   onChange,
   disabled = false,
+  label = 'TTS 음성 선택',
 }) => {
   const [voices, setVoices] = useState<Voice[]>([]);
   const [loading, setLoading] = useState(true);
@@ -44,7 +46,7 @@ export const VoiceSelector: React.FC<VoiceSelectorProps> = ({
 
   return (
     <div className={styles.voiceSelector}>
-      <label className={styles.voiceSelectorLabel}>TTS 음성 선택</label>
+      <label className={styles.voiceSelectorLabel}>{label}</label>
 
       {loading && <div className={styles.voiceSelectorLoading}>음성 목록 로드 중...</div>}
 

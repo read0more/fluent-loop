@@ -11,8 +11,21 @@ interface AxiosLikeError {
   };
 }
 
+export interface BackendHealthStatus {
+  status: string;
+  whisper_loaded: boolean;
+  tts_loaded: boolean;
+  tts_status: 'pending' | 'downloading' | 'ready' | 'error';
+  tts_message: string;
+  tts_provider_type: string;
+  tts_requires_download: boolean;
+  tts_provider?: string;
+  tts_voice?: string;
+}
+
 export interface ITTSService {
   checkHealth(): Promise<boolean>;
+  getHealthStatus(): Promise<BackendHealthStatus | null>;
   synthesizeSpeech(text: string, voiceId?: string): Promise<TTSResult>;
   getAvailableVoices(): Promise<Voice[]>;
 }
@@ -41,6 +54,17 @@ export class TTSService implements ITTSService {
       );
     } catch {
       return false;
+    }
+  }
+
+  async getHealthStatus(): Promise<BackendHealthStatus | null> {
+    try {
+      const response = await axios.get<BackendHealthStatus>(`${this.baseUrl}/health`, {
+        timeout: 10000,
+      });
+      return response.data;
+    } catch {
+      return null;
     }
   }
 

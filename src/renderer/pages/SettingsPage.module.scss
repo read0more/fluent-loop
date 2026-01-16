@@ -78,6 +78,15 @@
   color: var(--text-muted);
   font-size: 0.9em;
   margin-top: var(--spacing-xs);
+  margin-bottom: var(--spacing-lg);
+}
+
+.voiceGroup {
+  margin-bottom: var(--spacing-lg);
+
+  &:last-child {
+    margin-bottom: 0;
+  }
 }
 
 .actions {
