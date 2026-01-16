@@ -9,6 +9,7 @@ export const SettingsPage: React.FC = () => {
   const [state, setState] = useState<SettingsPageState>('loading');
   const [settings, setSettings] = useState<AppSettings>({
     ttsVoiceId: 'en-US-AriaNeural',
+    ttsVoiceIdUser: 'en-US-GuyNeural',
     recordingSavePath: '',
   });
   const [error, setError] = useState<string | null>(null);
@@ -42,7 +43,7 @@ export const SettingsPage: React.FC = () => {
     setSuccessMessage(null);
 
     try {
-      // TTS 음성 ID 저장
+      // 화자A (AI 및 기본) TTS 음성 ID 저장
       const voiceResponse = await window.electron.invoke(
         'save-setting',
         'ttsVoiceId',
@@ -50,7 +51,18 @@ export const SettingsPage: React.FC = () => {
       );
 
       if (!voiceResponse.success) {
-        throw new Error(voiceResponse.error || 'TTS 음성 설정 저장 실패');
+        throw new Error(voiceResponse.error || 'AI 음성 설정 저장 실패');
+      }
+
+      // 화자B (User) TTS 음성 ID 저장
+      const voiceUserResponse = await window.electron.invoke(
+        'save-setting',
+        'ttsVoiceIdUser',
+        settings.ttsVoiceIdUser
+      );
+
+      if (!voiceUserResponse.success) {
+        throw new Error(voiceUserResponse.error || 'User 음성 설정 저장 실패');
       }
 
       // 녹음 저장 경로 저장
@@ -147,13 +159,29 @@ export const SettingsPage: React.FC = () => {
           {/* TTS 음성 설정 */}
           <div className={styles.section}>
             <h2>TTS 음성</h2>
-            <VoiceSelector
-              value={settings.ttsVoiceId}
-              onChange={(voiceId) =>
-                setSettings((prev) => ({ ...prev, ttsVoiceId: voiceId }))
-              }
-              disabled={state === 'saving'}
-            />
+            <p className={styles.hint}>
+              5, 6단계 대화에서 화자별로 다른 음성을 사용합니다.
+            </p>
+            <div className={styles.voiceGroup}>
+              <VoiceSelector
+                value={settings.ttsVoiceId}
+                onChange={(voiceId) =>
+                  setSettings((prev) => ({ ...prev, ttsVoiceId: voiceId }))
+                }
+                disabled={state === 'saving'}
+                label="화자A (AI 및 기본 TTS)"
+              />
+            </div>
+            <div className={styles.voiceGroup}>
+              <VoiceSelector
+                value={settings.ttsVoiceIdUser}
+                onChange={(voiceId) =>
+                  setSettings((prev) => ({ ...prev, ttsVoiceIdUser: voiceId }))
+                }
+                disabled={state === 'saving'}
+                label="화자B (User)"
+              />
+            </div>
           </div>
 
           {/* 녹음 저장 경로 설정 */}

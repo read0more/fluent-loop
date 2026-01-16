@@ -1,5 +1,5 @@
 import { ipcMain, IpcMainInvokeEvent, dialog } from 'electron';
-import { TTSService } from '../services/TTSService';
+import { TTSService, BackendHealthStatus } from '../services/TTSService';
 import { TTSCacheService } from '../services/TTSCacheService';
 import { AudioService } from '../services/AudioService';
 import { SettingsService } from '../services/SettingsService';
@@ -29,6 +29,7 @@ export async function registerStep2Handlers(): Promise<void> {
   ipcMain.handle('synthesize-tts', handleSynthesizeTTS);
   ipcMain.handle('get-tts-voices', handleGetTTSVoices);
   ipcMain.handle('clear-tts-cache', handleClearTTSCache);
+  ipcMain.handle('get-backend-health', handleGetBackendHealth);
 
   // 녹음 관련 핸들러
   ipcMain.handle('start-recording-step2', handleStartRecordingStep2);
@@ -45,21 +46,45 @@ export async function registerStep2Handlers(): Promise<void> {
   ipcMain.handle('select-folder', handleSelectFolder);
 }
 
+// TTS 요청 타입 (speaker 지원)
+interface TTSRequestWithSpeaker {
+  text: string;
+  voiceId?: string;
+  speaker?: 'user' | 'ai';
+}
+
 // ==================== TTS 핸들러 ====================
 
 async function handleSynthesizeTTS(
   _event: IpcMainInvokeEvent,
-  text: string,
+  textOrRequest: string | TTSRequestWithSpeaker,
   voiceId?: string
 ): Promise<IPCResponse<TTSResult>> {
   try {
-    // 설정에서 기본 음성 가져오기
-    if (!voiceId) {
-      const defaultVoice = await settingsService.getSetting('ttsVoiceId');
-      voiceId = defaultVoice || 'en-US-AriaNeural';
+    let text: string;
+    let effectiveVoiceId: string | undefined = voiceId;
+
+    // 호환성: 기존 string 파라미터 또는 객체 파라미터 지원
+    if (typeof textOrRequest === 'string') {
+      text = textOrRequest;
+    } else {
+      text = textOrRequest.text;
+      effectiveVoiceId = textOrRequest.voiceId;
+
+      // speaker가 있으면 해당 화자의 설정 음성 사용
+      if (!effectiveVoiceId && textOrRequest.speaker) {
+        const settingKey = textOrRequest.speaker === 'user' ? 'ttsVoiceIdUser' : 'ttsVoiceId';
+        effectiveVoiceId = (await settingsService.getSetting(settingKey)) || undefined;
+      }
     }
 
-    const result = await ttsService.synthesizeSpeech(text, voiceId);
+    // voiceId가 없으면 기본 음성(AI 음성) 사용
+    if (!effectiveVoiceId) {
+      const defaultVoice = await settingsService.getSetting('ttsVoiceId');
+      effectiveVoiceId = defaultVoice || 'en-US-AriaNeural';
+    }
+
+    const result = await ttsService.synthesizeSpeech(text, effectiveVoiceId);
 
     return {
       success: true,
@@ -114,6 +139,29 @@ async function handleClearTTSCache(): Promise<IPCResponse<void>> {
     return {
       success: false,
       error: '캐시 삭제에 실패했습니다.',
+    };
+  }
+}
+
+async function handleGetBackendHealth(): Promise<IPCResponse<BackendHealthStatus>> {
+  try {
+    const healthStatus = await ttsService.getHealthStatus();
+
+    if (!healthStatus) {
+      return {
+        success: false,
+        error: '백엔드 서버에 연결할 수 없습니다.',
+      };
+    }
+
+    return {
+      success: true,
+      data: healthStatus,
+    };
+  } catch {
+    return {
+      success: false,
+      error: '백엔드 상태 확인에 실패했습니다.',
     };
   }
 }

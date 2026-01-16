@@ -33,6 +33,11 @@ app.add_middleware(
 whisper_stt: WhisperSTT | None = None
 tts_provider: ITTSProvider | None = None
 
+# TTS 초기화 상태 추적
+tts_init_status: str = "pending"  # pending, downloading, ready, error
+tts_init_message: str = ""
+tts_provider_type: str = os.getenv("TTS_PROVIDER", "supertonic").lower()
+
 # TTS 요청 모델
 class TTSRequest(BaseModel):
     text: str
@@ -44,7 +49,7 @@ async def startup_event():
     global whisper_stt, tts_provider
 
     # Whisper STT 초기화
-    model_size = os.getenv("WHISPER_MODEL", "base")
+    model_size = os.getenv("WHISPER_MODEL", "medium")
     use_gpu = os.getenv("USE_GPU", "false").lower() == "true"
 
     print(f"Initializing Whisper STT (model: {model_size}, gpu: {use_gpu})...")
@@ -52,16 +57,34 @@ async def startup_event():
     print("Whisper STT initialized successfully")
 
     # TTS Provider 초기화 (Factory 패턴)
+    global tts_init_status, tts_init_message
     try:
         print("Initializing TTS Provider...")
+
+        # Supertonic은 모델 다운로드가 필요할 수 있음
+        if tts_provider_type == "supertonic":
+            tts_init_status = "downloading"
+            tts_init_message = "TTS 모델 다운로드 중... (최초 실행 시 ~260MB)"
+            print(f"[TTS] {tts_init_message}")
+        else:
+            tts_init_status = "downloading"
+            tts_init_message = "TTS 서비스 초기화 중..."
+
         tts_provider = TTSProviderFactory.create_provider()
         provider_info = tts_provider.get_provider_info()
+
+        tts_init_status = "ready"
+        tts_init_message = "TTS 서비스 준비 완료"
         print(f"TTS Provider initialized: {provider_info}")
     except ValueError as e:
+        tts_init_status = "error"
+        tts_init_message = str(e)
         print(f"[ERROR] Failed to initialize TTS provider: {e}")
         print("[WARN] TTS service is disabled. STT (Whisper) is still available.")
         # TTS 없이 서버는 계속 동작 (Whisper만 사용 가능)
     except Exception as e:
+        tts_init_status = "error"
+        tts_init_message = str(e)
         print(f"[ERROR] Unexpected error during TTS initialization: {e}")
         print("[WARN] TTS service is disabled.")
 
@@ -87,6 +110,10 @@ async def health_check():
         "device": model_info["device"],
         "gpu_available": model_info["gpu_available"],
         "tts_loaded": tts_provider is not None,
+        "tts_status": tts_init_status,
+        "tts_message": tts_init_message,
+        "tts_provider_type": tts_provider_type,
+        "tts_requires_download": tts_provider_type == "supertonic",
         "timestamp": datetime.now().isoformat()
     }
 

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { HashRouter, Routes, Route, NavLink } from 'react-router-dom';
 import { TopicCreationPage } from './pages/TopicCreationPage';
@@ -8,6 +8,7 @@ import { CorrectionPage } from './pages/CorrectionPage';
 import { RolePlayPage } from './pages/RolePlayPage';
 import { ConversationCorrectionPage } from './pages/ConversationCorrectionPage';
 import { SettingsPage } from './pages/SettingsPage';
+import { AppStartupLoader } from './components/AppStartupLoader';
 import './styles/global.scss';
 
 const steps = [
@@ -20,6 +21,12 @@ const steps = [
 ];
 
 const App: React.FC = () => {
+  const [isReady, setIsReady] = useState(false);
+
+  if (!isReady) {
+    return <AppStartupLoader onReady={() => setIsReady(true)} />;
+  }
+
   return (
     <HashRouter>
       {/* Navigation */}

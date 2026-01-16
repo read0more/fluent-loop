@@ -4,6 +4,7 @@ import { MessageRepository } from '../database/repositories/MessageRepository';
 import { TopicRepository } from '../database/repositories/TopicRepository';
 import { ClaudeService, TopicContext, ConversationMessage } from './ClaudeService';
 import { TTSService } from './TTSService';
+import { SettingsService } from './SettingsService';
 import { AppError, ErrorCode } from '../errors/AppError';
 import {
   Message,
@@ -30,6 +31,7 @@ export class ConversationService implements IConversationService {
   private topicRepo: TopicRepository;
   private claudeService: ClaudeService;
   private ttsService: TTSService;
+  private settingsService: SettingsService;
 
   constructor() {
     const db = getDatabase();
@@ -38,6 +40,7 @@ export class ConversationService implements IConversationService {
     this.topicRepo = new TopicRepository(db);
     this.claudeService = new ClaudeService();
     this.ttsService = new TTSService();
+    this.settingsService = new SettingsService(db);
   }
 
   /**
@@ -71,10 +74,11 @@ export class ConversationService implements IConversationService {
         true
       );
 
-      // 5. TTS 생성
+      // 5. TTS 생성 (설정된 AI 음성 사용)
       let ttsPath = '';
       try {
-        const ttsResult = await this.ttsService.synthesizeSpeech(aiContent);
+        const voiceId = (await this.settingsService.getSetting('ttsVoiceId')) || 'en-US-AriaNeural';
+        const ttsResult = await this.ttsService.synthesizeSpeech(aiContent, voiceId);
         ttsPath = ttsResult.filePath || '';
       } catch (ttsError) {
         // TTS 실패 시에도 텍스트는 반환 (음성 없이 진행)
@@ -189,10 +193,11 @@ export class ConversationService implements IConversationService {
       false
     );
 
-    // 9. TTS 생성
+    // 9. TTS 생성 (설정된 AI 음성 사용)
     let ttsPath = '';
     try {
-      const ttsResult = await this.ttsService.synthesizeSpeech(aiContent);
+      const voiceId = (await this.settingsService.getSetting('ttsVoiceId')) || 'en-US-AriaNeural';
+      const ttsResult = await this.ttsService.synthesizeSpeech(aiContent, voiceId);
       ttsPath = ttsResult.filePath || '';
     } catch (ttsError) {
       console.error('[TTS Error] Failed to generate TTS for AI response:', ttsError);
