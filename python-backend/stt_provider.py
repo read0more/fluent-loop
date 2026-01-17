@@ -13,7 +13,6 @@ from abc import ABC, abstractmethod
 from typing import Optional
 from enum import Enum
 from pydantic import BaseModel
-import whisper
 import torch
 from faster_whisper import WhisperModel
 
@@ -91,79 +90,25 @@ class ISTTProvider(ABC):
         pass
 
 
-# ==================== WhisperSTTProvider (기존 - 리팩토링) ====================
-
-class WhisperSTTProvider(ISTTProvider):
-    """OpenAI Whisper 기반 STT Provider (Step3용 배치 처리)"""
-
-    def __init__(self, model_size: str = "base"):
-        """
-        Args:
-            model_size: 모델 크기 (tiny, base, small, medium, large)
-        """
-        self.model_size = model_size
-        self.device = "cuda" if torch.cuda.is_available() else "cpu"
-        self.model = whisper.load_model(model_size, device=self.device)
-        print(f"[WhisperSTT] Model loaded: {model_size} on {self.device}")
-
-    def transcribe(self, audio_path: str, language: str = "ko") -> STTResult:
-        """전체 파일 배치 처리"""
-        try:
-            result = self.model.transcribe(
-                audio_path,
-                language=language,
-                fp16=False
-            )
-
-            return STTResult(
-                success=True,
-                text=result["text"].strip(),
-                language=language,
-                duration=result.get("duration"),
-                is_final=True
-            )
-        except Exception as e:
-            return STTResult(
-                success=False,
-                text="",
-                language=language,
-                error=str(e)
-            )
-
-    def transcribe_chunk(
-        self,
-        audio_path: str,
-        language: str = "ko",
-        context: Optional[str] = None
-    ) -> STTResult:
-        """청크 처리 (WhisperSTT는 배치 전용이므로 전체 처리와 동일)"""
-        result = self.transcribe(audio_path, language)
-        result.is_final = False  # 청크 처리 시 is_final=False
-        return result
-
-    def get_model_info(self) -> dict:
-        return {
-            "name": "OpenAI Whisper",
-            "version": self.model_size,
-            "language_support": ["ko", "en", "ja", "zh", "es", "fr", "de"]
-        }
-
-
-# ==================== FasterWhisperSTTProvider (신규 - Step5 실시간용) ====================
+# ==================== FasterWhisperSTTProvider ====================
 
 class FasterWhisperSTTProvider(ISTTProvider):
     """faster-whisper 기반 STT Provider (Step5 실시간 스트리밍용)"""
 
-    def __init__(self, model_size: str = "base", compute_type: str = "auto"):
+    def __init__(self, model_size: str = "base", compute_type: str = "auto", use_gpu: bool = True):
         """
         Args:
             model_size: 모델 크기 (tiny, base, small, medium, large-v2, large-v3)
             compute_type: 연산 타입 (int8, int8_float16, float16, float32, auto)
+            use_gpu: GPU 사용 여부 (False면 강제 CPU 사용)
         """
         self.model_size = model_size
 
-        # GPU 사용 가능 시 CUDA, 아니면 CPU
-        self.device = "cuda" if torch.cuda.is_available() else "cpu"
+        # GPU 사용 여부 결정: use_gpu=False면 강제 CPU, True면 GPU 가용 시 사용
+        if use_gpu and torch.cuda.is_available():
+            self.device = "cuda"
+        else:
+            self.device = "cpu"
 
         # compute_type 자동 결정
         if compute_type == "auto":
@@ -266,7 +211,6 @@ class FasterWhisperSTTProvider(ISTTProvider):
 # ==================== STT Provider 팩토리 ====================
 
 class STTProviderType(str, Enum):
-    WHISPER = "whisper"
     FASTER_WHISPER = "faster-whisper"
 
 
@@ -280,7 +224,8 @@ class STTProviderFactory:
         cls,
         provider_type: STTProviderType,
         model_size: str = "base",
-        compute_type: str = "auto"
+        compute_type: str = "auto",
+        use_gpu: bool = True
     ) -> ISTTProvider:
         """
         Provider 생성 (싱글톤 패턴)
@@ -289,6 +234,7 @@ class STTProviderFactory:
             provider_type: Provider 타입
             model_size: 모델 크기
             compute_type: 연산 타입 (faster-whisper only)
+            use_gpu: GPU 사용 여부 (faster-whisper only)
 
         Returns:
             ISTTProvider 구현체
@@ -297,12 +243,11 @@ class STTProviderFactory:
         if provider_type in cls._providers:
             return cls._providers[provider_type]
 
-        if provider_type == STTProviderType.WHISPER:
-            provider = WhisperSTTProvider(model_size=model_size)
-        elif provider_type == STTProviderType.FASTER_WHISPER:
+        if provider_type == STTProviderType.FASTER_WHISPER:
             provider = FasterWhisperSTTProvider(
                 model_size=model_size,
-                compute_type=compute_type
+                compute_type=compute_type,
+                use_gpu=use_gpu
             )
         else:
             raise ValueError(f"Unknown provider type: {provider_type}")
@@ -314,3 +259,10 @@ class STTProviderFactory:
     def get_provider(cls, provider_type: STTProviderType) -> Optional[ISTTProvider]:
         """이미 생성된 Provider 반환"""
         return cls._providers.get(provider_type)
+
+    @classmethod
+    def clear_provider(cls, provider_type: STTProviderType) -> None:
+        """캐싱된 Provider 제거 (설정 변경 시 재생성 용도)"""
+        if provider_type in cls._providers:
+            del cls._providers[provider_type]
+            print(f"[STTProviderFactory] Cleared cached provider: {provider_type.value}")

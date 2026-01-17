@@ -3,6 +3,8 @@ import fs from 'fs';
 import { ConversationService } from '../services/ConversationService';
 import { AudioService } from '../services/AudioService';
 import { STTService } from '../services/STTService';
+import { SettingsService } from '../services/SettingsService';
+import { getDatabase } from '../database/db';
 import { AppError, ErrorCode } from '../errors/AppError';
 import {
   IPCResponse,
@@ -23,12 +25,14 @@ import {
 let conversationService: ConversationService;
 let audioService: AudioService;
 let sttService: STTService;
+let settingsService: SettingsService;
 
 export function registerStep5Handlers(): void {
   // Service initialization
   conversationService = new ConversationService();
   audioService = new AudioService();
   sttService = new STTService();
+  settingsService = new SettingsService(getDatabase());
 
   // STT 핸들러 등록
   ipcMain.handle('transcribe-step5-audio', handleTranscribeStep5Audio);
@@ -267,6 +271,21 @@ async function handleTranscribeStep5Audio(
     console.log('[Step5 STT] Buffer size:', audioBuffer.length);
 
     const filePath = await audioService.saveRecordingStep5(audioBuffer);
+
+    // WebM 유효성 검증 실패 시 빈 텍스트 반환 (graceful handling)
+    if (filePath === null) {
+      console.log('[Step5 STT] Invalid WebM data, returning empty text');
+      return {
+        success: true,
+        data: {
+          success: true,
+          text: '',
+          language,
+          duration: 0,
+        },
+      };
+    }
+
     console.log('[Step5 STT] Saved to:', filePath);
 
     // 2. STT 변환
@@ -318,6 +337,7 @@ interface TranscribeStreamParams {
   audioChunk: Uint8Array;
   language?: string;
   context?: string; // 이전 청크의 텍스트
+  isRecording?: boolean; // 녹음 중 여부 (true일 때 타임아웃 비활성화)
 }
 
 async function handleTranscribeStep5AudioStream(
@@ -337,7 +357,7 @@ async function handleTranscribeStep5AudioStream(
   );
 
   try {
-    const { audioChunk, language = 'en', context = '' } = params;
+    const { audioChunk, language = 'en', context = '', isRecording = false } = params;
 
     // Validation
     if (!audioChunk || audioChunk.length === 0) {
@@ -351,12 +371,46 @@ async function handleTranscribeStep5AudioStream(
 
     console.log('[Step5 STT Stream] Audio chunk size:', audioChunk.length);
 
+    const MIN_CHUNK_SIZE = 10 * 1024; // 10KB - 작은 청크는 WebM 구조 손상 위험
+    if (audioChunk.length < MIN_CHUNK_SIZE) {
+      console.log(
+        `[Step5 STT Stream] Chunk too small (${audioChunk.length} < ${MIN_CHUNK_SIZE}), skipping STT`
+      );
+      return {
+        success: true,
+        data: {
+          text: '',
+          language,
+          is_final: false,
+        },
+      };
+    }
+
     // 1. audioChunk를 임시 파일로 저장
     const audioBuffer = Buffer.isBuffer(audioChunk) ? audioChunk : Buffer.from(audioChunk);
     console.log('[Step5 STT Stream] Buffer size:', audioBuffer.length);
 
     const filePath = await audioService.saveRecordingStep5(audioBuffer);
+
+    // WebM 유효성 검증 실패 시 빈 텍스트 반환 (graceful handling)
+    if (filePath === null) {
+      console.log('[Step5 STT Stream] Invalid WebM data, returning empty text');
+      return {
+        success: true,
+        data: {
+          text: '',
+          language,
+          is_final: false,
+        },
+      };
+    }
+
     console.log('[Step5 STT Stream] Saved to:', filePath);
+
+    // GPU 사용 설정 읽기
+    const sttUseGpuSetting = await settingsService.getSetting('sttUseGpu');
+    const useGpu = sttUseGpuSetting === 'true';
+    console.log('[Step5 STT Stream] GPU setting:', useGpu);
 
     // 2. 실시간 STT 변환
     let transcribedText = '';
@@ -364,7 +418,13 @@ async function handleTranscribeStep5AudioStream(
 
     try {
       console.log('[Step5 STT Stream] Calling STT stream service with context:', context);
-      const sttResult = await sttService.transcribeAudioStream(filePath, language, context);
+      const sttResult = await sttService.transcribeAudioStream(
+        filePath,
+        language,
+        context,
+        useGpu,
+        isRecording
+      );
       console.log('[Step5 STT Stream] STT result:', sttResult);
 
       transcribedText = sttResult.text || '';

@@ -124,6 +124,7 @@ export const insertDefaultSettingsSQL = `
 INSERT OR IGNORE INTO settings (key, value) VALUES ('ttsVoiceId', 'en-US-AriaNeural');
 INSERT OR IGNORE INTO settings (key, value) VALUES ('ttsVoiceIdUser', 'en-US-GuyNeural');
 INSERT OR IGNORE INTO settings (key, value) VALUES ('recordingSavePath', '');
+INSERT OR IGNORE INTO settings (key, value) VALUES ('sttUseGpu', 'false');
 `;
 
 export function initializeDatabase(db: Database.Database): void {

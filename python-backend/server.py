@@ -7,13 +7,13 @@ import uvicorn
 import os
 import tempfile
 from datetime import datetime
-from stt import WhisperSTT
 from tts import TTSProviderFactory, ITTSProvider
 from stt_provider import (
     STTProviderFactory,
     STTProviderType,
     STTResult,
-    ISTTProvider
+    ISTTProvider,
+    FasterWhisperSTTProvider
 )
 
 # 환경 변수 로딩 (앱 시작 전)
@@ -36,12 +36,14 @@ app.add_middleware(
 )
 
 # 서비스 인스턴스 (앱 시작 시 로드)
-whisper_stt: WhisperSTT | None = None
 tts_provider: ITTSProvider | None = None
 
-# STT Provider 인스턴스 (신규 - KAN-21)
-stt_whisper_provider: ISTTProvider | None = None
-stt_faster_whisper_provider: ISTTProvider | None = None
+# STT Provider 인스턴스 - faster-whisper 통일 (KAN-21)
+stt_step3_provider: ISTTProvider | None = None  # Step3용 (medium 모델, 인식률 우선)
+stt_step5_provider: ISTTProvider | None = None  # Step5용 (small 모델, 속도 우선)
+
+# 현재 Step5 provider의 GPU 사용 설정 추적
+_current_step5_use_gpu: bool | None = None
 
 # TTS 초기화 상태 추적
 tts_init_status: str = "pending"  # pending, downloading, ready, error
@@ -55,37 +57,34 @@ class TTSRequest(BaseModel):
 
 @app.on_event("startup")
 async def startup_event():
-    """앱 시작 시 Whisper 모델 및 TTS 서비스 로드"""
-    global whisper_stt, tts_provider, stt_whisper_provider, stt_faster_whisper_provider
+    """앱 시작 시 STT 모델 및 TTS 서비스 로드"""
+    global tts_provider, stt_step3_provider, stt_step5_provider, _current_step5_use_gpu
 
-    # Whisper STT 초기화 (기존 - 호환성 유지)
-    model_size = os.getenv("WHISPER_MODEL", "medium")
-    use_gpu = os.getenv("USE_GPU", "false").lower() == "true"
+    # STT Provider 초기화 - faster-whisper 통일 (KAN-21)
+    print("Initializing STT Providers (faster-whisper)...")
+    use_gpu = os.getenv("STT_USE_GPU", "false").lower() == "true"
 
-    print(f"Initializing Whisper STT (model: {model_size}, gpu: {use_gpu})...")
-    whisper_stt = WhisperSTT(model_size=model_size, use_gpu=use_gpu)
-    print("Whisper STT initialized successfully")
-
-    # STT Provider 초기화 (신규 - KAN-21)
-    print("Initializing STT Providers...")
     try:
-        # Step3용 Whisper Provider (base 모델)
-        stt_whisper_provider = STTProviderFactory.create_provider(
-            STTProviderType.WHISPER,
-            model_size="base"
+        # Step3용 faster-whisper Provider (medium 모델, 인식률 우선)
+        print(f"[Server] Loading Step3 STT model (medium, gpu={use_gpu})...")
+        stt_step3_provider = FasterWhisperSTTProvider(
+            model_size="medium",
+            compute_type="auto",
+            use_gpu=use_gpu
         )
 
-        # Step5용 faster-whisper Provider (base 모델)
-        stt_faster_whisper_provider = STTProviderFactory.create_provider(
-            STTProviderType.FASTER_WHISPER,
-            model_size="base",
-            compute_type="auto"
+        # Step5용 faster-whisper Provider (small 모델, 속도 우선)
+        print(f"[Server] Loading Step5 STT model (small, gpu={use_gpu})...")
+        stt_step5_provider = FasterWhisperSTTProvider(
+            model_size="small",
+            compute_type="auto",
+            use_gpu=use_gpu
         )
+        _current_step5_use_gpu = use_gpu
 
-        print("[Server] All STT Providers initialized")
+        print("[Server] All STT Providers initialized (faster-whisper)")
     except Exception as e:
         print(f"[ERROR] Failed to initialize STT providers: {e}")
-        # STT Provider 초기화 실패 시에도 서버는 계속 동작 (기존 whisper_stt 사용 가능)
 
     # TTS Provider 초기화 (Factory 패턴)
     global tts_init_status, tts_init_message
@@ -122,24 +121,26 @@ async def startup_event():
 @app.get("/health")
 async def health_check():
     """헬스 체크 엔드포인트"""
-    if whisper_stt is None:
+    if stt_step3_provider is None and stt_step5_provider is None:
         return JSONResponse(
             status_code=503,
             content={
                 "status": "error",
-                "message": "Whisper model not loaded",
+                "message": "STT models not loaded",
                 "timestamp": datetime.now().isoformat()
             }
         )
 
-    model_info = whisper_stt.get_model_info()
+    # STT Provider 정보 수집
+    step3_info = stt_step3_provider.get_model_info() if stt_step3_provider else None
+    step5_info = stt_step5_provider.get_model_info() if stt_step5_provider else None
 
     health_data = {
         "status": "ok",
-        "whisper_loaded": True,
-        "whisper_model": model_info["model_size"],
-        "device": model_info["device"],
-        "gpu_available": model_info["gpu_available"],
+        "stt_loaded": True,
+        "stt_step3_model": step3_info["version"] if step3_info else None,
+        "stt_step5_model": step5_info["version"] if step5_info else None,
+        "stt_device": step3_info["device"] if step3_info else None,
         "tts_loaded": tts_provider is not None,
         "tts_status": tts_init_status,
         "tts_message": tts_init_message,
@@ -162,7 +163,7 @@ async def transcribe_audio(
     language: str = Form("ko")
 ):
     """
-    오디오 파일을 텍스트로 변환
+    오디오 파일을 텍스트로 변환 (Step3용 - medium 모델)
 
     Args:
         audio: 오디오 파일 (multipart/form-data)
@@ -176,10 +177,10 @@ async def transcribe_audio(
             "duration": float
         }
     """
-    if whisper_stt is None:
+    if stt_step3_provider is None:
         raise HTTPException(
             status_code=503,
-            detail="Whisper model not loaded"
+            detail="STT model not loaded"
         )
 
     # 파일 형식 검증
@@ -205,24 +206,24 @@ async def transcribe_audio(
             temp_file.write(content)
             temp_path = temp_file.name
 
-        # STT 실행
-        result = whisper_stt.transcribe(temp_path, language=language)
+        # STT 실행 (Step3용 medium 모델)
+        result = stt_step3_provider.transcribe(temp_path, language=language)
 
         # 빈 텍스트 확인
-        if not result["text"]:
+        if not result.text:
             return {
                 "success": False,
                 "error": "No speech detected",
                 "text": "",
                 "language": language,
-                "duration": result.get("duration", 0.0)
+                "duration": result.duration or 0.0
             }
 
         return {
             "success": True,
-            "text": result["text"],
-            "language": result["language"],
-            "duration": result.get("duration", 0.0)
+            "text": result.text,
+            "language": result.language,
+            "duration": result.duration or 0.0
         }
 
     except FileNotFoundError as e:
@@ -376,30 +377,51 @@ async def get_available_voices():
         )
 
 
-# ==================== STT 신규 엔드포인트 (KAN-21) ====================
+# ==================== STT 스트리밍 엔드포인트 (Step5용) ====================
 
 @app.post("/stt/stream-chunk")
 async def transcribe_audio_chunk(
     audio: UploadFile = File(...),
     language: str = Form("ko"),
-    context: str = Form("")  # 이전 청크의 텍스트 (컨텍스트)
+    context: str = Form(""),  # 이전 청크의 텍스트 (컨텍스트)
+    use_gpu: str = Form("false")  # GPU 사용 여부 ('true' | 'false')
 ) -> STTResult:
     """
-    오디오 청크 실시간 STT 변환 (Step5 RolePlay용)
+    오디오 청크 실시간 STT 변환 (Step5 RolePlay용 - small 모델)
 
     Args:
         audio: 오디오 청크 파일 (2-3초)
         language: 언어 코드
         context: 이전 청크의 텍스트 (정확도 향상용)
+        use_gpu: GPU 사용 여부 ('true' | 'false')
 
     Returns:
         STTResult: 변환 결과 (is_final=False)
     """
-    if stt_faster_whisper_provider is None:
-        raise HTTPException(
-            status_code=503,
-            detail="FasterWhisper Provider not initialized"
+    global stt_step5_provider, _current_step5_use_gpu
+
+    # use_gpu 파라미터 파싱 (문자열 -> bool)
+    use_gpu_bool = use_gpu.lower() == "true"
+
+    # GPU 설정이 변경되면 provider 재생성
+    if _current_step5_use_gpu is not None and _current_step5_use_gpu != use_gpu_bool:
+        print(f"[Server] GPU setting changed: {_current_step5_use_gpu} -> {use_gpu_bool}, recreating Step5 provider...")
+        stt_step5_provider = FasterWhisperSTTProvider(
+            model_size="small",
+            compute_type="auto",
+            use_gpu=use_gpu_bool
         )
+        _current_step5_use_gpu = use_gpu_bool
+
+    # Provider가 없으면 생성
+    if stt_step5_provider is None:
+        print(f"[Server] Creating Step5 STT provider with use_gpu={use_gpu_bool}")
+        stt_step5_provider = FasterWhisperSTTProvider(
+            model_size="small",
+            compute_type="auto",
+            use_gpu=use_gpu_bool
+        )
+        _current_step5_use_gpu = use_gpu_bool
 
     temp_dir = tempfile.gettempdir()
     chunk_path = os.path.join(temp_dir, f"chunk_{os.getpid()}_{os.urandom(4).hex()}.webm")
@@ -408,8 +430,8 @@ async def transcribe_audio_chunk(
         with open(chunk_path, "wb") as f:
             f.write(await audio.read())
 
-        # FasterWhisperSTT Provider 사용
-        result = stt_faster_whisper_provider.transcribe_chunk(
+        # Step5용 faster-whisper Provider 사용
+        result = stt_step5_provider.transcribe_chunk(
             chunk_path,
             language,
             context=context if context else None
@@ -435,12 +457,9 @@ async def transcribe_audio_chunk(
 @app.get("/stt/providers")
 async def get_providers_info():
     """현재 로드된 Provider 정보 반환 (디버깅용)"""
-    whisper_provider = STTProviderFactory.get_provider(STTProviderType.WHISPER)
-    faster_provider = STTProviderFactory.get_provider(STTProviderType.FASTER_WHISPER)
-
     return {
-        "whisper": whisper_provider.get_model_info() if whisper_provider else None,
-        "faster_whisper": faster_provider.get_model_info() if faster_provider else None
+        "step3": stt_step3_provider.get_model_info() if stt_step3_provider else None,
+        "step5": stt_step5_provider.get_model_info() if stt_step5_provider else None
     }
 
 

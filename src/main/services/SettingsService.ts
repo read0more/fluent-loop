@@ -61,6 +61,7 @@ export class SettingsService implements ISettingsService {
         ttsVoiceId: 'en-US-AriaNeural',
         ttsVoiceIdUser: 'en-US-GuyNeural',
         recordingSavePath: path.join(app.getPath('userData'), 'data', 'recordings', 'step2'),
+        sttUseGpu: 'false',
       };
 
       for (const row of rows) {
@@ -94,6 +95,7 @@ export class SettingsService implements ISettingsService {
         ttsVoiceId: 'en-US-AriaNeural',
         ttsVoiceIdUser: 'en-US-GuyNeural',
         recordingSavePath: '',
+        sttUseGpu: 'false',
       };
 
       const stmt = this.db.prepare(`

@@ -147,3 +147,75 @@
   margin-bottom: var(--spacing-xl);
   text-align: center;
 }
+
+// 토글 스위치 스타일
+.toggleRow {
+  margin-bottom: var(--spacing-md);
+}
+
+.toggleLabel {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  gap: var(--spacing-md);
+}
+
+.toggleCheckbox {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.toggleSwitch {
+  position: relative;
+  width: 50px;
+  height: 26px;
+  background: var(--bg-surface-dark);
+  border: 1px solid var(--border-light);
+  border-radius: 13px;
+  transition: all var(--transition-fast);
+
+  &::after {
+    content: '';
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 20px;
+    height: 20px;
+    background: white;
+    border-radius: 50%;
+    transition: all var(--transition-fast);
+    box-shadow: var(--shadow-sm);
+  }
+}
+
+.toggleCheckbox:checked + .toggleSwitch {
+  background: var(--color-secondary);
+  border-color: var(--color-secondary);
+
+  &::after {
+    transform: translateX(24px);
+  }
+}
+
+.toggleCheckbox:disabled + .toggleSwitch {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.toggleText {
+  font-size: 1em;
+  color: var(--text-primary);
+}
+
+// 경고 문구 스타일
+.warning {
+  color: var(--color-warning);
+  font-size: 0.85em;
+  margin-top: var(--spacing-xs);
+  padding: var(--spacing-sm) var(--spacing-md);
+  background: rgba(255, 193, 7, 0.1);
+  border-left: 3px solid var(--color-warning);
+  border-radius: var(--radius-sm);
+}

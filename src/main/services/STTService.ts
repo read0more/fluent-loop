@@ -17,7 +17,9 @@ export interface ISTTService {
   transcribeAudioStream(
     filePath: string,
     language?: string,
-    context?: string
+    context?: string,
+    useGpu?: boolean,
+    isRecording?: boolean
   ): Promise<STTStreamChunkResult>;
 }
 
@@ -103,12 +105,16 @@ export class STTService implements ISTTService {
    * @param filePath 청크 오디오 파일 경로
    * @param language 언어 코드 (기본값: ko)
    * @param context 이전 청크의 텍스트 (컨텍스트 유지)
+   * @param useGpu GPU 사용 여부 (기본값: false)
+   * @param isRecording 녹음 중 여부 (true일 때 타임아웃 비활성화)
    * @returns STT 변환 결과 (is_final=false)
    */
   async transcribeAudioStream(
     filePath: string,
     language: string = 'ko',
-    context: string = ''
+    context: string = '',
+    useGpu: boolean = false,
+    isRecording: boolean = false
   ): Promise<STTStreamChunkResult> {
     try {
       // 파일 존재 확인
@@ -124,13 +130,14 @@ export class STTService implements ISTTService {
       formData.append('audio', fs.createReadStream(filePath));
       formData.append('language', language);
       formData.append('context', context);
+      formData.append('use_gpu', useGpu ? 'true' : 'false');
 
       const response = await axios.post<STTStreamChunkResult>(
         `${this.baseUrl}/stt/stream-chunk`,
         formData,
         {
           headers: formData.getHeaders(),
-          timeout: 5000, // 실시간 처리용 5초 타임아웃
+          timeout: isRecording ? 0 : 10000, // 녹음 중이면 타임아웃 없음
         }
       );
 

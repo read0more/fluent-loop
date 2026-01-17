@@ -16,6 +16,7 @@ interface UseRealtimeSTTResult {
   isRecording: boolean;
   isProcessing: boolean;
   error: string | null;
+  stream: MediaStream | null;
   startRecording: () => Promise<void>;
   stopRecording: () => Promise<void>;
   resetText: () => void;
@@ -46,10 +47,12 @@ export const useRealtimeSTT = (
   const [isRecording, setIsRecording] = useState<boolean>(false);
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const [stream, setStream] = useState<MediaStream | null>(null);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const contextRef = useRef<string>(''); // 이전 청크의 텍스트 (컨텍스트)
+  const accumulatedChunksRef = useRef<Blob[]>([]); // 청크 누적용 (완전한 WebM 생성)
 
   /**
    * 녹음 시작
@@ -59,13 +62,15 @@ export const useRealtimeSTT = (
       setError(null);
       setText('');
       contextRef.current = '';
+      accumulatedChunksRef.current = []; // 청크 배열 초기화
 
       // 마이크 권한 요청
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      streamRef.current = stream;
+      const mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      streamRef.current = mediaStream;
+      setStream(mediaStream);
 
       // MediaRecorder 생성 (WebM 포맷)
-      const mediaRecorder = new MediaRecorder(stream, {
+      const mediaRecorder = new MediaRecorder(mediaStream, {
         mimeType: 'audio/webm;codecs=opus',
       });
       mediaRecorderRef.current = mediaRecorder;
@@ -76,26 +81,35 @@ export const useRealtimeSTT = (
           setIsProcessing(true);
 
           try {
-            // Blob → ArrayBuffer → Uint8Array
-            const arrayBuffer = await event.data.arrayBuffer();
+            // 새 청크를 누적 (완전한 WebM 파일 생성을 위해)
+            accumulatedChunksRef.current.push(event.data);
+
+            // 모든 청크를 합쳐서 완전한 WebM 생성
+            // MediaRecorder의 첫 번째 청크에만 WebM 헤더가 포함되므로,
+            // 후속 청크들도 유효한 파일로 만들기 위해 항상 전체를 합침
+            const completeBlob = new Blob(accumulatedChunksRef.current, {
+              type: 'audio/webm',
+            });
+            const arrayBuffer = await completeBlob.arrayBuffer();
             const audioChunk = new Uint8Array(arrayBuffer);
 
-            // IPC 호출: 실시간 STT
+            // IPC 호출: 실시간 STT (완전한 WebM 전송)
             const response: STTStreamResponse = await window.electron.invoke(
               'transcribe-step5-audio-stream',
               {
                 audioChunk,
                 language,
                 context: contextRef.current,
+                isRecording: true, // 녹음 중 타임아웃 비활성화
               }
             );
 
             if (response.success && response.data?.text) {
               const newText = response.data.text.trim();
 
-              // 텍스트가 비어있지 않으면 추가
+              // 텍스트가 비어있지 않으면 교체 (API가 전체 누적 텍스트를 반환)
               if (newText) {
-                setText((prev) => (prev ? `${prev} ${newText}` : newText));
+                setText(newText);
                 contextRef.current = newText; // 컨텍스트 업데이트
               }
             } else if (response.error) {
@@ -146,7 +160,11 @@ export const useRealtimeSTT = (
       if (streamRef.current) {
         streamRef.current.getTracks().forEach((track) => track.stop());
         streamRef.current = null;
+        setStream(null);
       }
+
+      // 청크 배열 정리
+      accumulatedChunksRef.current = [];
     }
   }, [isRecording]);
 
@@ -163,6 +181,7 @@ export const useRealtimeSTT = (
     isRecording,
     isProcessing,
     error,
+    stream,
     startRecording,
     stopRecording,
     resetText,

@@ -1,16 +1,16 @@
+# Python Backend Dependencies
+
 fastapi>=0.115.0
 uvicorn>=0.34.0
 python-multipart>=0.0.20
-openai-whisper @ git+https://github.com/openai/whisper.git
 torch>=2.5.1
-numpy>=2.2.1
 edge-tts>=6.1.12
 pydantic>=2.0.0
 
-# TTS Provider 추상화 신규 의존성
+# TTS Provider
 python-dotenv>=1.0.0
 supertonic>=0.1.0
 soundfile>=0.12.1
 
-# STT Provider 추상화 - Step5 실시간 STT (KAN-21)
+# STT Provider - faster-whisper 통일 (KAN-21)
 faster-whisper>=1.0.0

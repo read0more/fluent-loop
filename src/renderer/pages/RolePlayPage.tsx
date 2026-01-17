@@ -27,9 +27,9 @@ export const RolePlayPage: React.FC = () => {
     isLoadingTopic: true,
     isConversationStarted: false,
     elapsedTime: 0,
-    autoSendEnabled: true,
+    autoSendEnabled: false,
     autoSendDelay: 2,
-    autoListenEnabled: false, // 수동 테스트를 위해 기본값 false
+    autoListenEnabled: true,
     showEndConfirmation: false,
   });
 
@@ -37,6 +37,7 @@ export const RolePlayPage: React.FC = () => {
     conversation,
     messages,
     isLoading,
+    isPlayingTTS,
     error,
     startConversation,
     sendMessage,
@@ -269,6 +270,7 @@ export const RolePlayPage: React.FC = () => {
         onToggleAutoListen={(enabled) =>
           setState((prev) => ({ ...prev, autoListenEnabled: enabled }))
         }
+        isPlayingTTS={isPlayingTTS}
       />
 
       {/* End confirmation dialog */}

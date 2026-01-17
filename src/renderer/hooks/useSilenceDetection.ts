@@ -36,6 +36,14 @@ export const useSilenceDetection = (
   const isActiveRef = useRef(false);
   const soundDetectedRef = useRef(false);
 
+  // 콜백을 ref로 저장하여 항상 최신 버전 사용 (클로저 캡처 문제 해결)
+  const onSilenceDetectedRef = useRef(onSilenceDetected);
+
+  // 최신 콜백 동기화
+  useEffect(() => {
+    onSilenceDetectedRef.current = onSilenceDetected;
+  }, [onSilenceDetected]);
+
   // 리소스 정리
   const cleanup = useCallback(() => {
     if (animationFrameRef.current) {
@@ -94,7 +102,7 @@ export const useSilenceDetection = (
             );
             // 콜백 호출 전에 감지 중지
             isActiveRef.current = false;
-            onSilenceDetected();
+            onSilenceDetectedRef.current();
             return;
           }
         }
@@ -110,7 +118,7 @@ export const useSilenceDetection = (
 
     // 다음 프레임에서 계속 체크
     animationFrameRef.current = requestAnimationFrame(checkAudioLevel);
-  }, [enabled, threshold, silenceDelay, onSilenceDetected]);
+  }, [enabled, threshold, silenceDelay]); // onSilenceDetected는 ref로 관리하므로 의존성 제거
 
   // 침묵 감지 시작
   const startDetection = useCallback(
