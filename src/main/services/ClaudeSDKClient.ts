@@ -1,43 +1,45 @@
-import Anthropic from '@anthropic-ai/sdk';
+import { query } from '@anthropic-ai/claude-agent-sdk';
 import { AppError, ErrorCode } from '../errors/AppError';
 
 /**
- * Claude SDK 클라이언트 래퍼
- * Anthropic SDK를 사용하여 Claude API와 통신
+ * Claude Agent SDK 클라이언트 래퍼
+ * Claude Code 인증을 자동으로 사용 (터미널에서 `claude` 실행하여 인증 완료 필요)
+ * API Key 불필요
  */
 export class ClaudeSDKClient {
-  private client: Anthropic;
-
-  constructor(apiKey?: string) {
-    // API Key는 환경변수에서 자동으로 로드 (ANTHROPIC_API_KEY)
-    this.client = new Anthropic({
-      apiKey: apiKey || process.env.ANTHROPIC_API_KEY,
-    });
-  }
-
   /**
    * Claude API 호출 (텍스트 응답)
+   * @param prompt 프롬프트
+   * @param options 추가 옵션
    */
-  async query(prompt: string, options?: { maxTokens?: number }): Promise<string> {
+  async query(prompt: string, _options?: { maxTokens?: number }): Promise<string> {
     try {
-      const response = await this.client.messages.create({
-        model: 'claude-3-5-sonnet-20241022',
-        max_tokens: options?.maxTokens || 4096,
-        messages: [
-          {
-            role: 'user',
-            content: prompt,
-          },
-        ],
-      });
+      let result = '';
 
-      // 응답 추출
-      const content = response.content[0];
-      if (content.type === 'text') {
-        return content.text;
+      // Claude Agent SDK의 query() 함수 사용
+      // AsyncGenerator를 순회하여 결과 수집
+      for await (const message of query({
+        prompt,
+        options: {
+          // 도구 없이 순수 텍스트 응답만 받음
+          tools: [],
+          // 단일 턴으로 제한
+          maxTurns: 1,
+        },
+      })) {
+        // 결과 메시지에서 응답 추출
+        if (message.type === 'result') {
+          if (message.subtype === 'success') {
+            result = message.result;
+          } else {
+            // 에러 발생
+            const errorMessage = 'errors' in message ? message.errors.join(', ') : 'Unknown error';
+            throw new Error(`Claude Agent SDK error: ${errorMessage}`);
+          }
+        }
       }
 
-      throw new Error('Unexpected response format');
+      return result;
     } catch (error) {
       console.error('[ClaudeSDKClient] API call failed:', error);
       throw this.mapError(error);
@@ -48,6 +50,7 @@ export class ClaudeSDKClient {
    * Claude API 호출 (JSON Schema 기반 structured output)
    * @param prompt 프롬프트
    * @param schema JSON Schema 객체
+   * @param options 추가 옵션
    */
   async queryStructured<T = unknown>(
     prompt: string,
@@ -56,36 +59,53 @@ export class ClaudeSDKClient {
       properties: Record<string, unknown>;
       required: string[];
     },
-    options?: { maxTokens?: number }
+    _options?: { maxTokens?: number }
   ): Promise<T> {
     try {
-      const response = await this.client.messages.create({
-        model: 'claude-3-5-sonnet-20241022',
-        max_tokens: options?.maxTokens || 4096,
-        messages: [
-          {
-            role: 'user',
-            content: prompt,
-          },
-        ],
-        // @ts-expect-error - SDK 타입이 아직 완전하지 않을 수 있음
-        response_format: {
-          type: 'json_schema',
-          json_schema: {
-            name: 'response',
-            strict: true,
-            schema,
+      let result: T | undefined;
+
+      // Claude Agent SDK의 query() 함수 사용 (structured output)
+      for await (const message of query({
+        prompt,
+        options: {
+          // 도구 없이 순수 응답만 받음
+          tools: [],
+          // 단일 턴으로 제한
+          maxTurns: 1,
+          // JSON Schema 기반 structured output
+          outputFormat: {
+            type: 'json_schema',
+            schema: {
+              type: 'object',
+              properties: schema.properties,
+              required: schema.required,
+              additionalProperties: false,
+            },
           },
         },
-      });
-
-      // 응답 추출
-      const content = response.content[0];
-      if (content.type === 'text') {
-        return JSON.parse(content.text) as T;
+      })) {
+        // 결과 메시지에서 structured_output 추출
+        if (message.type === 'result') {
+          if (message.subtype === 'success') {
+            // structured_output이 있으면 사용, 없으면 result를 파싱
+            if ('structured_output' in message && message.structured_output) {
+              result = message.structured_output as T;
+            } else if (message.result) {
+              result = JSON.parse(message.result) as T;
+            }
+          } else {
+            // 에러 발생
+            const errorMessage = 'errors' in message ? message.errors.join(', ') : 'Unknown error';
+            throw new Error(`Claude Agent SDK error: ${errorMessage}`);
+          }
+        }
       }
 
-      throw new Error('Unexpected response format');
+      if (result === undefined) {
+        throw new Error('No result received from Claude Agent SDK');
+      }
+
+      return result;
     } catch (error) {
       console.error('[ClaudeSDKClient] Structured API call failed:', error);
       throw this.mapError(error);
@@ -96,18 +116,35 @@ export class ClaudeSDKClient {
    * SDK 에러를 AppError로 매핑
    */
   private mapError(error: unknown): AppError {
-    if (error instanceof Anthropic.APIError) {
-      // Anthropic API 에러
-      if (error.status === 401) {
+    if (error instanceof Error) {
+      const message = error.message.toLowerCase();
+
+      // Claude Code not found 에러
+      if (message.includes('claude code not found') || message.includes('not found')) {
         return new AppError(
           ErrorCode.CLAUDE_API_ERROR,
-          'Invalid API key',
-          'Claude API 키가 유효하지 않습니다.',
+          'Claude Code not installed',
+          'Claude Code가 설치되어 있지 않습니다. 터미널에서 claude를 실행하여 설치 및 인증해주세요.',
           error
         );
       }
 
-      if (error.status === 429) {
+      // 인증 에러
+      if (
+        message.includes('authentication') ||
+        message.includes('api key') ||
+        message.includes('unauthorized')
+      ) {
+        return new AppError(
+          ErrorCode.CLAUDE_API_ERROR,
+          'Authentication failed',
+          '인증에 실패했습니다. 터미널에서 claude를 실행하여 인증을 완료해주세요.',
+          error
+        );
+      }
+
+      // Rate limit 에러
+      if (message.includes('rate limit') || message.includes('too many requests')) {
         return new AppError(
           ErrorCode.CLAUDE_API_ERROR,
           'Rate limit exceeded',
@@ -116,7 +153,13 @@ export class ClaudeSDKClient {
         );
       }
 
-      if (error.status === 500 || error.status === 502 || error.status === 503) {
+      // 서버 에러
+      if (
+        message.includes('server error') ||
+        message.includes('500') ||
+        message.includes('502') ||
+        message.includes('503')
+      ) {
         return new AppError(
           ErrorCode.CLAUDE_API_ERROR,
           'Claude API server error',
@@ -125,28 +168,35 @@ export class ClaudeSDKClient {
         );
       }
 
+      // 네트워크 에러
+      if (
+        message.includes('network') ||
+        message.includes('connection') ||
+        message.includes('timeout')
+      ) {
+        return new AppError(
+          ErrorCode.NETWORK_ERROR,
+          'Failed to connect to Claude API',
+          '네트워크 연결을 확인해주세요.',
+          error
+        );
+      }
+
+      // JSON 파싱 에러
+      if (error instanceof SyntaxError) {
+        return new AppError(
+          ErrorCode.CLAUDE_PARSING_ERROR,
+          'Failed to parse Claude response',
+          'AI 응답 파싱에 실패했습니다.',
+          error
+        );
+      }
+
+      // 일반 에러
       return new AppError(
         ErrorCode.CLAUDE_API_ERROR,
-        `Claude API error: ${error.message}`,
-        'Claude API 호출 중 오류가 발생했습니다.',
-        error
-      );
-    }
-
-    if (error instanceof Anthropic.APIConnectionError) {
-      return new AppError(
-        ErrorCode.NETWORK_ERROR,
-        'Failed to connect to Claude API',
-        '네트워크 연결을 확인해주세요.',
-        error as Error
-      );
-    }
-
-    if (error instanceof SyntaxError) {
-      return new AppError(
-        ErrorCode.CLAUDE_PARSING_ERROR,
-        'Failed to parse Claude response',
-        'AI 응답 파싱에 실패했습니다.',
+        error.message,
+        'AI 서비스에 일시적인 문제가 발생했습니다. 다시 시도해주세요.',
         error
       );
     }

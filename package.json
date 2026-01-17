@@ -69,7 +69,7 @@
     "vitest": "^4.0.16"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.71.2",
+    "@anthropic-ai/claude-agent-sdk": "^0.1.0",
     "@types/better-sqlite3": "^7.6.13",
     "@types/fluent-ffmpeg": "^2.1.28",
     "@types/react": "^19.2.7",
