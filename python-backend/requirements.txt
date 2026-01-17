@@ -11,3 +11,6 @@ pydantic>=2.0.0
 python-dotenv>=1.0.0
 supertonic>=0.1.0
 soundfile>=0.12.1
+
+# STT Provider 추상화 - Step5 실시간 STT (KAN-21)
+faster-whisper>=1.0.0

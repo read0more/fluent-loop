@@ -9,6 +9,12 @@ import tempfile
 from datetime import datetime
 from stt import WhisperSTT
 from tts import TTSProviderFactory, ITTSProvider
+from stt_provider import (
+    STTProviderFactory,
+    STTProviderType,
+    STTResult,
+    ISTTProvider
+)
 
 # 환경 변수 로딩 (앱 시작 전)
 load_dotenv()
@@ -33,6 +39,10 @@ app.add_middleware(
 whisper_stt: WhisperSTT | None = None
 tts_provider: ITTSProvider | None = None
 
+# STT Provider 인스턴스 (신규 - KAN-21)
+stt_whisper_provider: ISTTProvider | None = None
+stt_faster_whisper_provider: ISTTProvider | None = None
+
 # TTS 초기화 상태 추적
 tts_init_status: str = "pending"  # pending, downloading, ready, error
 tts_init_message: str = ""
@@ -46,15 +56,36 @@ class TTSRequest(BaseModel):
 @app.on_event("startup")
 async def startup_event():
     """앱 시작 시 Whisper 모델 및 TTS 서비스 로드"""
-    global whisper_stt, tts_provider
+    global whisper_stt, tts_provider, stt_whisper_provider, stt_faster_whisper_provider
 
-    # Whisper STT 초기화
+    # Whisper STT 초기화 (기존 - 호환성 유지)
     model_size = os.getenv("WHISPER_MODEL", "medium")
     use_gpu = os.getenv("USE_GPU", "false").lower() == "true"
 
     print(f"Initializing Whisper STT (model: {model_size}, gpu: {use_gpu})...")
     whisper_stt = WhisperSTT(model_size=model_size, use_gpu=use_gpu)
     print("Whisper STT initialized successfully")
+
+    # STT Provider 초기화 (신규 - KAN-21)
+    print("Initializing STT Providers...")
+    try:
+        # Step3용 Whisper Provider (base 모델)
+        stt_whisper_provider = STTProviderFactory.create_provider(
+            STTProviderType.WHISPER,
+            model_size="base"
+        )
+
+        # Step5용 faster-whisper Provider (base 모델)
+        stt_faster_whisper_provider = STTProviderFactory.create_provider(
+            STTProviderType.FASTER_WHISPER,
+            model_size="base",
+            compute_type="auto"
+        )
+
+        print("[Server] All STT Providers initialized")
+    except Exception as e:
+        print(f"[ERROR] Failed to initialize STT providers: {e}")
+        # STT Provider 초기화 실패 시에도 서버는 계속 동작 (기존 whisper_stt 사용 가능)
 
     # TTS Provider 초기화 (Factory 패턴)
     global tts_init_status, tts_init_message
@@ -343,6 +374,74 @@ async def get_available_voices():
                 "detail": str(e)
             }
         )
+
+
+# ==================== STT 신규 엔드포인트 (KAN-21) ====================
+
+@app.post("/stt/stream-chunk")
+async def transcribe_audio_chunk(
+    audio: UploadFile = File(...),
+    language: str = Form("ko"),
+    context: str = Form("")  # 이전 청크의 텍스트 (컨텍스트)
+) -> STTResult:
+    """
+    오디오 청크 실시간 STT 변환 (Step5 RolePlay용)
+
+    Args:
+        audio: 오디오 청크 파일 (2-3초)
+        language: 언어 코드
+        context: 이전 청크의 텍스트 (정확도 향상용)
+
+    Returns:
+        STTResult: 변환 결과 (is_final=False)
+    """
+    if stt_faster_whisper_provider is None:
+        raise HTTPException(
+            status_code=503,
+            detail="FasterWhisper Provider not initialized"
+        )
+
+    temp_dir = tempfile.gettempdir()
+    chunk_path = os.path.join(temp_dir, f"chunk_{os.getpid()}_{os.urandom(4).hex()}.webm")
+
+    try:
+        with open(chunk_path, "wb") as f:
+            f.write(await audio.read())
+
+        # FasterWhisperSTT Provider 사용
+        result = stt_faster_whisper_provider.transcribe_chunk(
+            chunk_path,
+            language,
+            context=context if context else None
+        )
+        return result
+
+    except Exception as e:
+        return STTResult(
+            success=False,
+            text="",
+            language=language,
+            error=str(e)
+        )
+
+    finally:
+        if os.path.exists(chunk_path):
+            try:
+                os.remove(chunk_path)
+            except:
+                pass
+
+
+@app.get("/stt/providers")
+async def get_providers_info():
+    """현재 로드된 Provider 정보 반환 (디버깅용)"""
+    whisper_provider = STTProviderFactory.get_provider(STTProviderType.WHISPER)
+    faster_provider = STTProviderFactory.get_provider(STTProviderType.FASTER_WHISPER)
+
+    return {
+        "whisper": whisper_provider.get_model_info() if whisper_provider else None,
+        "faster_whisper": faster_provider.get_model_info() if faster_provider else None
+    }
 
 
 if __name__ == "__main__":

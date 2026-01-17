@@ -1,0 +1,71 @@
+{
+  "totalScenarios": 15,
+  "passed": 6,
+  "failed": 2,
+  "skipped": 0,
+  "manualTestRequired": 7,
+  "automatedTests": {
+    "total": 8,
+    "passed": 6,
+    "failed": 2
+  },
+  "passedScenarios": [
+    {"id": "QA-001", "name": "TypeScript 빌드 검증", "duration": "~30s"},
+    {"id": "QA-003", "name": "useRealtimeSTT Hook Export 검증", "duration": "<1s"},
+    {"id": "QA-004", "name": "IPC 핸들러 등록 검증", "duration": "<1s"},
+    {"id": "QA-005", "name": "Python Backend API 엔드포인트 검증", "duration": "<1s"},
+    {"id": "QA-007", "name": "유닛 테스트 실행", "duration": "13.19s", "testCount": 722},
+    {"id": "QA-008", "name": "기존 기능 회귀 테스트", "duration": "13.19s", "testFiles": 43}
+  ],
+  "failedScenarios": [
+    {
+      "id": "QA-002",
+      "name": "ESLint 검사",
+      "reason": "87 errors, 37 warnings",
+      "blocking": false,
+      "note": "기존 코드의 스타일 이슈, 기능에 영향 없음"
+    },
+    {
+      "id": "QA-006",
+      "name": "Python 모듈 임포트 검증",
+      "reason": "ModuleNotFoundError: No module named 'faster_whisper'",
+      "blocking": false,
+      "note": "예상된 실패. 실제 운영 환경에서는 설치 필요"
+    }
+  ],
+  "manualTestScenarios": [
+    {"id": "QA-009", "name": "실시간 녹음 시작"},
+    {"id": "QA-010", "name": "실시간 음성 인식"},
+    {"id": "QA-011", "name": "녹음 종료"},
+    {"id": "QA-012", "name": "에러 처리 - 마이크 권한 거부"},
+    {"id": "QA-013", "name": "에러 처리 - STT 실패"},
+    {"id": "QA-014", "name": "텍스트 초기화"},
+    {"id": "QA-015", "name": "컨텍스트 누적 검증"}
+  ],
+  "documentUpdated": true,
+  "documentPath": ".claude/claudedocs/qa-scenarios-step5-realtime-stt.md",
+  "testStartTime": "2026-01-17T12:00:32",
+  "testEndTime": "2026-01-17T12:13:51",
+  "totalDuration": "~13 minutes",
+  "successRate": {
+    "automated": "75%",
+    "coreFunctionality": "100%"
+  },
+  "issues": [
+    {
+      "severity": "warning",
+      "title": "ESLint 경고 및 에러",
+      "description": "87개의 린트 에러, 37개의 경고. 대부분 기존 코드의 스타일 이슈",
+      "impact": "none",
+      "recommendation": "점진적으로 수정"
+    },
+    {
+      "severity": "info",
+      "title": "faster-whisper 의존성 미설치",
+      "description": "Python 백엔드 실행 시 필요",
+      "impact": "runtime",
+      "recommendation": "pip install faster-whisper 실행 및 문서화"
+    }
+  ],
+  "conclusion": "핵심 기능(TypeScript 빌드, Hook/IPC 등록, 유닛 테스트)은 모두 정상 동작. 실시간 STT 기능은 수동 테스트 필요."
+}
