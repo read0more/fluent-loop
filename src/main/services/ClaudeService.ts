@@ -1,7 +1,5 @@
-import { spawn } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
-import * as os from 'os';
 import {
   TopicGenerationResult,
   CEFRLevel,
@@ -15,6 +13,7 @@ import { ConversationRepository } from '../database/repositories/ConversationRep
 import { MessageRepository } from '../database/repositories/MessageRepository';
 import { TopicRepository } from '../database/repositories/TopicRepository';
 import { getDatabase } from '../database/db';
+import { ClaudeSDKClient } from './ClaudeSDKClient';
 
 export interface TopicContext {
   englishContent: string;
@@ -49,6 +48,12 @@ const CEFR_DESCRIPTIONS: Record<CEFRLevel, string> = {
 };
 
 export class ClaudeService implements IClaudeService {
+  private client: ClaudeSDKClient;
+
+  constructor() {
+    this.client = new ClaudeSDKClient();
+  }
+
   async generateEnglishScript(
     koreanText: string,
     cefrLevel: CEFRLevel
@@ -64,8 +69,25 @@ export class ClaudeService implements IClaudeService {
     const prompt = this.buildPrompt(koreanText, cefrLevel);
 
     try {
-      const output = await this.executeClaude(prompt);
-      return this.parseClaudeResponse(output);
+      // SDK를 사용한 structured output
+      const schema = {
+        type: 'object' as const,
+        properties: {
+          english_script: { type: 'string' },
+          keywords: { type: 'array', items: { type: 'string' } },
+        },
+        required: ['english_script', 'keywords'],
+      };
+
+      const response = await this.client.queryStructured<{
+        english_script: string;
+        keywords: string[];
+      }>(prompt, schema);
+
+      return {
+        englishText: response.english_script,
+        keywords: response.keywords,
+      };
     } catch (error) {
       if (error instanceof AppError) {
         throw error;
@@ -88,7 +110,7 @@ Text: ${englishText}
 Output format: ["word1", "word2", ...]`;
 
     try {
-      const output = await this.executeClaude(prompt);
+      const output = await this.client.query(prompt);
       const keywords = JSON.parse(output.trim());
 
       if (!Array.isArray(keywords)) {
@@ -152,80 +174,6 @@ Do NOT include:
 </output_format>`;
   }
 
-  private executeClaude(prompt: string): Promise<string> {
-    return new Promise((resolve, reject) => {
-      let output = '';
-      let errorOutput = '';
-
-      // 임시 파일에 prompt 저장 (인코딩 문제 방지)
-      const tempFile = path.join(os.tmpdir(), `claude-prompt-${Date.now()}.txt`);
-      fs.writeFileSync(tempFile, prompt, 'utf8');
-
-      // PowerShell을 통해 파일 내용을 읽어서 Claude CLI에 전달
-      // -p 플래그는 "print mode"를 의미하고, 프롬프트는 stdin으로 전달
-      // --output-format json으로 구조화된 JSON 출력 강제
-      // PowerShell의 출력 인코딩을 UTF-8로 명시적으로 설정하여 한글 처리
-      const psCommand = `$OutputEncoding = [System.Text.Encoding]::UTF8; Get-Content -Path '${tempFile}' -Raw -Encoding UTF8 | claude -p --output-format json`;
-
-      const child = spawn('powershell', ['-Command', psCommand], {
-        stdio: ['ignore', 'pipe', 'pipe'],
-      });
-
-      child.stdout.on('data', (data: Buffer) => {
-        output += data.toString('utf8');
-      });
-
-      child.stderr.on('data', (data: Buffer) => {
-        errorOutput += data.toString('utf8');
-      });
-
-      child.on('close', (code: number | null) => {
-        // 임시 파일 삭제
-        try {
-          fs.unlinkSync(tempFile);
-        } catch {
-          // ignore
-        }
-
-        if (code === 0) {
-          console.log(`[ClaudeService] Claude CLI successful. Output length: ${output.length}`);
-          resolve(output);
-        } else {
-          reject(
-            new AppError(
-              ErrorCode.CLAUDE_API_ERROR,
-              `Claude CLI exited with code ${code}`,
-              'Claude CLI 실행에 실패했습니다.',
-              new Error(errorOutput)
-            )
-          );
-        }
-      });
-
-      child.on('error', (err: Error) => {
-        reject(
-          new AppError(
-            ErrorCode.CLAUDE_API_ERROR,
-            'Failed to execute Claude CLI',
-            'Claude CLI를 실행할 수 없습니다. 설치 여부를 확인해주세요.',
-            err
-          )
-        );
-      });
-
-      // 1분 타임아웃
-      setTimeout(() => {
-        child.kill();
-        reject(
-          new AppError(
-            ErrorCode.CLAUDE_TIMEOUT,
-            'Claude CLI timeout',
-            'AI 응답 시간이 초과되었습니다. 다시 시도해주세요.'
-          )
-        );
-      }, 60000);
-    });
-  }
 
   private logClaudeInteraction(context: string, response: string, error?: Error): void {
     // Save logs to project directory instead of temp folder
@@ -257,158 +205,6 @@ Do NOT include:
     }
   }
 
-  private parseClaudeResponse(output: string): TopicGenerationResult {
-    const originalOutput = output; // Keep for logging
-
-    try {
-      let jsonStr = output.trim();
-
-      // Strategy 0: Handle Claude CLI JSON wrapper format
-      // When using --output-format json, Claude CLI wraps the response
-      if (jsonStr.includes('"result"') && jsonStr.includes('"type"')) {
-        try {
-          console.log('[ClaudeService] Detecting Claude CLI wrapper format...');
-          const cliResponse = JSON.parse(jsonStr);
-          if (cliResponse.result && typeof cliResponse.result === 'string') {
-            console.log('[ClaudeService] Extracting result from CLI wrapper...');
-            jsonStr = cliResponse.result;
-          }
-        } catch {
-          console.log(
-            '[ClaudeService] Failed to parse CLI wrapper, continuing with other strategies...'
-          );
-        }
-      }
-
-      // Strategy 1: Try direct JSON parse if starts and ends with braces
-      if (jsonStr.startsWith('{') && jsonStr.endsWith('}')) {
-        try {
-          console.log('[ClaudeService] Trying direct JSON parse...');
-          return this.validateAndExtractResult(JSON.parse(jsonStr));
-        } catch {
-          console.log('[ClaudeService] Direct parse failed, trying extraction strategies...');
-        }
-      }
-
-      // Strategy 2: Extract from markdown code block
-      const codeBlockMatch = jsonStr.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
-      if (codeBlockMatch) {
-        try {
-          console.log('[ClaudeService] Trying code block extraction...');
-          return this.validateAndExtractResult(JSON.parse(codeBlockMatch[1]));
-        } catch {
-          console.log('[ClaudeService] Code block parse failed');
-        }
-      }
-
-      // Strategy 3: Find JSON object pattern with required fields
-      const jsonObjectMatch = jsonStr.match(/\{[^{}]*"english_script"[^{}]*"keywords"[^{}]*\}/s);
-      if (jsonObjectMatch) {
-        try {
-          console.log('[ClaudeService] Trying pattern match extraction...');
-          return this.validateAndExtractResult(JSON.parse(jsonObjectMatch[0]));
-        } catch {
-          console.log('[ClaudeService] Pattern match parse failed');
-        }
-      }
-
-      // Strategy 4: Aggressive extraction - find any valid JSON object
-      const allBraceMatches = this.extractJsonObjects(jsonStr);
-      for (const match of allBraceMatches) {
-        try {
-          console.log('[ClaudeService] Trying aggressive JSON extraction...');
-          const result = this.validateAndExtractResult(JSON.parse(match));
-          console.log('[ClaudeService] Successfully extracted JSON from mixed content');
-          return result;
-        } catch {
-          // Try next match
-          continue;
-        }
-      }
-
-      // All strategies failed
-      throw new Error(
-        `No valid JSON found in response (length: ${output.length}). All extraction strategies failed.`
-      );
-    } catch (error) {
-      console.log('[ClaudeService] Parsing error:', error);
-
-      // Log the Claude response for debugging
-      this.logClaudeInteraction('generateScript-FAILED', originalOutput, error as Error);
-
-      throw new AppError(
-        ErrorCode.CLAUDE_PARSING_ERROR,
-        'Failed to parse Claude response',
-        `AI 응답 파싱 실패. 로그: .claude/logs/ 폴더 확인하세요. 에러: ${(error as Error).message}`,
-        error as Error
-      );
-    }
-  }
-
-  private validateAndExtractResult(parsed: unknown): TopicGenerationResult {
-    const data = parsed as { english_script?: string; keywords?: string[] };
-    if (!data.english_script || !data.keywords) {
-      throw new Error('Missing required fields: english_script or keywords');
-    }
-
-    if (!Array.isArray(data.keywords)) {
-      throw new Error('keywords must be an array');
-    }
-
-    return {
-      englishText: data.english_script,
-      keywords: data.keywords,
-    };
-  }
-
-  private extractJsonObjects(text: string): string[] {
-    const results: string[] = [];
-    let braceCount = 0;
-    let startIndex = -1;
-
-    for (let i = 0; i < text.length; i++) {
-      if (text[i] === '{') {
-        if (braceCount === 0) {
-          startIndex = i;
-        }
-        braceCount++;
-      } else if (text[i] === '}') {
-        braceCount--;
-        if (braceCount === 0 && startIndex !== -1) {
-          results.push(text.substring(startIndex, i + 1));
-          startIndex = -1;
-        }
-      }
-    }
-
-    return results;
-  }
-
-  /**
-   * 첨삭 결과 검증 및 추출
-   */
-  private validateAndExtractCorrectionResult(parsed: unknown): CorrectionResult {
-    const data = parsed as {
-      original?: string;
-      corrected?: string;
-      explanation?: string;
-      categories?: CorrectionCategory[];
-    };
-    if (!data.original || !data.corrected || data.explanation === undefined) {
-      throw new Error('Missing required fields: original, corrected, or explanation');
-    }
-
-    if (!Array.isArray(data.categories)) {
-      throw new Error('categories must be an array');
-    }
-
-    return {
-      original: data.original,
-      corrected: data.corrected,
-      explanation: data.explanation,
-      categories: data.categories,
-    };
-  }
 
   /**
    * Step 4: 문장 첨삭 기능
@@ -432,8 +228,20 @@ Do NOT include:
     const prompt = this.buildCorrectionPrompt(trimmedSentence, cefrLevel);
 
     try {
-      const output = await this.executeClaude(prompt);
-      return this.parseCorrectionResponse(output);
+      // SDK를 사용한 structured output
+      const schema = {
+        type: 'object' as const,
+        properties: {
+          original: { type: 'string' },
+          corrected: { type: 'string' },
+          explanation: { type: 'string' },
+          categories: { type: 'array', items: { type: 'string' } },
+        },
+        required: ['original', 'corrected', 'explanation', 'categories'],
+      };
+
+      const response = await this.client.queryStructured<CorrectionResult>(prompt, schema);
+      return response;
     } catch (error) {
       if (error instanceof AppError) {
         throw error;
@@ -506,100 +314,6 @@ Guidelines:
   - C1/C2: Offer advanced explanations, discuss nuances and idiomatic usage`;
   }
 
-  /**
-   * 첨삭 응답 파싱 (다중 전략)
-   */
-  private parseCorrectionResponse(output: string): CorrectionResult {
-    const originalOutput = output; // Keep for logging
-
-    try {
-      let jsonStr = output.trim();
-
-      // Strategy 0: Handle Claude CLI JSON wrapper format
-      // When using --output-format json, Claude CLI wraps the response
-      if (jsonStr.includes('"result"') && jsonStr.includes('"type"')) {
-        try {
-          console.log('[ClaudeService] Correction: Detecting Claude CLI wrapper format...');
-          const cliResponse = JSON.parse(jsonStr);
-          if (cliResponse.result && typeof cliResponse.result === 'string') {
-            console.log('[ClaudeService] Correction: Extracting result from CLI wrapper...');
-            jsonStr = cliResponse.result;
-          }
-        } catch {
-          console.log(
-            '[ClaudeService] Correction: Failed to parse CLI wrapper, continuing with other strategies...'
-          );
-        }
-      }
-
-      // Strategy 1: Try direct JSON parse if starts and ends with braces
-      if (jsonStr.startsWith('{') && jsonStr.endsWith('}')) {
-        try {
-          console.log('[ClaudeService] Correction: Trying direct JSON parse...');
-          return this.validateAndExtractCorrectionResult(JSON.parse(jsonStr));
-        } catch {
-          console.log(
-            '[ClaudeService] Correction: Direct parse failed, trying extraction strategies...'
-          );
-        }
-      }
-
-      // Strategy 2: Extract from markdown code block
-      const codeBlockMatch = jsonStr.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
-      if (codeBlockMatch) {
-        try {
-          console.log('[ClaudeService] Correction: Trying code block extraction...');
-          return this.validateAndExtractCorrectionResult(JSON.parse(codeBlockMatch[1]));
-        } catch {
-          console.log('[ClaudeService] Correction: Code block parse failed');
-        }
-      }
-
-      // Strategy 3: Find JSON object pattern with required fields
-      const jsonObjectMatch = jsonStr.match(
-        /\{[^{}]*"original"[^{}]*"corrected"[^{}]*"explanation"[^{}]*\}/s
-      );
-      if (jsonObjectMatch) {
-        try {
-          console.log('[ClaudeService] Correction: Trying pattern match extraction...');
-          return this.validateAndExtractCorrectionResult(JSON.parse(jsonObjectMatch[0]));
-        } catch {
-          console.log('[ClaudeService] Correction: Pattern match parse failed');
-        }
-      }
-
-      // Strategy 4: Aggressive extraction - find any valid JSON object
-      const allBraceMatches = this.extractJsonObjects(jsonStr);
-      for (const match of allBraceMatches) {
-        try {
-          console.log('[ClaudeService] Correction: Trying aggressive JSON extraction...');
-          const result = this.validateAndExtractCorrectionResult(JSON.parse(match));
-          console.log('[ClaudeService] Correction: Successfully extracted JSON from mixed content');
-          return result;
-        } catch {
-          // Try next match
-          continue;
-        }
-      }
-
-      // All strategies failed
-      throw new Error(
-        `No valid JSON found in correction response (length: ${output.length}). All extraction strategies failed.`
-      );
-    } catch (error) {
-      console.log('[ClaudeService] Correction parsing error:', error);
-
-      // Log the Claude response for debugging
-      this.logClaudeInteraction('correctSentence-FAILED', originalOutput, error as Error);
-
-      throw new AppError(
-        ErrorCode.CLAUDE_PARSING_ERROR,
-        'Failed to parse correction response',
-        `첨삭 결과 파싱 실패. 로그: .claude/logs/ 폴더 확인하세요. 에러: ${(error as Error).message}`,
-        error as Error
-      );
-    }
-  }
 
   /**
    * Step 4: 여러 문장 배치 첨삭 (성능 최적화)
@@ -630,7 +344,8 @@ Guidelines:
     const prompt = this.buildBatchCorrectionPrompt(validSentences, cefrLevel);
 
     try {
-      const output = await this.executeClaude(prompt);
+      // SDK를 사용한 응답 (배열 응답은 일반 query 사용)
+      const output = await this.client.query(prompt);
       return this.parseBatchCorrectionResponse(output, validSentences);
     } catch (error) {
       if (error instanceof AppError) {
@@ -716,7 +431,7 @@ Guidelines:
   }
 
   /**
-   * 배치 첨삭 응답 파싱 (다중 전략)
+   * 배치 첨삭 응답 파싱 (간소화된 버전)
    */
   private parseBatchCorrectionResponse(output: string, sentences: string[]): CorrectionResult[] {
     const originalOutput = output;
@@ -724,60 +439,15 @@ Guidelines:
     try {
       let jsonStr = output.trim();
 
-      // Strategy 0: Handle Claude CLI JSON wrapper format
-      if (jsonStr.includes('"result"') && jsonStr.includes('"type"')) {
-        try {
-          console.log('[ClaudeService] BatchCorrection: Detecting Claude CLI wrapper format...');
-          const cliResponse = JSON.parse(jsonStr);
-          if (cliResponse.result && typeof cliResponse.result === 'string') {
-            console.log('[ClaudeService] BatchCorrection: Extracting result from CLI wrapper...');
-            jsonStr = cliResponse.result;
-          }
-        } catch {
-          console.log(
-            '[ClaudeService] BatchCorrection: Failed to parse CLI wrapper, continuing...'
-          );
-        }
-      }
-
-      // Strategy 1: Try direct JSON array parse
-      if (jsonStr.startsWith('[') && jsonStr.endsWith(']')) {
-        try {
-          console.log('[ClaudeService] BatchCorrection: Trying direct JSON array parse...');
-          return this.validateAndExtractBatchCorrectionResult(JSON.parse(jsonStr), sentences);
-        } catch {
-          console.log('[ClaudeService] BatchCorrection: Direct parse failed, trying extraction...');
-        }
-      }
-
-      // Strategy 2: Extract from markdown code block
+      // Strategy 1: 마크다운 코드블록 제거 (```json ... ```)
       const codeBlockMatch = jsonStr.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
       if (codeBlockMatch) {
-        try {
-          console.log('[ClaudeService] BatchCorrection: Trying code block extraction...');
-          return this.validateAndExtractBatchCorrectionResult(
-            JSON.parse(codeBlockMatch[1]),
-            sentences
-          );
-        } catch {
-          console.log('[ClaudeService] BatchCorrection: Code block parse failed');
-        }
+        jsonStr = codeBlockMatch[1];
       }
 
-      // Strategy 3: Find JSON array pattern
-      const arrayMatch = jsonStr.match(/\[[\s\S]*\]/);
-      if (arrayMatch) {
-        try {
-          console.log('[ClaudeService] BatchCorrection: Trying array pattern extraction...');
-          return this.validateAndExtractBatchCorrectionResult(JSON.parse(arrayMatch[0]), sentences);
-        } catch {
-          console.log('[ClaudeService] BatchCorrection: Array pattern parse failed');
-        }
-      }
-
-      throw new Error(
-        `No valid JSON array found in batch correction response (length: ${output.length})`
-      );
+      // Strategy 2: JSON 배열 파싱
+      const parsed = JSON.parse(jsonStr);
+      return this.validateAndExtractBatchCorrectionResult(parsed, sentences);
     } catch (error) {
       console.log('[ClaudeService] BatchCorrection parsing error:', error);
       this.logClaudeInteraction('correctSentencesBatch-FAILED', originalOutput, error as Error);
@@ -860,8 +530,9 @@ Guidelines:
       : this.buildConversationPrompt(topicContext, conversationHistory);
 
     try {
-      const output = await this.executeClaude(prompt);
-      return this.parseConversationResponse(output);
+      // SDK를 사용한 일반 텍스트 응답
+      const output = await this.client.query(prompt);
+      return output.trim();
     } catch (error) {
       if (error instanceof AppError) {
         throw error;
@@ -875,44 +546,6 @@ Guidelines:
     }
   }
 
-  /**
-   * 대화 응답 파싱 (Claude CLI JSON wrapper 처리)
-   * Strategy 0: CLI wrapper 추출
-   * Strategy 1: Plain text fallback
-   */
-  private parseConversationResponse(output: string): string {
-    const originalOutput = output;
-    try {
-      const result = output.trim();
-
-      // Strategy 0: Handle Claude CLI JSON wrapper format
-      if (result.includes('"result"') && result.includes('"type"')) {
-        try {
-          console.log('[ClaudeService] Conversation: Detecting Claude CLI wrapper format...');
-          const cliResponse = JSON.parse(result);
-          if (cliResponse.result !== undefined && typeof cliResponse.result === 'string') {
-            console.log('[ClaudeService] Conversation: Extracting result from CLI wrapper...');
-            return cliResponse.result;
-          }
-        } catch {
-          console.log(
-            '[ClaudeService] Conversation: Failed to parse CLI wrapper, returning trimmed output...'
-          );
-        }
-      }
-
-      return result;
-    } catch (error) {
-      console.log('[ClaudeService] Conversation parsing error:', error);
-      this.logClaudeInteraction(
-        'generateConversationResponse-FAILED',
-        originalOutput,
-        error as Error
-      );
-      // Fallback: return original trimmed output
-      return output.trim();
-    }
-  }
 
   /**
    * 첫 대화 메시지 프롬프트
@@ -1028,9 +661,9 @@ Provide ONLY your message, no additional text or formatting.`;
       topic.englishContent
     );
 
-    // 3. Claude CLI 호출
+    // 3. SDK를 사용한 API 호출
     try {
-      const output = await this.executeClaude(prompt);
+      const output = await this.client.query(prompt);
 
       // 4. JSON 배열 응답 파싱
       return this.parseConversationCorrectionResponse(output, messages);
@@ -1113,7 +746,7 @@ JSON Array Output:`;
   }
 
   /**
-   * 대화 첨삭 응답 파싱
+   * 대화 첨삭 응답 파싱 (간소화된 버전)
    */
   private parseConversationCorrectionResponse(
     output: string,
@@ -1123,19 +756,6 @@ JSON Array Output:`;
 
     try {
       let jsonStr = output.trim();
-
-      // Strategy 0: CLI wrapper 형식 감지 ({"type": "text", "result": "[...]"})
-      if (jsonStr.includes('"result"') && jsonStr.includes('"type"')) {
-        try {
-          const cliResponse = JSON.parse(jsonStr);
-          if (cliResponse.result && typeof cliResponse.result === 'string') {
-            jsonStr = cliResponse.result;
-          }
-        } catch (cliWrapperError) {
-          // CLI wrapper 파싱 실패, 다음 전략 시도
-          console.warn('CLI wrapper 파싱 실패, 다음 전략 시도:', cliWrapperError);
-        }
-      }
 
       // Strategy 1: 마크다운 코드블록 제거 (```json ... ```)
       const jsonMatch = jsonStr.match(/```(?:json)?\s*([\s\S]*?)\s*```/);

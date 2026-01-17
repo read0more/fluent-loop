@@ -16,23 +16,20 @@ describe('ClaudeService.parseConversationCorrectionResponse', () => {
 
   // ==================== 단위 테스트 (Unit Tests) ====================
 
-  describe('TC-001: CLI Wrapper 형식 JSON 파싱', () => {
-    it('should parse CLI wrapper format JSON', () => {
-      // Arrange
-      const cliWrapperOutput = JSON.stringify({
-        type: 'text',
-        result: JSON.stringify([
-          {
-            messageId: 1,
-            speaker: 'user',
-            original: 'I go to school yesterday',
-            corrected: 'I went to school yesterday',
-            explanation: 'Use past tense',
-            categories: ['grammar'],
-            timestamp: 0,
-          },
-        ]),
-      });
+  describe('TC-001: Plain JSON Array 파싱 (SDK 방식)', () => {
+    it('should parse plain JSON array from SDK response', () => {
+      // Arrange - SDK는 직접 JSON 문자열을 반환
+      const sdkJsonOutput = JSON.stringify([
+        {
+          messageId: 1,
+          speaker: 'user',
+          original: 'I go to school yesterday',
+          corrected: 'I went to school yesterday',
+          explanation: 'Use past tense',
+          categories: ['grammar'],
+          timestamp: 0,
+        },
+      ]);
 
       const allMessages: Message[] = [
         {
@@ -57,8 +54,8 @@ describe('ClaudeService.parseConversationCorrectionResponse', () => {
 
       // Act
       const result = (service as any).parseConversationCorrectionResponse(
-        // eslint-disable-line @typescript-eslint/no-explicit-any
-        cliWrapperOutput,
+         
+        sdkJsonOutput,
         allMessages
       );
 
@@ -109,7 +106,7 @@ describe('ClaudeService.parseConversationCorrectionResponse', () => {
 
       // Act
       const result = (service as any).parseConversationCorrectionResponse(
-        // eslint-disable-line @typescript-eslint/no-explicit-any
+         
         plainJsonOutput,
         allMessages
       );
@@ -152,7 +149,7 @@ describe('ClaudeService.parseConversationCorrectionResponse', () => {
 
       // Act
       const result = (service as any).parseConversationCorrectionResponse(
-        // eslint-disable-line @typescript-eslint/no-explicit-any
+         
         markdownOutput,
         allMessages
       );
@@ -382,7 +379,7 @@ describe('ClaudeService.parseConversationCorrectionResponse', () => {
 
       // Act
       const result = (service as any).parseConversationCorrectionResponse(
-        // eslint-disable-line @typescript-eslint/no-explicit-any
+         
         emptyOutput,
         allMessages
       );
@@ -444,7 +441,7 @@ describe('ClaudeService.parseConversationCorrectionResponse', () => {
 
       // Act
       const result = (service as any).parseConversationCorrectionResponse(
-        // eslint-disable-line @typescript-eslint/no-explicit-any
+         
         jsonOutput,
         allMessages
       );
