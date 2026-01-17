@@ -16,13 +16,18 @@ export interface IAudioService {
   saveRecording(buffer: Buffer, filename: string, step?: 1 | 2): Promise<string>;
   saveRecordingStep2(buffer: Buffer, filename: string, customPath?: string): Promise<string>;
   saveRecordingStep3(buffer: Buffer, duration: 3 | 2 | 1, customPath?: string): Promise<string>;
-  saveRecordingStep5(buffer: Buffer): Promise<string>;
+  saveRecordingStep5(buffer: Buffer): Promise<string | null>;
   listRecordingsStep3(duration?: 3 | 2 | 1): Promise<RecordingFile[]>;
   deleteRecording(filePath: string): Promise<void>;
   listRecordings(step: 1 | 2, customPath?: string): Promise<RecordingFile[]>;
   validateSavePath(path: string): Promise<boolean>;
   cleanupTempFiles(olderThanDays: number): Promise<void>;
 }
+
+// WebM 매직 번호 (EBML header)
+const WEBM_MAGIC_BYTES = [0x1a, 0x45, 0xdf, 0xa3];
+// 최소 유효 WebM 파일 크기 (10KB)
+const MIN_VALID_WEBM_SIZE = 10 * 1024;
 
 export class AudioService implements IAudioService {
   private readonly step1Dir: string;
@@ -353,26 +358,37 @@ export class AudioService implements IAudioService {
     }
   }
 
-  async saveRecordingStep5(buffer: Buffer): Promise<string> {
+  async saveRecordingStep5(buffer: Buffer): Promise<string | null> {
+    // WebM 유효성 검증
+    if (!this.isValidWebM(buffer)) {
+      console.warn(
+        '[AudioService] Invalid WebM data detected, skipping conversion. Size:',
+        buffer.length
+      );
+      return null;
+    }
+
+    const timestamp = new Date()
+      .toISOString()
+      .replace(/:/g, '-')
+      .replace(/\..+/, '')
+      .replace('T', '_');
+
+    const webmFilename = `${timestamp}.webm`;
+    const m4aFilename = `${timestamp}.m4a`;
+    const webmPath = path.join(this.step5Dir, webmFilename);
+    const m4aPath = path.join(this.step5Dir, m4aFilename);
+
     try {
-      const timestamp = new Date()
-        .toISOString()
-        .replace(/:/g, '-')
-        .replace(/\..+/, '')
-        .replace('T', '_');
-
-      const webmFilename = `${timestamp}.webm`;
-      const m4aFilename = `${timestamp}.m4a`;
-      const webmPath = path.join(this.step5Dir, webmFilename);
-      const m4aPath = path.join(this.step5Dir, m4aFilename);
-
       // 1. 먼저 webm으로 저장
       await fs.promises.writeFile(webmPath, buffer);
 
       // 파일 크기 검증
       const webmStats = await fs.promises.stat(webmPath);
       if (webmStats.size === 0) {
-        throw new Error('File size is 0');
+        console.warn('[AudioService] WebM file size is 0, skipping conversion');
+        await this.cleanupWebmFile(webmPath);
+        return null;
       }
 
       // 2. ffmpeg로 m4a로 변환
@@ -391,18 +407,24 @@ export class AudioService implements IAudioService {
       });
 
       // 3. 변환 후 webm 파일 삭제
-      await fs.promises.unlink(webmPath);
+      await this.cleanupWebmFile(webmPath);
 
       // 4. m4a 파일 크기 검증
       const m4aStats = await fs.promises.stat(m4aPath);
       if (m4aStats.size === 0) {
-        throw new Error('Converted file size is 0');
+        console.warn('[AudioService] Converted m4a file size is 0');
+        await fs.promises.unlink(m4aPath).catch(() => {});
+        return null;
       }
 
       return m4aPath;
     } catch (error: unknown) {
+      // ffmpeg 변환 실패 시 임시 WebM 파일 정리
+      await this.cleanupWebmFile(webmPath);
+
       const nodeError = error as NodeJS.ErrnoException;
 
+      // 권한/디스크 공간 문제는 에러로 throw
       if (nodeError.code === 'EACCES') {
         throw new AppError(
           ErrorCode.RECORDING_PATH_INVALID,
@@ -419,12 +441,47 @@ export class AudioService implements IAudioService {
         );
       }
 
-      throw new AppError(
-        ErrorCode.RECORDING_SAVE_FAILED,
-        'Failed to save step5 recording',
-        '녹음 파일 저장에 실패했습니다.',
-        error instanceof Error ? error : undefined
-      );
+      // ffmpeg 변환 실패는 graceful하게 처리 (null 반환)
+      console.warn('[AudioService] FFmpeg conversion failed, returning null:', error);
+      return null;
+    }
+  }
+
+  /**
+   * WebM 파일 유효성 검증
+   * - 매직 번호 확인 (EBML header)
+   * - 최소 크기 확인
+   */
+  private isValidWebM(buffer: Buffer): boolean {
+    // 최소 크기 확인
+    if (buffer.length < MIN_VALID_WEBM_SIZE) {
+      console.warn(`[AudioService] Buffer too small: ${buffer.length} < ${MIN_VALID_WEBM_SIZE}`);
+      return false;
+    }
+
+    // WebM 매직 번호 확인 (EBML header: 0x1A 0x45 0xDF 0xA3)
+    for (let i = 0; i < WEBM_MAGIC_BYTES.length; i++) {
+      if (buffer[i] !== WEBM_MAGIC_BYTES[i]) {
+        console.warn(
+          `[AudioService] Invalid WebM magic bytes at position ${i}: expected 0x${WEBM_MAGIC_BYTES[i].toString(16)}, got 0x${buffer[i].toString(16)}`
+        );
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  /**
+   * WebM 임시 파일 정리
+   */
+  private async cleanupWebmFile(webmPath: string): Promise<void> {
+    try {
+      if (fs.existsSync(webmPath)) {
+        await fs.promises.unlink(webmPath);
+      }
+    } catch (err) {
+      console.warn('[AudioService] Failed to cleanup WebM file:', webmPath, err);
     }
   }
 

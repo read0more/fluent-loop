@@ -15,6 +15,7 @@ export interface UseConversationReturn {
   conversation: Conversation | null;
   messages: Message[];
   isLoading: boolean;
+  isPlayingTTS: boolean;
   error: string | null;
   startConversation: (topicId: number) => Promise<void>;
   sendMessage: (content: string, timestamp: number) => Promise<void>;
@@ -77,9 +78,13 @@ export const useConversation = (): UseConversationReturn => {
 
       // TTS 자동 재생
       if (result.firstMessage.ttsPath) {
+        setIsPlayingTTS(true);
         const audio = new Audio(`file://${result.firstMessage.ttsPath}`);
+        audio.addEventListener('ended', () => setIsPlayingTTS(false));
+        audio.addEventListener('error', () => setIsPlayingTTS(false));
         audio.play().catch((err) => {
           console.error('TTS 자동 재생 실패:', err);
+          setIsPlayingTTS(false);
         });
       }
     } catch (err) {
@@ -148,9 +153,13 @@ export const useConversation = (): UseConversationReturn => {
 
         // TTS 자동 재생
         if (result.aiMessage.ttsPath) {
+          setIsPlayingTTS(true);
           const audio = new Audio(`file://${result.aiMessage.ttsPath}`);
+          audio.addEventListener('ended', () => setIsPlayingTTS(false));
+          audio.addEventListener('error', () => setIsPlayingTTS(false));
           audio.play().catch((err) => {
             console.error('TTS 자동 재생 실패:', err);
+            setIsPlayingTTS(false);
           });
         }
       } catch (err) {
@@ -205,51 +214,55 @@ export const useConversation = (): UseConversationReturn => {
   /**
    * FR-002: TTS 다시 듣기 (중복 재생 방지)
    */
-  const replayTTS = useCallback(async (messageId: number) => {
-    // 중복 재생 방지
-    if (isPlayingTTS) {
-      console.log('TTS already playing');
-      return;
-    }
-
-    try {
-      setIsPlayingTTS(true);
-
-      const response = await window.electron.invoke('replay-tts', {
-        messageId,
-      });
-
-      if (!response.success || !response.data?.ttsPath) {
-        throw new Error(response.error || 'TTS 파일을 찾을 수 없습니다.');
+  const replayTTS = useCallback(
+    async (messageId: number) => {
+      // 중복 재생 방지
+      if (isPlayingTTS) {
+        console.log('TTS already playing');
+        return;
       }
 
-      const audio = new Audio(`file://${response.data.ttsPath}`);
+      try {
+        setIsPlayingTTS(true);
 
-      // 재생 완료 시 상태 해제
-      audio.addEventListener('ended', () => {
-        setIsPlayingTTS(false);
-      });
+        const response = await window.electron.invoke('replay-tts', {
+          messageId,
+        });
 
-      // 에러 발생 시에도 상태 해제
-      audio.addEventListener('error', () => {
-        setIsPlayingTTS(false);
-      });
+        if (!response.success || !response.data?.ttsPath) {
+          throw new Error(response.error || 'TTS 파일을 찾을 수 없습니다.');
+        }
 
-      await audio.play().catch((err) => {
-        console.error('TTS 재생 실패:', err);
-        setError('음성 재생에 실패했습니다.');
+        const audio = new Audio(`file://${response.data.ttsPath}`);
+
+        // 재생 완료 시 상태 해제
+        audio.addEventListener('ended', () => {
+          setIsPlayingTTS(false);
+        });
+
+        // 에러 발생 시에도 상태 해제
+        audio.addEventListener('error', () => {
+          setIsPlayingTTS(false);
+        });
+
+        await audio.play().catch((err) => {
+          console.error('TTS 재생 실패:', err);
+          setError('음성 재생에 실패했습니다.');
+          setIsPlayingTTS(false);
+        });
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'TTS 재생 중 오류가 발생했습니다.');
         setIsPlayingTTS(false);
-      });
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'TTS 재생 중 오류가 발생했습니다.');
-      setIsPlayingTTS(false);
-    }
-  }, [isPlayingTTS]);
+      }
+    },
+    [isPlayingTTS]
+  );
 
   return {
     conversation,
     messages,
     isLoading,
+    isPlayingTTS,
     error,
     startConversation,
     sendMessage,

@@ -7,8 +7,8 @@ export interface AutoListenToggleProps {
 }
 
 /**
- * 자동 듣기 모드 토글
- * 활성화하면 페이지 진입 시 자동 녹음 시작
+ * 내 차례 자동 녹음 토글
+ * 활성화하면 사용자 대화 차례에 자동으로 녹음 시작
  */
 export const AutoListenToggle: React.FC<AutoListenToggleProps> = ({ enabled, onToggle }) => {
   return (
@@ -21,7 +21,7 @@ export const AutoListenToggle: React.FC<AutoListenToggleProps> = ({ enabled, onT
         />
         <span className={styles.slider}></span>
       </label>
-      <span className={styles.label}>항상 듣기</span>
+      <span className={styles.label}>내 차례 자동 녹음</span>
     </div>
   );
 };

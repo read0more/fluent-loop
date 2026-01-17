@@ -39,6 +39,12 @@
   gap: var(--spacing-md);
 }
 
+.togglesGroup {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
 .recordButton {
   background: var(--color-danger-alpha-20);
   color: var(--color-danger-light);
@@ -121,6 +127,36 @@
     opacity: 0.6;
     cursor: not-allowed;
   }
+}
+
+.silenceControl {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  background: var(--bg-surface-hover);
+  border-radius: var(--radius-md);
+}
+
+.silenceLabel {
+  font-size: 0.75em;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.silenceIcon {
+  cursor: help;
+}
+
+.silenceSlider {
+  width: 60px;
+  accent-color: var(--color-primary);
+}
+
+.silenceValue {
+  font-size: 0.75em;
+  color: var(--text-secondary);
+  min-width: 30px;
 }
 
 .sendButton {

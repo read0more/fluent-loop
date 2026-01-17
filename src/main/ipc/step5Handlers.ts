@@ -1,7 +1,10 @@
 import { ipcMain, IpcMainInvokeEvent } from 'electron';
+import fs from 'fs';
 import { ConversationService } from '../services/ConversationService';
 import { AudioService } from '../services/AudioService';
 import { STTService } from '../services/STTService';
+import { SettingsService } from '../services/SettingsService';
+import { getDatabase } from '../database/db';
 import { AppError, ErrorCode } from '../errors/AppError';
 import {
   IPCResponse,
@@ -22,15 +25,18 @@ import {
 let conversationService: ConversationService;
 let audioService: AudioService;
 let sttService: STTService;
+let settingsService: SettingsService;
 
 export function registerStep5Handlers(): void {
   // Service initialization
   conversationService = new ConversationService();
   audioService = new AudioService();
   sttService = new STTService();
+  settingsService = new SettingsService(getDatabase());
 
   // STT 핸들러 등록
   ipcMain.handle('transcribe-step5-audio', handleTranscribeStep5Audio);
+  ipcMain.handle('transcribe-step5-audio-stream', handleTranscribeStep5AudioStream);
 
   /**
    * 대화 시작
@@ -265,6 +271,21 @@ async function handleTranscribeStep5Audio(
     console.log('[Step5 STT] Buffer size:', audioBuffer.length);
 
     const filePath = await audioService.saveRecordingStep5(audioBuffer);
+
+    // WebM 유효성 검증 실패 시 빈 텍스트 반환 (graceful handling)
+    if (filePath === null) {
+      console.log('[Step5 STT] Invalid WebM data, returning empty text');
+      return {
+        success: true,
+        data: {
+          success: true,
+          text: '',
+          language,
+          duration: 0,
+        },
+      };
+    }
+
     console.log('[Step5 STT] Saved to:', filePath);
 
     // 2. STT 변환
@@ -291,6 +312,144 @@ async function handleTranscribeStep5Audio(
     };
   } catch (error) {
     console.error('[Step5 STT] Error:', error);
+
+    if (error instanceof AppError) {
+      return {
+        success: false,
+        error: error.userMessage,
+        errorCode: error.code,
+      };
+    }
+
+    return {
+      success: false,
+      error: '음성 인식에 실패했습니다.',
+      errorCode: ErrorCode.UNKNOWN_ERROR,
+    };
+  }
+}
+
+/**
+ * Step5 음성 청크 → 실시간 STT 변환 (신규 - KAN-21)
+ * audioChunk를 파일로 저장 후 STT 스트리밍 서비스 호출
+ */
+interface TranscribeStreamParams {
+  audioChunk: Uint8Array;
+  language?: string;
+  context?: string; // 이전 청크의 텍스트
+  isRecording?: boolean; // 녹음 중 여부 (true일 때 타임아웃 비활성화)
+}
+
+async function handleTranscribeStep5AudioStream(
+  _event: IpcMainInvokeEvent,
+  params: TranscribeStreamParams
+): Promise<IPCResponse<{ text: string; language: string; is_final: boolean }>> {
+  console.log('[Step5 STT Stream] handleTranscribeStep5AudioStream called');
+  console.log(
+    '[Step5 STT Stream] params:',
+    params
+      ? {
+          audioChunkLength: params.audioChunk?.length,
+          language: params.language,
+          contextLength: params.context?.length || 0,
+        }
+      : 'undefined'
+  );
+
+  try {
+    const { audioChunk, language = 'en', context = '', isRecording = false } = params;
+
+    // Validation
+    if (!audioChunk || audioChunk.length === 0) {
+      console.error('[Step5 STT Stream] No audio chunk received');
+      throw new AppError(
+        ErrorCode.VALIDATION_ERROR,
+        'Missing audio chunk',
+        '음성 청크 데이터가 없습니다.'
+      );
+    }
+
+    console.log('[Step5 STT Stream] Audio chunk size:', audioChunk.length);
+
+    const MIN_CHUNK_SIZE = 10 * 1024; // 10KB - 작은 청크는 WebM 구조 손상 위험
+    if (audioChunk.length < MIN_CHUNK_SIZE) {
+      console.log(
+        `[Step5 STT Stream] Chunk too small (${audioChunk.length} < ${MIN_CHUNK_SIZE}), skipping STT`
+      );
+      return {
+        success: true,
+        data: {
+          text: '',
+          language,
+          is_final: false,
+        },
+      };
+    }
+
+    // 1. audioChunk를 임시 파일로 저장
+    const audioBuffer = Buffer.isBuffer(audioChunk) ? audioChunk : Buffer.from(audioChunk);
+    console.log('[Step5 STT Stream] Buffer size:', audioBuffer.length);
+
+    const filePath = await audioService.saveRecordingStep5(audioBuffer);
+
+    // WebM 유효성 검증 실패 시 빈 텍스트 반환 (graceful handling)
+    if (filePath === null) {
+      console.log('[Step5 STT Stream] Invalid WebM data, returning empty text');
+      return {
+        success: true,
+        data: {
+          text: '',
+          language,
+          is_final: false,
+        },
+      };
+    }
+
+    console.log('[Step5 STT Stream] Saved to:', filePath);
+
+    // GPU 사용 설정 읽기
+    const sttUseGpuSetting = await settingsService.getSetting('sttUseGpu');
+    const useGpu = sttUseGpuSetting === 'true';
+    console.log('[Step5 STT Stream] GPU setting:', useGpu);
+
+    // 2. 실시간 STT 변환
+    let transcribedText = '';
+    let isFinal = false;
+
+    try {
+      console.log('[Step5 STT Stream] Calling STT stream service with context:', context);
+      const sttResult = await sttService.transcribeAudioStream(
+        filePath,
+        language,
+        context,
+        useGpu,
+        isRecording
+      );
+      console.log('[Step5 STT Stream] STT result:', sttResult);
+
+      transcribedText = sttResult.text || '';
+      isFinal = sttResult.is_final || false;
+    } catch (sttError) {
+      console.error('[Step5 STT Stream] STT 변환 실패:', sttError);
+      // STT 실패해도 빈 텍스트로 진행 (graceful degradation)
+    }
+
+    // 3. 임시 파일 삭제 (비동기로 처리하여 응답 속도 향상)
+    fs.promises.unlink(filePath).catch((err) => {
+      console.error('[Step5 STT Stream] Failed to delete temp file:', filePath, err);
+    });
+
+    console.log('[Step5 STT Stream] Returning success, text:', transcribedText);
+    return {
+      success: true,
+      data: {
+        text: transcribedText,
+        language,
+        is_final: isFinal,
+      },
+    };
+  } catch (error) {
+    console.error('[Step5 STT Stream] Error:', error);
 
     if (error instanceof AppError) {
       return {

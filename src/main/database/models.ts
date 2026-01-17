@@ -130,6 +130,7 @@ export interface AppSettings {
   ttsVoiceId: string; // 화자A: AI 음성 + 기본 TTS
   ttsVoiceIdUser: string; // 화자B: User 음성
   recordingSavePath: string;
+  sttUseGpu: string; // STT GPU 사용 여부 ('true' | 'false')
   [key: string]: string;
 }
 
