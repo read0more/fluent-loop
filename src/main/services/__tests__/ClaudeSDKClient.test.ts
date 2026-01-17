@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { AppError, ErrorCode } from '../../errors/AppError';
-import { ClaudeSDKClient } from '../ClaudeSDKClient';
+import { ClaudeSDKClient, _setMockModule, _clearMockModule } from '../ClaudeSDKClient';
 
 /**
  * ClaudeSDKClient Unit Tests
@@ -12,11 +12,6 @@ import { ClaudeSDKClient } from '../ClaudeSDKClient';
 
 // Mock query function from Claude Agent SDK
 const mockQuery = vi.fn();
-
-// Mock Claude Agent SDK module
-vi.mock('@anthropic-ai/claude-agent-sdk', () => ({
-  query: (...args: unknown[]) => mockQuery(...args),
-}));
 
 // Helper: Create mock AsyncGenerator that yields messages
 function createMockGenerator(messages: unknown[]) {
@@ -32,11 +27,16 @@ describe('ClaudeSDKClient - Unit Tests', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    // 테스트용 mock 모듈 주입
+    _setMockModule({
+      query: (...args: unknown[]) => mockQuery(...args),
+    });
     client = new ClaudeSDKClient();
   });
 
   afterEach(() => {
     vi.restoreAllMocks();
+    _clearMockModule();
   });
 
   describe('TC-001: queryStructured - 성공 케이스', () => {

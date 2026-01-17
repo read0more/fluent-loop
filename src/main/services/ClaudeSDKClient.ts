@@ -1,5 +1,40 @@
-import { query } from '@anthropic-ai/claude-agent-sdk';
 import { AppError, ErrorCode } from '../errors/AppError';
+
+// 테스트 환경에서 사용할 모듈 캐시 (vi.mock에서 주입)
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let mockModule: any = null;
+
+/**
+ * 테스트에서 모듈을 주입할 수 있도록 하는 함수
+ * @internal 테스트 전용
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function _setMockModule(module: any): void {
+  mockModule = module;
+}
+
+/**
+ * 테스트에서 모듈 초기화
+ * @internal 테스트 전용
+ */
+export function _clearMockModule(): void {
+  mockModule = null;
+}
+
+// ESM 모듈을 동적으로 import하기 위한 헬퍼
+// TypeScript가 import()를 require()로 변환하지 못하도록 Function 생성자 사용
+async function getQueryFunction(): Promise<typeof import('@anthropic-ai/claude-agent-sdk').query> {
+  // 테스트 환경에서는 주입된 mock 사용
+  if (mockModule) {
+    return mockModule.query;
+  }
+
+  const importFn = new Function('specifier', 'return import(specifier)') as (
+    specifier: string
+  ) => Promise<typeof import('@anthropic-ai/claude-agent-sdk')>;
+  const module = await importFn('@anthropic-ai/claude-agent-sdk');
+  return module.query;
+}
 
 /**
  * Claude Agent SDK 클라이언트 래퍼
@@ -14,6 +49,7 @@ export class ClaudeSDKClient {
    */
   async query(prompt: string, _options?: { maxTokens?: number }): Promise<string> {
     try {
+      const query = await getQueryFunction();
       let result = '';
 
       // Claude Agent SDK의 query() 함수 사용
@@ -62,6 +98,7 @@ export class ClaudeSDKClient {
     _options?: { maxTokens?: number }
   ): Promise<T> {
     try {
+      const query = await getQueryFunction();
       let result: T | undefined;
 
       // Claude Agent SDK의 query() 함수 사용 (structured output)
