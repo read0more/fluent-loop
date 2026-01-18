@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { RecordingFile } from '../../main/database/models';
+import { AudioPlayer } from './AudioPlayer';
 import styles from './RecordingList.module.scss';
 
 export interface RecordingListProps {
@@ -7,6 +8,7 @@ export interface RecordingListProps {
   customPath?: string;
   onRecordingSelect?: (filePath: string) => void;
   onRecordingDelete?: (filePath: string) => void;
+  selectedRecording?: string | null;
 }
 
 type LoadingState = 'loading' | 'loaded' | 'error';
@@ -16,6 +18,7 @@ export const RecordingList: React.FC<RecordingListProps> = ({
   customPath,
   onRecordingSelect,
   onRecordingDelete,
+  selectedRecording,
 }) => {
   const [recordings, setRecordings] = useState<RecordingFile[]>([]);
   const [loadingState, setLoadingState] = useState<LoadingState>('loading');
@@ -126,31 +129,44 @@ export const RecordingList: React.FC<RecordingListProps> = ({
       {loadingState === 'loaded' && recordings.length > 0 && (
         <div className={styles.items}>
           {recordings.map((recording) => (
-            <div key={recording.filePath} className={styles.item}>
-              <div className={styles.itemInfo}>
-                <div className={styles.itemName}>{recording.fileName}</div>
-                <div className={styles.itemMeta}>
-                  {formatDate(recording.createdAt)} · {formatSize(recording.size)}
+            <div key={recording.filePath} className={styles.itemWrapper}>
+              <div className={styles.item}>
+                <div className={styles.itemInfo}>
+                  <div className={styles.itemName}>{recording.fileName}</div>
+                  <div className={styles.itemMeta}>
+                    {formatDate(recording.createdAt)} · {formatSize(recording.size)}
+                  </div>
+                </div>
+
+                <div className={styles.itemActions}>
+                  {onRecordingSelect && (
+                    <button
+                      onClick={() => onRecordingSelect(recording.filePath)}
+                      className={styles.btnPlay}
+                    >
+                      재생
+                    </button>
+                  )}
+
+                  <button
+                    onClick={() => handleDelete(recording.filePath)}
+                    className={styles.btnDelete}
+                  >
+                    삭제
+                  </button>
                 </div>
               </div>
 
-              <div className={styles.itemActions}>
-                {onRecordingSelect && (
-                  <button
-                    onClick={() => onRecordingSelect(recording.filePath)}
-                    className={styles.btnPlay}
-                  >
-                    재생
-                  </button>
-                )}
-
-                <button
-                  onClick={() => handleDelete(recording.filePath)}
-                  className={styles.btnDelete}
-                >
-                  삭제
-                </button>
-              </div>
+              {selectedRecording === recording.filePath && (
+                <div className={styles.inlinePlayer}>
+                  <AudioPlayer
+                    src={`file://${recording.filePath}`}
+                    showControls={true}
+                    showSpeedControl={false}
+                    autoPlay={true}
+                  />
+                </div>
+              )}
             </div>
           ))}
         </div>

@@ -130,22 +130,30 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  // autoPlay 처리
-  useEffect(() => {
-    if (autoPlay && audioRef.current) {
-      play();
-    }
-  }, [autoPlay]);
-
   // playbackRate prop 변경 처리
   useEffect(() => {
     changeSpeed(playbackRate);
   }, [playbackRate]);
 
-  // src 변경 시 초기화
+  // src 변경 시 초기화 및 autoPlay 처리
   useEffect(() => {
-    stop();
-  }, [src]);
+    if (audioRef.current) {
+      // 이전 재생 중지
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+      setIsPlaying(false);
+      setCurrentTime(0);
+
+      // autoPlay가 true면 새 src 로드 후 재생
+      if (autoPlay) {
+        const handleCanPlay = () => {
+          play();
+          audioRef.current?.removeEventListener('canplay', handleCanPlay);
+        };
+        audioRef.current.addEventListener('canplay', handleCanPlay);
+      }
+    }
+  }, [src, autoPlay]);
 
   // FR-005: 컴포넌트 언마운트 시 정리 (페이지 이동 시 오디오 자동 정지)
   useEffect(() => {
