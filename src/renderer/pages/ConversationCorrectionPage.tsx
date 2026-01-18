@@ -38,6 +38,10 @@ export const ConversationCorrectionPage: React.FC = () => {
   const navigate = useNavigate();
   const stopPlayRef = useRef(false);
 
+  // 오디오 관리용 refs
+  const currentAudioRef = useRef<HTMLAudioElement | null>(null);
+  const [isPlayingSingle, setIsPlayingSingle] = useState(false);
+
   const [state, setState] = useState<ConversationCorrectionPageState>({
     conversationId: null,
     topicId: null,
@@ -55,6 +59,17 @@ export const ConversationCorrectionPage: React.FC = () => {
   // localStorage에서 대화 정보 로드
   useEffect(() => {
     loadConversationData();
+  }, []);
+
+  // 컴포넌트 언마운트 시 오디오 정리
+  useEffect(() => {
+    return () => {
+      if (currentAudioRef.current) {
+        currentAudioRef.current.pause();
+        currentAudioRef.current.src = '';
+      }
+      stopPlayRef.current = true;
+    };
   }, []);
 
   const loadConversationData = async () => {
@@ -171,28 +186,66 @@ export const ConversationCorrectionPage: React.FC = () => {
     }
   }, [state.conversationId]);
 
-  // TTS 재생 헬퍼 함수 (speaker에 따라 다른 음성 사용)
+  // 현재 재생 중인 오디오 중지
+  const stopCurrentAudio = useCallback(() => {
+    if (currentAudioRef.current) {
+      // onerror/onended 핸들러 제거 (src='' 시 에러 트리거 방지)
+      currentAudioRef.current.onended = null;
+      currentAudioRef.current.onerror = null;
+      currentAudioRef.current.pause();
+      currentAudioRef.current.src = '';
+      currentAudioRef.current = null;
+    }
+    setIsPlayingSingle(false);
+  }, []);
+
+  // TTS 재생 헬퍼 함수 (speaker에 따라 다른 음성 사용, 중복 재생 방지)
   const playTTSAudio = useCallback(async (text: string, speaker?: 'user' | 'ai'): Promise<void> => {
+    // 기존 오디오 중지
+    stopCurrentAudio();
+
     const request = speaker ? { text, speaker } : text;
     const response = await window.electron.invoke('synthesize-tts', request);
+
     if (response.success && response.data?.filePath) {
-      const audio = new Audio(`file://${response.data.filePath}`);
-      await new Promise<void>((resolve, reject) => {
-        audio.onended = () => resolve();
-        audio.onerror = () => reject(new Error('오디오 재생 실패'));
-        audio.play().catch(reject);
+      return new Promise<void>((resolve, reject) => {
+        const audio = new Audio(`file://${response.data.filePath}`);
+        currentAudioRef.current = audio;
+        setIsPlayingSingle(true);
+
+        audio.onended = () => {
+          currentAudioRef.current = null;
+          setIsPlayingSingle(false);
+          resolve();
+        };
+        audio.onerror = () => {
+          currentAudioRef.current = null;
+          setIsPlayingSingle(false);
+          reject(new Error('오디오 재생 실패'));
+        };
+
+        audio.play().catch((err) => {
+          currentAudioRef.current = null;
+          setIsPlayingSingle(false);
+          reject(err);
+        });
       });
     }
-  }, []);
+  }, [stopCurrentAudio]);
 
   // TTS 재생 (speaker 정보 포함)
   const handlePlayTTS = useCallback(async (text: string, speaker?: 'user' | 'ai') => {
+    // 전체 재생 중이면 무시
+    if (state.isPlayingAll) {
+      return;
+    }
+    // playTTSAudio 내부에서 stopCurrentAudio() 호출하므로 별도 중지 로직 불필요
     try {
       await playTTSAudio(text, speaker);
     } catch (error) {
       console.error('TTS 재생 실패:', error);
     }
-  }, [playTTSAudio]);
+  }, [playTTSAudio, state.isPlayingAll]);
 
   // 개별 문장 TTS 재생 (인덱스 표시용, speaker 정보 포함)
   const handlePlaySingle = useCallback(async (text: string, index: number, speaker: 'user' | 'ai') => {

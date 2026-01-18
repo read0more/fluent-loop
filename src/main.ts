@@ -34,9 +34,19 @@ function createWindow(): void {
 
   mainWindow = new BrowserWindow(windowConfig);
 
-  // 개발 모드에서는 개발자 도구 자동 열기
-  if (process.env.NODE_ENV === 'development') {
+  // 개발 모드에서는 개발자 도구 자동 열기 (app.isPackaged로 패키지 여부 확인)
+  if (!app.isPackaged) {
     mainWindow.webContents.openDevTools();
+  }
+
+  // 개발 환경에서만 F12 단축키로 DevTools 토글
+  if (!app.isPackaged) {
+    mainWindow.webContents.on('before-input-event', (event, input) => {
+      if (input.key === 'F12') {
+        mainWindow?.webContents.toggleDevTools();
+        event.preventDefault();
+      }
+    });
   }
 
   mainWindow.loadFile('index.html');
@@ -52,6 +62,28 @@ function createMenu(): void {
           label: '종료',
           role: 'quit',
         },
+      ],
+    },
+    {
+      label: 'View',
+      submenu: [
+        // 개발 환경에서만 개발자 도구 메뉴 표시
+        ...(!app.isPackaged
+          ? [
+              {
+                label: '개발자 도구',
+                accelerator: process.platform === 'darwin' ? 'Cmd+Option+I' : 'Ctrl+Shift+I',
+                click: () => {
+                  if (mainWindow) {
+                    mainWindow.webContents.toggleDevTools();
+                  }
+                },
+              },
+              { type: 'separator' as const },
+            ]
+          : []),
+        { label: '새로고침', accelerator: 'F5', role: 'reload' },
+        { label: '강제 새로고침', accelerator: 'Ctrl+F5', role: 'forceReload' },
       ],
     },
     {
@@ -105,7 +137,6 @@ function showLearningGuide(): void {
 
 3. 단계4에서 첨삭 내용 숙지
    - 문법/어휘 오류 패턴 파악
-   - 반복되는 실수 노트 작성
 
 4. 단계5에서 AI와 실전 대화
    - 자연스러운 대화 흐름 연습
@@ -115,12 +146,7 @@ function showLearningGuide(): void {
    - 개선 포인트 확인
    - 다음 학습에 적용
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-📌 학습 효과를 높이려면:
-- 매일 같은 시간에 학습하여 습관화
-- 첨삭 내용을 복습 노트로 정리
-- 주 1회 자유 주제 스피킹으로 응용력 향상`;
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`;
 
   dialog.showMessageBox(mainWindow, {
     type: 'info',

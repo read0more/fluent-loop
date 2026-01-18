@@ -86,7 +86,16 @@ describe('페이지 이동 시 오디오 정지 (FR-005)', () => {
 
     global.HTMLAudioElement = vi.fn(() => mockAudioElement) as any;
 
-    // Electron IPC mock
+    // HTMLMediaElement.prototype mock (JSX <audio> 요소용)
+    vi.spyOn(HTMLMediaElement.prototype, 'play').mockImplementation(() => {
+      return playMock();
+    });
+    vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => {
+      pauseMock();
+    });
+    vi.spyOn(HTMLMediaElement.prototype, 'load').mockImplementation(() => {});
+
+    // Electron IPC mock (React Testing Library와 호환되는 방식)
     invokeMock = vi.fn().mockResolvedValue({
       success: true,
       data: {
@@ -94,16 +103,14 @@ describe('페이지 이동 시 오디오 정지 (FR-005)', () => {
       },
     });
 
-    global.window = {
-      ...global.window,
-      electron: {
-        invoke: invokeMock,
-      },
-    } as any;
+    (window as any).electron = {
+      invoke: invokeMock,
+    };
   });
 
   afterEach(() => {
     vi.clearAllMocks();
+    vi.restoreAllMocks();
   });
 
   describe('TC-013: 페이지 이동 시 TTSPlayer 오디오 정지', () => {
@@ -112,7 +119,7 @@ describe('페이지 이동 시 오디오 정지 (FR-005)', () => {
       render(<App />);
 
       // Navigate to ListeningPage
-      const listeningLink = screen.getByRole('link', { name: /단계 2: 듣기 연습/ });
+      const listeningLink = screen.getAllByRole('link', { name: /단계 2: 듣기 연습/ })[0];
       fireEvent.click(listeningLink);
 
       await waitFor(() => {
@@ -128,7 +135,7 @@ describe('페이지 이동 시 오디오 정지 (FR-005)', () => {
       });
 
       // Act: Navigate to RetellingPage
-      const retellingLink = screen.getByRole('link', { name: /단계 3: 리텔링/ });
+      const retellingLink = screen.getAllByRole('link', { name: /단계 3: 리텔링/ })[0];
       fireEvent.click(retellingLink);
 
       // Assert: TTSPlayer cleanup 실행 확인
@@ -142,14 +149,14 @@ describe('페이지 이동 시 오디오 정지 (FR-005)', () => {
       // Arrange
       render(<App />);
 
-      fireEvent.click(screen.getByRole('link', { name: /단계 2: 듣기 연습/ }));
+      fireEvent.click(screen.getAllByRole('link', { name: /단계 2: 듣기 연습/ })[0]);
 
       await waitFor(() => {
         expect(screen.getByRole('heading', { name: /단계 2: 듣기 연습/ })).toBeInTheDocument();
       });
 
       // Act: Navigate away
-      fireEvent.click(screen.getByRole('link', { name: /단계 3: 리텔링/ }));
+      fireEvent.click(screen.getAllByRole('link', { name: /단계 3: 리텔링/ })[0]);
 
       // Assert
       await waitFor(() => {
@@ -161,14 +168,14 @@ describe('페이지 이동 시 오디오 정지 (FR-005)', () => {
       // Arrange
       render(<App />);
 
-      fireEvent.click(screen.getByRole('link', { name: /단계 2: 듣기 연습/ }));
+      fireEvent.click(screen.getAllByRole('link', { name: /단계 2: 듣기 연습/ })[0]);
 
       await waitFor(() => {
         expect(screen.getByRole('heading', { name: /단계 2: 듣기 연습/ })).toBeInTheDocument();
       });
 
       // Act: Navigate away
-      fireEvent.click(screen.getByRole('link', { name: /단계 3: 리텔링/ }));
+      fireEvent.click(screen.getAllByRole('link', { name: /단계 3: 리텔링/ })[0]);
 
       // Assert
       await waitFor(() => {
@@ -182,14 +189,14 @@ describe('페이지 이동 시 오디오 정지 (FR-005)', () => {
       // Arrange
       render(<App />);
 
-      fireEvent.click(screen.getByRole('link', { name: /단계 2: 듣기 연습/ }));
+      fireEvent.click(screen.getAllByRole('link', { name: /단계 2: 듣기 연습/ })[0]);
 
       await waitFor(() => {
         expect(screen.getByRole('heading', { name: /단계 2: 듣기 연습/ })).toBeInTheDocument();
       });
 
       // Act: Navigate to RetellingPage
-      fireEvent.click(screen.getByRole('link', { name: /단계 3: 리텔링/ }));
+      fireEvent.click(screen.getAllByRole('link', { name: /단계 3: 리텔링/ })[0]);
 
       // Assert
       await waitFor(() => {
@@ -205,7 +212,7 @@ describe('페이지 이동 시 오디오 정지 (FR-005)', () => {
       render(<App />);
 
       // Navigate to ListeningPage (단계2)
-      fireEvent.click(screen.getByRole('link', { name: /단계 2: 듣기 연습/ }));
+      fireEvent.click(screen.getAllByRole('link', { name: /단계 2: 듣기 연습/ })[0]);
 
       await waitFor(() => {
         expect(screen.getByRole('heading', { name: /단계 2: 듣기 연습/ })).toBeInTheDocument();
@@ -220,7 +227,7 @@ describe('페이지 이동 시 오디오 정지 (FR-005)', () => {
       });
 
       // Act: Navigate to RolePlayPage (단계5)
-      fireEvent.click(screen.getByRole('link', { name: /단계 5: AI 롤플레잉/ }));
+      fireEvent.click(screen.getAllByRole('link', { name: /단계 5: AI 롤플레잉/ })[0]);
 
       await waitFor(() => {
         expect(screen.getByRole('heading', { name: /단계 5: AI 롤플레잉/ })).toBeInTheDocument();
@@ -231,7 +238,7 @@ describe('페이지 이동 시 오디오 정지 (FR-005)', () => {
 
       // Navigate back to ListeningPage (단계2)
       vi.clearAllMocks();
-      fireEvent.click(screen.getByRole('link', { name: /단계 2: 듣기 연습/ }));
+      fireEvent.click(screen.getAllByRole('link', { name: /단계 2: 듣기 연습/ })[0]);
 
       await waitFor(() => {
         expect(screen.getByRole('heading', { name: /단계 2: 듣기 연습/ })).toBeInTheDocument();
@@ -247,7 +254,7 @@ describe('페이지 이동 시 오디오 정지 (FR-005)', () => {
       render(<App />);
 
       // Navigate to ListeningPage
-      fireEvent.click(screen.getByRole('link', { name: /단계 2: 듣기 연습/ }));
+      fireEvent.click(screen.getAllByRole('link', { name: /단계 2: 듣기 연습/ })[0]);
 
       await waitFor(() => {
         expect(screen.getByRole('heading', { name: /단계 2: 듣기 연습/ })).toBeInTheDocument();
@@ -256,13 +263,13 @@ describe('페이지 이동 시 오디오 정지 (FR-005)', () => {
       const firstInstanceCallCount = playMock.mock.calls.length;
 
       // Act: Navigate away and back
-      fireEvent.click(screen.getByRole('link', { name: /단계 3: 리텔링/ }));
+      fireEvent.click(screen.getAllByRole('link', { name: /단계 3: 리텔링/ })[0]);
 
       await waitFor(() => {
         expect(screen.getByRole('heading', { name: /단계 3: 리텔링/ })).toBeInTheDocument();
       });
 
-      fireEvent.click(screen.getByRole('link', { name: /단계 2: 듣기 연습/ }));
+      fireEvent.click(screen.getAllByRole('link', { name: /단계 2: 듣기 연습/ })[0]);
 
       await waitFor(() => {
         expect(screen.getByRole('heading', { name: /단계 2: 듣기 연습/ })).toBeInTheDocument();
@@ -277,20 +284,20 @@ describe('페이지 이동 시 오디오 정지 (FR-005)', () => {
       // Arrange
       render(<App />);
 
-      fireEvent.click(screen.getByRole('link', { name: /단계 2: 듣기 연습/ }));
+      fireEvent.click(screen.getAllByRole('link', { name: /단계 2: 듣기 연습/ })[0]);
 
       await waitFor(() => {
         expect(screen.getByRole('heading', { name: /단계 2: 듣기 연습/ })).toBeInTheDocument();
       });
 
       // Act: Navigate away and back
-      fireEvent.click(screen.getByRole('link', { name: /단계 5: AI 롤플레잉/ }));
+      fireEvent.click(screen.getAllByRole('link', { name: /단계 5: AI 롤플레잉/ })[0]);
 
       await waitFor(() => {
         expect(screen.getByRole('heading', { name: /단계 5: AI 롤플레잉/ })).toBeInTheDocument();
       });
 
-      fireEvent.click(screen.getByRole('link', { name: /단계 2: 듣기 연습/ }));
+      fireEvent.click(screen.getAllByRole('link', { name: /단계 2: 듣기 연습/ })[0]);
 
       await waitFor(() => {
         expect(screen.getByRole('heading', { name: /단계 2: 듣기 연습/ })).toBeInTheDocument();
@@ -306,7 +313,7 @@ describe('페이지 이동 시 오디오 정지 (FR-005)', () => {
       // Arrange
       const { unmount } = render(<App />);
 
-      fireEvent.click(screen.getByRole('link', { name: /단계 2: 듣기 연습/ }));
+      fireEvent.click(screen.getAllByRole('link', { name: /단계 2: 듣기 연습/ })[0]);
 
       await waitFor(() => {
         expect(screen.getByRole('heading', { name: /단계 2: 듣기 연습/ })).toBeInTheDocument();
@@ -322,7 +329,7 @@ describe('페이지 이동 시 오디오 정지 (FR-005)', () => {
       const { container } = render(<App />);
 
       // Navigate to ListeningPage again
-      fireEvent.click(screen.getByRole('link', { name: /단계 2: 듣기 연습/ }));
+      fireEvent.click(screen.getAllByRole('link', { name: /단계 2: 듣기 연습/ })[0]);
 
       // Assert: 새로운 인스턴스는 초기 상태
       await waitFor(() => {
@@ -334,7 +341,7 @@ describe('페이지 이동 시 오디오 정지 (FR-005)', () => {
       // Arrange & Act
       render(<App />);
 
-      fireEvent.click(screen.getByRole('link', { name: /단계 2: 듣기 연습/ }));
+      fireEvent.click(screen.getAllByRole('link', { name: /단계 2: 듣기 연습/ })[0]);
 
       await waitFor(() => {
         expect(screen.getByRole('heading', { name: /단계 2: 듣기 연습/ })).toBeInTheDocument();
@@ -346,21 +353,23 @@ describe('페이지 이동 시 오디오 정지 (FR-005)', () => {
       expect(screen.queryByText('음성 생성 중...')).not.toBeInTheDocument();
     });
 
-    it('audioSrc가 null로 초기화되어야 함', async () => {
+    it('TTSPlayer의 audioSrc가 null로 초기화되어야 함', async () => {
       // Arrange
       const { container } = render(<App />);
 
-      fireEvent.click(screen.getByRole('link', { name: /단계 2: 듣기 연습/ }));
+      fireEvent.click(screen.getAllByRole('link', { name: /단계 2: 듣기 연습/ })[0]);
 
       await waitFor(() => {
         expect(screen.getByRole('heading', { name: /단계 2: 듣기 연습/ })).toBeInTheDocument();
       });
 
-      // Assert: audio 엘리먼트가 없거나 src가 비어있어야 함
+      // Assert: TTSPlayer는 TTS 생성 전까지 audio 엘리먼트를 렌더링하지 않음
+      // AudioPlayer는 항상 props.src로 렌더링되므로, audio 요소가 1개만 있어야 함 (AudioPlayer 것만)
       const audioElements = container.querySelectorAll('audio');
-      audioElements.forEach((audio) => {
-        expect(audio.src).toBeFalsy();
-      });
+      // AudioPlayer의 audio만 존재해야 함 (TTSPlayer의 audio는 아직 없음)
+      expect(audioElements.length).toBe(1);
+      // 그 audio는 AudioPlayer의 것 (recording.mp3)
+      expect(audioElements[0].src).toContain('recording.mp3');
     });
   });
 });

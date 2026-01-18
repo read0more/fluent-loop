@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { TextInputArea } from '../components/TextInputArea';
 import { CorrectionDisplay } from '../components/CorrectionDisplay';
 import { LoadingSpinner } from '../components/LoadingSpinner';
@@ -37,6 +37,28 @@ export const CorrectionPage: React.FC = () => {
     isSaving: false,
     retellingTexts: null,
   });
+
+  // 오디오 관리용 ref
+  const currentAudioRef = useRef<HTMLAudioElement | null>(null);
+
+  // 현재 재생 중인 오디오 중지
+  const stopCurrentAudio = useCallback(() => {
+    if (currentAudioRef.current) {
+      currentAudioRef.current.pause();
+      currentAudioRef.current.src = '';
+      currentAudioRef.current = null;
+    }
+  }, []);
+
+  // 컴포넌트 언마운트 시 오디오 정리
+  useEffect(() => {
+    return () => {
+      if (currentAudioRef.current) {
+        currentAudioRef.current.pause();
+        currentAudioRef.current.src = '';
+      }
+    };
+  }, []);
 
   // 활성 토픽 로드
   useEffect(() => {
@@ -313,21 +335,36 @@ export const CorrectionPage: React.FC = () => {
     }
   };
 
-  // TTS 재생
+  // TTS 재생 (기존 오디오 중지 후 새 오디오 재생)
   const handleTTSPlay = useCallback(async (text: string, index: number) => {
+    // 기존 오디오 중지
+    stopCurrentAudio();
+
     try {
       const response = await window.electron.invoke('synthesize-tts', text);
 
       if (response.success && response.data?.filePath) {
         const audio = new Audio(`file://${response.data.filePath}`);
-        audio.play();
+        currentAudioRef.current = audio;
+
+        audio.addEventListener('ended', () => {
+          currentAudioRef.current = null;
+        });
+        audio.addEventListener('error', () => {
+          currentAudioRef.current = null;
+        });
+
+        audio.play().catch((err) => {
+          console.error('TTS 재생 실패:', err);
+          currentAudioRef.current = null;
+        });
       } else {
         console.error('TTS 실패:', response.error);
       }
     } catch (error) {
       console.error('TTS 재생 오류:', error);
     }
-  }, []);
+  }, [stopCurrentAudio]);
 
   // 첨삭 결과 저장
   const handleSaveCorrections = async () => {

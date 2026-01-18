@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import {
   Conversation,
   Message,
@@ -31,68 +31,124 @@ export const useConversation = (): UseConversationReturn => {
   const [error, setError] = useState<string | null>(null);
   const [isPlayingTTS, setIsPlayingTTS] = useState(false);
 
+  // 오디오 관리용 refs
+  const currentAudioRef = useRef<HTMLAudioElement | null>(null);
+  const isMountedRef = useRef(true);
+
   const clearError = useCallback(() => {
     setError(null);
   }, []);
 
-  const startConversation = useCallback(async (topicId: number) => {
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      const response = await window.electron.invoke('start-conversation', {
-        topicId,
-      });
-
-      if (!response.success || !response.data) {
-        throw new Error(response.error || '대화 시작에 실패했습니다.');
-      }
-
-      const result = response.data as ConversationStartResult;
-
-      // 대화 세션 설정
-      const newConversation: Conversation = {
-        id: result.conversationId,
-        topicId,
-        sessionId: null,
-        startedAt: new Date(),
-        endedAt: null,
-        duration: null,
-        messageCount: 1,
-        createdAt: new Date(),
-      };
-
-      // AI 첫 메시지 추가
-      const firstMessage: Message = {
-        id: result.firstMessage.id,
-        conversationId: result.conversationId,
-        speaker: 'ai',
-        content: result.firstMessage.content,
-        audioPath: result.firstMessage.ttsPath,
-        timestamp: result.firstMessage.timestamp,
-        createdAt: new Date(),
-      };
-
-      setConversation(newConversation);
-      setMessages([firstMessage]);
-
-      // TTS 자동 재생
-      if (result.firstMessage.ttsPath) {
-        setIsPlayingTTS(true);
-        const audio = new Audio(`file://${result.firstMessage.ttsPath}`);
-        audio.addEventListener('ended', () => setIsPlayingTTS(false));
-        audio.addEventListener('error', () => setIsPlayingTTS(false));
-        audio.play().catch((err) => {
-          console.error('TTS 자동 재생 실패:', err);
-          setIsPlayingTTS(false);
-        });
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : '대화 시작 중 오류가 발생했습니다.');
-    } finally {
-      setIsLoading(false);
+  // 현재 재생 중인 오디오 중지
+  const stopCurrentAudio = useCallback(() => {
+    if (currentAudioRef.current) {
+      currentAudioRef.current.pause();
+      currentAudioRef.current.src = '';
+      currentAudioRef.current = null;
     }
+    setIsPlayingTTS(false);
   }, []);
+
+  // 안전하게 오디오 재생 (기존 오디오 중지 후 새 오디오 재생)
+  const playAudioSafely = useCallback((audioPath: string) => {
+    // 기존 오디오 중지
+    if (currentAudioRef.current) {
+      currentAudioRef.current.pause();
+      currentAudioRef.current.src = '';
+    }
+
+    const audio = new Audio(`file://${audioPath}`);
+    currentAudioRef.current = audio;
+    setIsPlayingTTS(true);
+
+    audio.addEventListener('ended', () => {
+      if (currentAudioRef.current === audio) {
+        setIsPlayingTTS(false);
+        currentAudioRef.current = null;
+      }
+    });
+    audio.addEventListener('error', () => {
+      if (currentAudioRef.current === audio) {
+        setIsPlayingTTS(false);
+        currentAudioRef.current = null;
+      }
+    });
+
+    audio.play().catch((err) => {
+      console.error('TTS 재생 실패:', err);
+      if (currentAudioRef.current === audio) {
+        setIsPlayingTTS(false);
+        currentAudioRef.current = null;
+      }
+    });
+  }, []);
+
+  // 컴포넌트 언마운트 시 오디오 정리
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+      if (currentAudioRef.current) {
+        currentAudioRef.current.pause();
+        currentAudioRef.current.src = '';
+      }
+    };
+  }, []);
+
+  const startConversation = useCallback(
+    async (topicId: number) => {
+      setIsLoading(true);
+      setError(null);
+
+      try {
+        const response = await window.electron.invoke('start-conversation', {
+          topicId,
+        });
+
+        if (!response.success || !response.data) {
+          throw new Error(response.error || '대화 시작에 실패했습니다.');
+        }
+
+        const result = response.data as ConversationStartResult;
+
+        // 대화 세션 설정
+        const newConversation: Conversation = {
+          id: result.conversationId,
+          topicId,
+          sessionId: null,
+          startedAt: new Date(),
+          endedAt: null,
+          duration: null,
+          messageCount: 1,
+          createdAt: new Date(),
+        };
+
+        // AI 첫 메시지 추가
+        const firstMessage: Message = {
+          id: result.firstMessage.id,
+          conversationId: result.conversationId,
+          speaker: 'ai',
+          content: result.firstMessage.content,
+          audioPath: result.firstMessage.ttsPath,
+          timestamp: result.firstMessage.timestamp,
+          createdAt: new Date(),
+        };
+
+        setConversation(newConversation);
+        setMessages([firstMessage]);
+
+        // TTS 자동 재생 (안전한 오디오 재생, 마운트 상태 확인)
+        if (result.firstMessage.ttsPath && isMountedRef.current) {
+          playAudioSafely(result.firstMessage.ttsPath);
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : '대화 시작 중 오류가 발생했습니다.');
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [playAudioSafely]
+  );
 
   const sendMessage = useCallback(
     async (content: string, timestamp: number) => {
@@ -151,16 +207,9 @@ export const useConversation = (): UseConversationReturn => {
           return [...withoutTemp, userMessage, aiMessage];
         });
 
-        // TTS 자동 재생
-        if (result.aiMessage.ttsPath) {
-          setIsPlayingTTS(true);
-          const audio = new Audio(`file://${result.aiMessage.ttsPath}`);
-          audio.addEventListener('ended', () => setIsPlayingTTS(false));
-          audio.addEventListener('error', () => setIsPlayingTTS(false));
-          audio.play().catch((err) => {
-            console.error('TTS 자동 재생 실패:', err);
-            setIsPlayingTTS(false);
-          });
+        // TTS 자동 재생 (안전한 오디오 재생, 마운트 상태 확인)
+        if (result.aiMessage.ttsPath && isMountedRef.current) {
+          playAudioSafely(result.aiMessage.ttsPath);
         }
       } catch (err) {
         // 에러 발생 시 임시 메시지 제거
@@ -170,7 +219,7 @@ export const useConversation = (): UseConversationReturn => {
         setIsLoading(false);
       }
     },
-    [conversation]
+    [conversation, playAudioSafely]
   );
 
   const endConversation = useCallback(async () => {
@@ -216,15 +265,10 @@ export const useConversation = (): UseConversationReturn => {
    */
   const replayTTS = useCallback(
     async (messageId: number) => {
-      // 중복 재생 방지
-      if (isPlayingTTS) {
-        console.log('TTS already playing');
-        return;
-      }
+      // 항상 기존 오디오 중지 (단계 6과 동일한 패턴)
+      stopCurrentAudio();
 
       try {
-        setIsPlayingTTS(true);
-
         const response = await window.electron.invoke('replay-tts', {
           messageId,
         });
@@ -233,29 +277,13 @@ export const useConversation = (): UseConversationReturn => {
           throw new Error(response.error || 'TTS 파일을 찾을 수 없습니다.');
         }
 
-        const audio = new Audio(`file://${response.data.ttsPath}`);
-
-        // 재생 완료 시 상태 해제
-        audio.addEventListener('ended', () => {
-          setIsPlayingTTS(false);
-        });
-
-        // 에러 발생 시에도 상태 해제
-        audio.addEventListener('error', () => {
-          setIsPlayingTTS(false);
-        });
-
-        await audio.play().catch((err) => {
-          console.error('TTS 재생 실패:', err);
-          setError('음성 재생에 실패했습니다.');
-          setIsPlayingTTS(false);
-        });
+        playAudioSafely(response.data.ttsPath);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'TTS 재생 중 오류가 발생했습니다.');
         setIsPlayingTTS(false);
       }
     },
-    [isPlayingTTS]
+    [stopCurrentAudio, playAudioSafely]
   );
 
   return {

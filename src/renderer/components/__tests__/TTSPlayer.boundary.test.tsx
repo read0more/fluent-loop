@@ -31,18 +31,21 @@ describe('TTSPlayer - 경계값 테스트', () => {
 
     global.HTMLAudioElement = vi.fn(() => mockAudioElement) as any;
 
+    // HTMLMediaElement.prototype mock (JSX <audio> 요소용)
+    vi.spyOn(HTMLMediaElement.prototype, 'play').mockResolvedValue(undefined);
+    vi.spyOn(HTMLMediaElement.prototype, 'load').mockImplementation(() => {});
+
     invokeMock = vi.fn();
 
-    global.window = {
-      ...global.window,
-      electron: {
-        invoke: invokeMock,
-      },
-    } as any;
+    // window.electron mock (React Testing Library와 호환되는 방식)
+    (window as any).electron = {
+      invoke: invokeMock,
+    };
   });
 
   afterEach(() => {
     vi.clearAllMocks();
+    vi.restoreAllMocks();
   });
 
   describe('TC-024: 매우 긴 텍스트 처리', () => {
@@ -58,7 +61,7 @@ describe('TTSPlayer - 경계값 테스트', () => {
       });
 
       const { container } = render(<TTSPlayer text={longText} />);
-      const playButton = container.querySelector('.btnPlay') as HTMLButtonElement;
+      const playButton = container.querySelector('[class*="btnPlay"]') as HTMLButtonElement;
 
       // Act
       fireEvent.click(playButton);
@@ -79,16 +82,16 @@ describe('TTSPlayer - 경계값 테스트', () => {
       });
       invokeMock.mockReturnValue(ttsPromise);
 
-      render(<TTSPlayer text={longText} />);
+      const { container } = render(<TTSPlayer text={longText} />);
 
-      const playButton = screen.getByRole('button');
+      const playButton = container.querySelector('[class*="btnPlay"]') as HTMLButtonElement;
 
       // Act
       fireEvent.click(playButton);
 
       // Assert: loading 상태 확인
       await waitFor(() => {
-        expect(screen.getByText('음성 생성 중...')).toBeInTheDocument();
+        expect(container.textContent).toContain('음성 생성 중...');
       });
 
       // Simulate TTS completion after 9 seconds
@@ -102,7 +105,7 @@ describe('TTSPlayer - 경계값 테스트', () => {
       // Assert: 10초 이내 완료
       await waitFor(
         () => {
-          expect(screen.queryByText('음성 생성 중...')).not.toBeInTheDocument();
+          expect(container.textContent).not.toContain('음성 생성 중...');
         },
         { timeout: 10000 }
       );
@@ -119,24 +122,24 @@ describe('TTSPlayer - 경계값 테스트', () => {
         },
       });
 
-      const playMock = vi.fn().mockResolvedValue(undefined);
-      mockAudioElement.play = playMock;
+      // HTMLMediaElement.prototype.play spy (beforeEach에서 이미 mock됨)
+      const playSpy = vi.spyOn(HTMLMediaElement.prototype, 'play');
 
-      render(<TTSPlayer text={longText} />);
+      const { container } = render(<TTSPlayer text={longText} />);
 
-      const playButton = screen.getByRole('button');
+      const playButton = container.querySelector('[class*="btnPlay"]') as HTMLButtonElement;
 
       // Act
       fireEvent.click(playButton);
 
-      // Assert
+      // Assert: DOM audio element의 play()가 호출되어야 함
       await waitFor(
         () => {
-          expect(playMock).toHaveBeenCalled();
+          expect(playSpy).toHaveBeenCalled();
         },
-        { timeout: 10000 }
+        { timeout: 5000 }
       );
-    }, 15000);
+    }, 10000);
 
     it('10000자 이상의 텍스트도 처리해야 함', async () => {
       // Arrange
@@ -149,9 +152,9 @@ describe('TTSPlayer - 경계값 테스트', () => {
         },
       });
 
-      render(<TTSPlayer text={veryLongText} />);
+      const { container } = render(<TTSPlayer text={veryLongText} />);
 
-      const playButton = screen.getByRole('button');
+      const playButton = container.querySelector('[class*="btnPlay"]') as HTMLButtonElement;
 
       // Act
       fireEvent.click(playButton);
@@ -169,16 +172,16 @@ describe('TTSPlayer - 경계값 테스트', () => {
         error: '음성 생성에 실패했습니다.',
       });
 
-      render(<TTSPlayer text="" />);
+      const { container } = render(<TTSPlayer text="" />);
 
-      const playButton = screen.getByRole('button');
+      const playButton = container.querySelector('[class*="btnPlay"]') as HTMLButtonElement;
 
       // Act
       fireEvent.click(playButton);
 
       // Assert: 에러 메시지 표시
       await waitFor(() => {
-        expect(screen.getByText('음성 생성에 실패했습니다.')).toBeInTheDocument();
+        expect(container.textContent).toContain('음성 생성에 실패했습니다.');
       });
     });
 
@@ -193,9 +196,9 @@ describe('TTSPlayer - 경계값 테스트', () => {
         },
       });
 
-      render(<TTSPlayer text={specialText} />);
+      const { container } = render(<TTSPlayer text={specialText} />);
 
-      const playButton = screen.getByRole('button');
+      const playButton = container.querySelector('[class*="btnPlay"]') as HTMLButtonElement;
 
       // Act
       fireEvent.click(playButton);
@@ -217,9 +220,9 @@ describe('TTSPlayer - 경계값 테스트', () => {
         },
       });
 
-      render(<TTSPlayer text={multilineText} />);
+      const { container } = render(<TTSPlayer text={multilineText} />);
 
-      const playButton = screen.getByRole('button');
+      const playButton = container.querySelector('[class*="btnPlay"]') as HTMLButtonElement;
 
       // Act
       fireEvent.click(playButton);
