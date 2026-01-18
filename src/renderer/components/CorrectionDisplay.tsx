@@ -69,16 +69,13 @@ export const CorrectionDisplay: React.FC<CorrectionDisplayProps> = ({
   };
 
   /**
-   * FR-002: TTS 재생 핸들러 (중복 재생 방지)
+   * FR-002: TTS 재생 핸들러 (여러 번 누르면 처음부터 다시 재생)
    * TC-016: TTS 재생 전체 플로우
    * TC-020: TTS 에러 발생 시 상태 복원
    */
   const handlePlayTTS = async (text: string, index: number) => {
-    // TC-010: 중복 재생 방지
-    if (playingId !== null) {
-      console.log('TTS already playing');
-      return;
-    }
+    // 부모 컴포넌트의 onPlayTTS가 기존 오디오 중지 처리
+    // return 제거 - 중복 클릭 시 처음부터 다시 재생
 
     try {
       setPlayingId(index);
@@ -175,7 +172,6 @@ export const CorrectionDisplay: React.FC<CorrectionDisplayProps> = ({
                       <button
                         className={styles.ttsButton}
                         onClick={() => handlePlayTTS(correction.corrected, originalIndex)}
-                        disabled={playingId !== null}
                         title="수정된 문장 듣기"
                         aria-label="TTS 재생"
                         data-testid={`play-tts-${originalIndex}`}
@@ -202,7 +198,6 @@ export const CorrectionDisplay: React.FC<CorrectionDisplayProps> = ({
                 <button
                   className={styles.ttsButton}
                   onClick={() => handlePlayTTS(summary.text, -1 - index)}
-                  disabled={playingId !== null}
                   title="전체 문장 듣기"
                   aria-label="TTS 재생"
                   data-testid={`tts-button-section-${index}`}

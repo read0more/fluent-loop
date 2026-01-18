@@ -24,6 +24,8 @@ export const TTSPlayer: React.FC<TTSPlayerProps> = ({
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  // FR-004: autoPlay 중복 실행 방지
+  const hasAutoPlayedRef = useRef<boolean>(false);
 
   // TTS 음성 생성 후 자동 재생
   const synthesizeSpeech = async () => {
@@ -98,6 +100,11 @@ export const TTSPlayer: React.FC<TTSPlayerProps> = ({
 
   // 재생 버튼 클릭 - 음성 생성 후 자동 재생
   const handlePlayClick = async () => {
+    // FR-004: 중복 재생 방지 - 이미 로딩 중이거나 재생 중이면 무시
+    if (state === 'loading' || state === 'playing') {
+      return;
+    }
+
     if (!audioSrc) {
       // 아직 TTS를 생성하지 않은 경우 - 생성 후 자동 재생
       const fileUrl = await synthesizeSpeech();
@@ -161,22 +168,27 @@ export const TTSPlayer: React.FC<TTSPlayerProps> = ({
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  // 컴포넌트 언마운트 시 정리
+  // FR-005: 컴포넌트 언마운트 시 정리 (페이지 이동 시 오디오 자동 정지)
   useEffect(() => {
     return () => {
-      if (audioRef.current) {
-        audioRef.current.pause();
-        audioRef.current.src = '';
+      try {
+        if (audioRef.current) {
+          audioRef.current.pause();
+          audioRef.current.src = '';
+        }
+      } catch (err) {
+        console.error('Audio cleanup failed:', err);
       }
     };
   }, []);
 
-  // autoPlay가 true면 마운트 시 자동으로 TTS 생성 및 재생
+  // FR-004: autoPlay가 true면 마운트 시 자동으로 TTS 생성 및 재생 (중복 방지)
   useEffect(() => {
-    if (autoPlay && !audioSrc) {
+    if (autoPlay && !audioSrc && !hasAutoPlayedRef.current) {
+      hasAutoPlayedRef.current = true;
       handlePlayClick();
     }
-  }, [autoPlay]);
+  }, [autoPlay, audioSrc]);
 
   return (
     <div className={styles.player}>
@@ -208,13 +220,16 @@ export const TTSPlayer: React.FC<TTSPlayerProps> = ({
             <div className={styles.audioControls}>
               {/* Play/Pause/Stop Buttons */}
               <div className={styles.controlButtons}>
-                {state !== 'playing' ? (
-                  <button onClick={handlePlayClick} className={styles.btnPlay}>
-                    ▶
-                  </button>
-                ) : (
+                {state === 'playing' ? (
                   <button onClick={pauseAudio} className={styles.btnPause}>
                     ⏸
+                  </button>
+                ) : (
+                  <button
+                    onClick={handlePlayClick}
+                    className={styles.btnPlay}
+                  >
+                    ▶
                   </button>
                 )}
                 <button onClick={stopAudio} className={styles.btnStop} disabled={!audioSrc}>

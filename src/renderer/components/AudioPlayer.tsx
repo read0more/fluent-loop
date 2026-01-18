@@ -25,18 +25,37 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
   const [duration, setDuration] = useState(0);
   const [speed, setSpeed] = useState(playbackRate);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  // FR-004: 오디오 중복 재생 방지를 위한 Promise 관리
+  const playPromiseRef = useRef<Promise<void> | null>(null);
 
   // 재생
   const play = () => {
     if (audioRef.current) {
-      audioRef.current
-        .play()
+      // FR-004: 이미 재생 시도 중이면 무시
+      if (playPromiseRef.current) {
+        return;
+      }
+
+      playPromiseRef.current = audioRef.current.play();
+
+      playPromiseRef.current
         .then(() => {
           setIsPlaying(true);
+          playPromiseRef.current = null;
         })
         .catch((err) => {
+          playPromiseRef.current = null;
+          console.error('Audio playback failed:', err);
+
           if (onError) {
-            onError('오디오 재생에 실패했습니다.');
+            // 사용자 친화적인 에러 메시지
+            if (err.name === 'NotAllowedError') {
+              onError('브라우저에서 오디오 재생이 차단되었습니다.');
+            } else if (err.name === 'NotSupportedError') {
+              onError('오디오 파일 형식이 지원되지 않습니다.');
+            } else {
+              onError('오디오 재생에 실패했습니다.');
+            }
           }
         });
     }
@@ -111,29 +130,43 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  // autoPlay 처리
-  useEffect(() => {
-    if (autoPlay && audioRef.current) {
-      play();
-    }
-  }, [autoPlay]);
-
   // playbackRate prop 변경 처리
   useEffect(() => {
     changeSpeed(playbackRate);
   }, [playbackRate]);
 
-  // src 변경 시 초기화
+  // src 변경 시 초기화 및 autoPlay 처리
   useEffect(() => {
-    stop();
-  }, [src]);
+    if (audioRef.current) {
+      // 이전 재생 중지
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+      setIsPlaying(false);
+      setCurrentTime(0);
 
-  // 컴포넌트 언마운트 시 정리
+      // autoPlay가 true면 새 src 로드 후 재생
+      if (autoPlay) {
+        const handleCanPlay = () => {
+          play();
+          audioRef.current?.removeEventListener('canplay', handleCanPlay);
+        };
+        audioRef.current.addEventListener('canplay', handleCanPlay);
+      }
+    }
+  }, [src, autoPlay]);
+
+  // FR-005: 컴포넌트 언마운트 시 정리 (페이지 이동 시 오디오 자동 정지)
   useEffect(() => {
     return () => {
-      if (audioRef.current) {
-        audioRef.current.pause();
-        audioRef.current.src = '';
+      try {
+        if (audioRef.current) {
+          audioRef.current.pause();
+          audioRef.current.src = '';
+        }
+        // Promise도 정리
+        playPromiseRef.current = null;
+      } catch (err) {
+        console.error('Audio cleanup failed:', err);
       }
     };
   }, []);
@@ -155,7 +188,11 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
           {/* Play/Pause Button */}
           <div className={styles.controlButtons}>
             {!isPlaying ? (
-              <button onClick={play} className={styles.btnAudioPlay}>
+              <button
+                onClick={play}
+                className={styles.btnAudioPlay}
+                disabled={playPromiseRef.current !== null}
+              >
                 ▶
               </button>
             ) : (

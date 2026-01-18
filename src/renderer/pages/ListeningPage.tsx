@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { TTSPlayer } from '../components/TTSPlayer';
 import { RecordingList } from '../components/RecordingList';
-import { AudioPlayer } from '../components/AudioPlayer';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { Topic } from '../../main/database/models';
 import styles from './ListeningPage.module.scss';
@@ -396,19 +395,8 @@ export const ListeningPage: React.FC = () => {
               step={2}
               onRecordingSelect={handleRecordingSelect}
               onRecordingDelete={handleRecordingDelete}
+              selectedRecording={state.selectedRecording}
             />
-
-            {/* 선택된 녹음 재생 */}
-            {state.selectedRecording && (
-              <div className={styles.playbackSection}>
-                <h3>내 녹음 듣기</h3>
-                <AudioPlayer
-                  src={`file://${state.selectedRecording}`}
-                  showControls={true}
-                  showSpeedControl={false}
-                />
-              </div>
-            )}
           </div>
         )}
     </div>

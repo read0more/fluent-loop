@@ -119,3 +119,28 @@
     background: var(--color-danger-alpha-30);
   }
 }
+
+.itemWrapper {
+  display: flex;
+  flex-direction: column;
+}
+
+.inlinePlayer {
+  background: var(--bg-surface-darker, rgba(0, 0, 0, 0.2));
+  border-radius: 0 0 var(--radius-lg, 8px) var(--radius-lg, 8px);
+  padding: var(--spacing-lg, 16px);
+  margin-top: -1px;
+  border-top: 1px solid var(--border-light, rgba(255, 255, 255, 0.1));
+  animation: slideDown 0.2s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
