@@ -1,0 +1,114 @@
+{
+  "totalScenarios": 15,
+  "passed": 1,
+  "failed": 13,
+  "skipped": 1,
+  "timestamp": "2026-01-18T11:56:41.721300",
+  "results": [
+    {
+      "test_id": "QA-034",
+      "name": "ConfigManager 초기 상태 확인",
+      "status": "Pass",
+      "timestamp": "2026-01-18T11:56:15.057326",
+      "reason": "Current TTS provider: supertonic"
+    },
+    {
+      "test_id": "QA-035",
+      "name": "/config/update API 기본 동작",
+      "status": "Fail",
+      "timestamp": "2026-01-18T11:56:17.111419",
+      "reason": "API failed: 404"
+    },
+    {
+      "test_id": "QA-036",
+      "name": "TTS Provider 재생성 확인",
+      "status": "Fail",
+      "timestamp": "2026-01-18T11:56:19.149244",
+      "reason": "Config update failed: 404"
+    },
+    {
+      "test_id": "QA-037",
+      "name": "잘못된 Provider 타입 에러 처리",
+      "status": "Fail",
+      "timestamp": "2026-01-18T11:56:21.208406",
+      "reason": "Expected 400, got 404"
+    },
+    {
+      "test_id": "QA-038",
+      "name": "camelCase → UPPER_SNAKE_CASE 변환",
+      "status": "Fail",
+      "timestamp": "2026-01-18T11:56:23.267021",
+      "reason": "API failed: 404"
+    },
+    {
+      "test_id": "QA-039",
+      "name": "설정 우선순위 (Electron > .env)",
+      "status": "Fail",
+      "timestamp": "2026-01-18T11:56:25.326549",
+      "reason": "Config update failed"
+    },
+    {
+      "test_id": "QA-040",
+      "name": "None 값 무시",
+      "status": "Fail",
+      "timestamp": "2026-01-18T11:56:27.370085",
+      "reason": "Config update failed"
+    },
+    {
+      "test_id": "QA-041",
+      "name": "여러 설정 동시 업데이트",
+      "status": "Fail",
+      "timestamp": "2026-01-18T11:56:29.415164",
+      "reason": "Config update failed"
+    },
+    {
+      "test_id": "QA-042",
+      "name": "Edge TTS Voice ID 적용",
+      "status": "Fail",
+      "timestamp": "2026-01-18T11:56:31.480585",
+      "reason": "Config update failed"
+    },
+    {
+      "test_id": "QA-043",
+      "name": "Supertonic Voice ID 적용",
+      "status": "Fail",
+      "timestamp": "2026-01-18T11:56:33.533907",
+      "reason": "Config update failed"
+    },
+    {
+      "test_id": "QA-044",
+      "name": "기존 TTS/STT 기능 영향 없음 (Regression)",
+      "status": "Fail",
+      "timestamp": "2026-01-18T11:56:35.572919",
+      "reason": "Config update failed"
+    },
+    {
+      "test_id": "QA-045",
+      "name": "ConfigManager 상태 확인 (/health 응답)",
+      "status": "Fail",
+      "timestamp": "2026-01-18T11:56:37.630395",
+      "reason": "Config update failed"
+    },
+    {
+      "test_id": "QA-046",
+      "name": "빈 요청 처리",
+      "status": "Fail",
+      "timestamp": "2026-01-18T11:56:39.674261",
+      "reason": "Expected 200, got 404"
+    },
+    {
+      "test_id": "QA-047",
+      "name": "서버 재시작 후 설정 복원 (.env 우선순위)",
+      "status": "Skip",
+      "timestamp": "2026-01-18T11:56:39.674424",
+      "reason": "Requires server restart"
+    },
+    {
+      "test_id": "QA-048",
+      "name": "동시 요청 처리 (Race Condition)",
+      "status": "Fail",
+      "timestamp": "2026-01-18T11:56:41.721237",
+      "reason": "Request failed: {'detail': 'Not Found'}"
+    }
+  ]
+}

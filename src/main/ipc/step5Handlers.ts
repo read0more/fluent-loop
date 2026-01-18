@@ -3,8 +3,6 @@ import fs from 'fs';
 import { ConversationService } from '../services/ConversationService';
 import { AudioService } from '../services/AudioService';
 import { STTService } from '../services/STTService';
-import { SettingsService } from '../services/SettingsService';
-import { getDatabase } from '../database/db';
 import { AppError, ErrorCode } from '../errors/AppError';
 import {
   IPCResponse,
@@ -25,14 +23,12 @@ import {
 let conversationService: ConversationService;
 let audioService: AudioService;
 let sttService: STTService;
-let settingsService: SettingsService;
 
 export function registerStep5Handlers(): void {
   // Service initialization
   conversationService = new ConversationService();
   audioService = new AudioService();
   sttService = new STTService();
-  settingsService = new SettingsService(getDatabase());
 
   // STT 핸들러 등록
   ipcMain.handle('transcribe-step5-audio', handleTranscribeStep5Audio);
@@ -407,10 +403,8 @@ async function handleTranscribeStep5AudioStream(
 
     console.log('[Step5 STT Stream] Saved to:', filePath);
 
-    // GPU 사용 설정 읽기
-    const sttUseGpuSetting = await settingsService.getSetting('sttUseGpu');
-    const useGpu = sttUseGpuSetting === 'true';
-    console.log('[Step5 STT Stream] GPU setting:', useGpu);
+    // GPU 설정은 Python 백엔드의 .env 파일에서만 관리 (STT_USE_GPU)
+    const useGpu = false; // Python 서버가 .env 설정을 사용하므로 이 값은 무시됨
 
     // 2. 실시간 STT 변환
     let transcribedText = '';

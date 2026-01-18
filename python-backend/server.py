@@ -2,6 +2,7 @@ from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from fastapi.responses import JSONResponse, FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+from typing import Optional
 from dotenv import load_dotenv
 import uvicorn
 import os
@@ -15,6 +16,7 @@ from stt_provider import (
     ISTTProvider,
     FasterWhisperSTTProvider
 )
+from config import ConfigManager
 
 # 환경 변수 로딩 (앱 시작 전)
 load_dotenv()
@@ -42,9 +44,6 @@ tts_provider: ITTSProvider | None = None
 stt_step3_provider: ISTTProvider | None = None  # Step3용 (medium 모델, 인식률 우선)
 stt_step5_provider: ISTTProvider | None = None  # Step5용 (small 모델, 속도 우선)
 
-# 현재 Step5 provider의 GPU 사용 설정 추적
-_current_step5_use_gpu: bool | None = None
-
 # TTS 초기화 상태 추적
 tts_init_status: str = "pending"  # pending, downloading, ready, error
 tts_init_message: str = ""
@@ -55,12 +54,19 @@ class TTSRequest(BaseModel):
     text: str
     voice_id: str | None = None
 
+# 설정 업데이트 요청 모델
+class ConfigUpdateRequest(BaseModel):
+    ttsProvider: Optional[str] = None
+    ttsVoice: Optional[str] = None
+    supertonicVoice: Optional[str] = None
+
 @app.on_event("startup")
 async def startup_event():
     """앱 시작 시 STT 모델 및 TTS 서비스 로드"""
-    global tts_provider, stt_step3_provider, stt_step5_provider, _current_step5_use_gpu
+    global tts_provider, stt_step3_provider, stt_step5_provider
 
     # STT Provider 초기화 - faster-whisper 통일 (KAN-21)
+    # GPU 설정은 .env 파일에서만 관리 (STT_USE_GPU)
     print("Initializing STT Providers (faster-whisper)...")
     use_gpu = os.getenv("STT_USE_GPU", "false").lower() == "true"
 
@@ -80,7 +86,6 @@ async def startup_event():
             compute_type="auto",
             use_gpu=use_gpu
         )
-        _current_step5_use_gpu = use_gpu
 
         print("[Server] All STT Providers initialized (faster-whisper)")
     except Exception as e:
@@ -398,30 +403,13 @@ async def transcribe_audio_chunk(
     Returns:
         STTResult: 변환 결과 (is_final=False)
     """
-    global stt_step5_provider, _current_step5_use_gpu
-
-    # use_gpu 파라미터 파싱 (문자열 -> bool)
-    use_gpu_bool = use_gpu.lower() == "true"
-
-    # GPU 설정이 변경되면 provider 재생성
-    if _current_step5_use_gpu is not None and _current_step5_use_gpu != use_gpu_bool:
-        print(f"[Server] GPU setting changed: {_current_step5_use_gpu} -> {use_gpu_bool}, recreating Step5 provider...")
-        stt_step5_provider = FasterWhisperSTTProvider(
-            model_size="small",
-            compute_type="auto",
-            use_gpu=use_gpu_bool
-        )
-        _current_step5_use_gpu = use_gpu_bool
-
-    # Provider가 없으면 생성
     if stt_step5_provider is None:
-        print(f"[Server] Creating Step5 STT provider with use_gpu={use_gpu_bool}")
-        stt_step5_provider = FasterWhisperSTTProvider(
-            model_size="small",
-            compute_type="auto",
-            use_gpu=use_gpu_bool
+        return STTResult(
+            success=False,
+            text="",
+            language=language,
+            error="STT model not loaded"
         )
-        _current_step5_use_gpu = use_gpu_bool
 
     temp_dir = tempfile.gettempdir()
     chunk_path = os.path.join(temp_dir, f"chunk_{os.getpid()}_{os.urandom(4).hex()}.webm")
@@ -461,6 +449,102 @@ async def get_providers_info():
         "step3": stt_step3_provider.get_model_info() if stt_step3_provider else None,
         "step5": stt_step5_provider.get_model_info() if stt_step5_provider else None
     }
+
+
+# ==================== 설정 동기화 엔드포인트 ====================
+
+@app.post("/config/update")
+async def update_config(request: ConfigUpdateRequest):
+    """
+    Electron 설정을 Python ConfigManager에 동기화
+
+    Args:
+        request: ConfigUpdateRequest (camelCase 키)
+
+    Returns:
+        {
+            "success": bool,
+            "applied_config": dict,  # 적용된 설정 (디버깅용)
+            "message": str
+        }
+    """
+    global tts_provider, tts_init_status, tts_init_message, tts_provider_type
+
+    try:
+        config = ConfigManager.get_instance()
+
+        # camelCase → UPPER_SNAKE_CASE 변환하여 ConfigManager에 업데이트
+        update_dict = {}
+        if request.ttsProvider is not None:
+            update_dict["ttsProvider"] = request.ttsProvider
+        if request.ttsVoice is not None:
+            update_dict["ttsVoice"] = request.ttsVoice
+        if request.supertonicVoice is not None:
+            update_dict["supertonicVoice"] = request.supertonicVoice
+
+        # ConfigManager 업데이트
+        config.update(update_dict)
+
+        print(f"[Config] Updated config: {update_dict}")
+        print(f"[Config] Current ConfigManager state: {config.get_all()}")
+
+        # TTS Provider 재생성 (ttsProvider 또는 음성 설정이 변경된 경우)
+        if request.ttsProvider is not None or request.ttsVoice is not None or request.supertonicVoice is not None:
+            try:
+                print("[Config] Recreating TTS Provider with new config...")
+                tts_provider = TTSProviderFactory.create_provider()
+                provider_info = tts_provider.get_provider_info()
+
+                tts_init_status = "ready"
+                tts_init_message = "TTS 서비스 준비 완료 (설정 업데이트됨)"
+                tts_provider_type = config.get("TTS_PROVIDER", "supertonic").lower()
+
+                print(f"[Config] TTS Provider recreated: {provider_info}")
+            except ValueError as e:
+                # 잘못된 TTS Provider 타입인 경우 400 에러
+                tts_init_status = "error"
+                tts_init_message = f"TTS Provider 재생성 실패: {str(e)}"
+                print(f"[ERROR] Failed to recreate TTS provider: {e}")
+                return JSONResponse(
+                    status_code=400,
+                    content={
+                        "success": False,
+                        "error": "Invalid TTS provider",
+                        "detail": str(e)
+                    }
+                )
+            except Exception as e:
+                # 기타 에러는 500
+                tts_init_status = "error"
+                tts_init_message = f"TTS Provider 재생성 실패: {str(e)}"
+                print(f"[ERROR] Failed to recreate TTS provider: {e}")
+                return JSONResponse(
+                    status_code=500,
+                    content={
+                        "success": False,
+                        "error": "TTS Provider 재생성 실패",
+                        "detail": str(e)
+                    }
+                )
+
+        # applied_config를 평탄화 (electron_config만 반환)
+        all_config = config.get_all()
+        return {
+            "success": True,
+            "applied_config": all_config["electron_config"],
+            "message": "설정이 성공적으로 업데이트되었습니다."
+        }
+
+    except Exception as e:
+        print(f"[ERROR] Config update failed: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={
+                "success": False,
+                "error": "설정 업데이트 실패",
+                "detail": str(e)
+            }
+        )
 
 
 if __name__ == "__main__":

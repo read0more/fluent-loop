@@ -3,6 +3,7 @@ import { TTSService, BackendHealthStatus } from '../services/TTSService';
 import { TTSCacheService } from '../services/TTSCacheService';
 import { AudioService } from '../services/AudioService';
 import { SettingsService } from '../services/SettingsService';
+import { ConfigSyncService } from '../services/ConfigSyncService';
 import { getDatabase } from '../database/db';
 import { AppError } from '../errors/AppError';
 import { IPCResponse, TTSResult, Voice, RecordingFile, AppSettings } from '../database/models';
@@ -12,6 +13,7 @@ let ttsService: TTSService;
 let ttsCacheService: TTSCacheService;
 let audioService: AudioService;
 let settingsService: SettingsService;
+let configSyncService: ConfigSyncService;
 
 // Step2 녹음 상태 관리
 let isRecordingStep2 = false;
@@ -24,6 +26,17 @@ export async function registerStep2Handlers(): Promise<void> {
   ttsService = new TTSService('http://localhost:8000', ttsCacheService);
   audioService = new AudioService();
   settingsService = new SettingsService(getDatabase());
+  configSyncService = new ConfigSyncService('http://localhost:8000');
+
+  // 앱 시작 시 Python 백엔드에 설정 동기화
+  try {
+    const settings = await settingsService.getAllSettings();
+    await configSyncService.syncAllSettings(settings);
+    console.log('[Step2Handlers] Settings synced to Python backend on startup');
+  } catch (error) {
+    console.error('[Step2Handlers] Failed to sync settings on startup:', error);
+    // 설정 동기화 실패는 치명적이지 않으므로 계속 진행
+  }
 
   // TTS 관련 핸들러
   ipcMain.handle('synthesize-tts', handleSynthesizeTTS);
@@ -377,6 +390,19 @@ async function handleSaveSetting(
 ): Promise<IPCResponse<void>> {
   try {
     await settingsService.saveSetting(key, value);
+
+    // TTS 관련 설정이 변경된 경우 Python 백엔드에 동기화
+    const ttsKeys = ['ttsProvider', 'ttsVoiceId', 'supertonicVoice'];
+    if (ttsKeys.includes(key)) {
+      try {
+        const settings = await settingsService.getAllSettings();
+        await configSyncService.syncAllSettings(settings);
+        console.log(`[Step2Handlers] Setting '${key}' synced to Python backend`);
+      } catch (syncError) {
+        console.error('[Step2Handlers] Failed to sync setting to Python:', syncError);
+        // 동기화 실패는 경고만 하고 계속 진행
+      }
+    }
 
     return {
       success: true,
