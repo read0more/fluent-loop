@@ -24,4 +24,10 @@ export default defineConfig({
       },
     },
   },
+  resolve: {
+    alias: {
+      // Mock CSS/SCSS modules
+      '\\.module\\.(css|scss|sass)$': './__mocks__/styleMock.js',
+    },
+  },
 });
