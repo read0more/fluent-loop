@@ -52,11 +52,15 @@ class MockMediaStream {
 
 // Mock navigator.mediaDevices
 const mockGetUserMedia = vi.fn();
-(global as Record<string, unknown>).navigator = {
-  mediaDevices: {
-    getUserMedia: mockGetUserMedia,
+Object.defineProperty(global, 'navigator', {
+  value: {
+    mediaDevices: {
+      getUserMedia: mockGetUserMedia,
+    },
   },
-};
+  writable: true,
+  configurable: true,
+});
 
 // ============================================================
 // Tests

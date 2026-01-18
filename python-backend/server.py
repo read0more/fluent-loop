@@ -44,9 +44,6 @@ tts_provider: ITTSProvider | None = None
 stt_step3_provider: ISTTProvider | None = None  # Step3용 (medium 모델, 인식률 우선)
 stt_step5_provider: ISTTProvider | None = None  # Step5용 (small 모델, 속도 우선)
 
-# 현재 Step5 provider의 GPU 사용 설정 추적
-_current_step5_use_gpu: bool | None = None
-
 # TTS 초기화 상태 추적
 tts_init_status: str = "pending"  # pending, downloading, ready, error
 tts_init_message: str = ""
@@ -62,14 +59,14 @@ class ConfigUpdateRequest(BaseModel):
     ttsProvider: Optional[str] = None
     ttsVoice: Optional[str] = None
     supertonicVoice: Optional[str] = None
-    sttUseGpu: Optional[bool] = None
 
 @app.on_event("startup")
 async def startup_event():
     """앱 시작 시 STT 모델 및 TTS 서비스 로드"""
-    global tts_provider, stt_step3_provider, stt_step5_provider, _current_step5_use_gpu
+    global tts_provider, stt_step3_provider, stt_step5_provider
 
     # STT Provider 초기화 - faster-whisper 통일 (KAN-21)
+    # GPU 설정은 .env 파일에서만 관리 (STT_USE_GPU)
     print("Initializing STT Providers (faster-whisper)...")
     use_gpu = os.getenv("STT_USE_GPU", "false").lower() == "true"
 
@@ -89,7 +86,6 @@ async def startup_event():
             compute_type="auto",
             use_gpu=use_gpu
         )
-        _current_step5_use_gpu = use_gpu
 
         print("[Server] All STT Providers initialized (faster-whisper)")
     except Exception as e:
@@ -407,30 +403,13 @@ async def transcribe_audio_chunk(
     Returns:
         STTResult: 변환 결과 (is_final=False)
     """
-    global stt_step5_provider, _current_step5_use_gpu
-
-    # use_gpu 파라미터 파싱 (문자열 -> bool)
-    use_gpu_bool = use_gpu.lower() == "true"
-
-    # GPU 설정이 변경되면 provider 재생성
-    if _current_step5_use_gpu is not None and _current_step5_use_gpu != use_gpu_bool:
-        print(f"[Server] GPU setting changed: {_current_step5_use_gpu} -> {use_gpu_bool}, recreating Step5 provider...")
-        stt_step5_provider = FasterWhisperSTTProvider(
-            model_size="small",
-            compute_type="auto",
-            use_gpu=use_gpu_bool
-        )
-        _current_step5_use_gpu = use_gpu_bool
-
-    # Provider가 없으면 생성
     if stt_step5_provider is None:
-        print(f"[Server] Creating Step5 STT provider with use_gpu={use_gpu_bool}")
-        stt_step5_provider = FasterWhisperSTTProvider(
-            model_size="small",
-            compute_type="auto",
-            use_gpu=use_gpu_bool
+        return STTResult(
+            success=False,
+            text="",
+            language=language,
+            error="STT model not loaded"
         )
-        _current_step5_use_gpu = use_gpu_bool
 
     temp_dir = tempfile.gettempdir()
     chunk_path = os.path.join(temp_dir, f"chunk_{os.getpid()}_{os.urandom(4).hex()}.webm")
@@ -502,8 +481,6 @@ async def update_config(request: ConfigUpdateRequest):
             update_dict["ttsVoice"] = request.ttsVoice
         if request.supertonicVoice is not None:
             update_dict["supertonicVoice"] = request.supertonicVoice
-        if request.sttUseGpu is not None:
-            update_dict["sttUseGpu"] = request.sttUseGpu
 
         # ConfigManager 업데이트
         config.update(update_dict)

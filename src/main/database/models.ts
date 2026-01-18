@@ -132,7 +132,6 @@ export interface AppSettings {
   ttsVoiceIdUser: string; // 화자B: User 음성
   supertonicVoice: string; // Supertonic 음성 이름 (M1~M4, F1~F2)
   recordingSavePath: string;
-  sttUseGpu: string; // STT GPU 사용 여부 ('true' | 'false')
   [key: string]: string;
 }
 

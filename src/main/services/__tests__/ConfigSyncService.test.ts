@@ -37,7 +37,6 @@ describe('ConfigSyncService', () => {
       const config: ConfigSyncRequest = {
         ttsProvider: 'supertonic',
         supertonicVoice: 'M4',
-        sttUseGpu: true,
       };
 
       const mockResponse: ConfigSyncResponse = {
@@ -45,7 +44,6 @@ describe('ConfigSyncService', () => {
         applied_config: {
           TTS_PROVIDER: 'supertonic',
           SUPERTONIC_VOICE: 'M4',
-          STT_USE_GPU: true,
         },
         message: 'Configuration updated successfully',
       };
@@ -156,7 +154,6 @@ describe('ConfigSyncService', () => {
         ttsProvider: 'edge-tts',
         ttsVoiceId: 'en-US-AriaNeural',
         supertonicVoice: 'M4',
-        sttUseGpu: 'true',
       };
 
       const mockResponse: ConfigSyncResponse = {
@@ -179,7 +176,6 @@ describe('ConfigSyncService', () => {
         ttsProvider: 'edge-tts',
         ttsVoice: 'en-US-AriaNeural',
         supertonicVoice: 'M4',
-        sttUseGpu: true, // 문자열 'true' → boolean 변환
       });
     });
   });

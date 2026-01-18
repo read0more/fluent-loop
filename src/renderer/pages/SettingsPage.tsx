@@ -13,7 +13,6 @@ export const SettingsPage: React.FC = () => {
     ttsVoiceIdUser: 'en-US-GuyNeural',
     supertonicVoice: 'M4',
     recordingSavePath: '',
-    sttUseGpu: 'false',
   });
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -77,17 +76,6 @@ export const SettingsPage: React.FC = () => {
 
       if (!pathResponse.success) {
         throw new Error(pathResponse.error || '녹음 경로 설정 저장 실패');
-      }
-
-      // STT GPU 사용 설정 저장
-      const gpuResponse = await window.electron.invoke(
-        'save-setting',
-        'sttUseGpu',
-        settings.sttUseGpu
-      );
-
-      if (!gpuResponse.success) {
-        throw new Error(gpuResponse.error || 'GPU 설정 저장 실패');
       }
 
       setState('loaded');
@@ -214,35 +202,6 @@ export const SettingsPage: React.FC = () => {
             </div>
             <p className={styles.hint}>
               비워두면 기본 경로(test-data/data/recordings/step2)를 사용합니다.
-            </p>
-          </div>
-
-          {/* STT GPU 설정 */}
-          <div className={styles.section}>
-            <h2>STT 성능 설정</h2>
-            <div className={styles.toggleRow}>
-              <label className={styles.toggleLabel}>
-                <input
-                  type="checkbox"
-                  checked={settings.sttUseGpu === 'true'}
-                  onChange={(e) =>
-                    setSettings((prev) => ({
-                      ...prev,
-                      sttUseGpu: e.target.checked ? 'true' : 'false',
-                    }))
-                  }
-                  disabled={state === 'saving'}
-                  className={styles.toggleCheckbox}
-                />
-                <span className={styles.toggleSwitch}></span>
-                <span className={styles.toggleText}>GPU 가속 사용</span>
-              </label>
-            </div>
-            <p className={styles.hint}>
-              GPU 가속을 사용하면 단계 5에서 음성 인식 속도가 빨라집니다.
-            </p>
-            <p className={styles.warning}>
-              NVIDIA 그래픽카드(CUDA)만 지원됩니다. AMD나 Intel 그래픽카드는 지원되지 않습니다.
             </p>
           </div>
 

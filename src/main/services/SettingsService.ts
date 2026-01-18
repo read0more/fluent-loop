@@ -63,7 +63,6 @@ export class SettingsService implements ISettingsService {
         ttsVoiceIdUser: 'en-US-GuyNeural',
         supertonicVoice: 'M4',
         recordingSavePath: path.join(app.getPath('userData'), 'data', 'recordings', 'step2'),
-        sttUseGpu: 'false',
       };
 
       for (const row of rows) {
@@ -99,7 +98,6 @@ export class SettingsService implements ISettingsService {
         ttsVoiceIdUser: 'en-US-GuyNeural',
         supertonicVoice: 'M4',
         recordingSavePath: '',
-        sttUseGpu: 'false',
       };
 
       const stmt = this.db.prepare(`

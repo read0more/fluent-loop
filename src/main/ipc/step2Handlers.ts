@@ -391,9 +391,9 @@ async function handleSaveSetting(
   try {
     await settingsService.saveSetting(key, value);
 
-    // TTS/STT 관련 설정이 변경된 경우 Python 백엔드에 동기화
-    const ttsSttKeys = ['ttsProvider', 'ttsVoiceId', 'supertonicVoice', 'sttUseGpu'];
-    if (ttsSttKeys.includes(key)) {
+    // TTS 관련 설정이 변경된 경우 Python 백엔드에 동기화
+    const ttsKeys = ['ttsProvider', 'ttsVoiceId', 'supertonicVoice'];
+    if (ttsKeys.includes(key)) {
       try {
         const settings = await settingsService.getAllSettings();
         await configSyncService.syncAllSettings(settings);

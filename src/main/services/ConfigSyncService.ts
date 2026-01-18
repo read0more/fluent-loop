@@ -18,7 +18,6 @@ export interface ConfigSyncRequest {
   ttsProvider?: string;
   ttsVoice?: string;
   supertonicVoice?: string;
-  sttUseGpu?: boolean;
 }
 
 export interface ConfigSyncResponse {
@@ -65,7 +64,6 @@ export class ConfigSyncService {
       ttsProvider: settings.ttsProvider,
       ttsVoice: settings.ttsVoiceId,
       supertonicVoice: settings.supertonicVoice,
-      sttUseGpu: settings.sttUseGpu === 'true',
     };
 
     return this.syncConfig(config);
