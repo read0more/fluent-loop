@@ -58,8 +58,10 @@ export class SettingsService implements ISettingsService {
       const rows = stmt.all() as Array<{ key: string; value: string }>;
 
       const settings: AppSettings = {
+        ttsProvider: 'supertonic',
         ttsVoiceId: 'en-US-AriaNeural',
         ttsVoiceIdUser: 'en-US-GuyNeural',
+        supertonicVoice: 'M4',
         recordingSavePath: path.join(app.getPath('userData'), 'data', 'recordings', 'step2'),
         sttUseGpu: 'false',
       };
@@ -92,8 +94,10 @@ export class SettingsService implements ISettingsService {
   async resetToDefaults(): Promise<void> {
     try {
       const defaultSettings = {
+        ttsProvider: 'supertonic',
         ttsVoiceId: 'en-US-AriaNeural',
         ttsVoiceIdUser: 'en-US-GuyNeural',
+        supertonicVoice: 'M4',
         recordingSavePath: '',
         sttUseGpu: 'false',
       };

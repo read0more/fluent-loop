@@ -2,6 +2,7 @@ from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from fastapi.responses import JSONResponse, FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+from typing import Optional
 from dotenv import load_dotenv
 import uvicorn
 import os
@@ -15,6 +16,7 @@ from stt_provider import (
     ISTTProvider,
     FasterWhisperSTTProvider
 )
+from config import ConfigManager
 
 # 환경 변수 로딩 (앱 시작 전)
 load_dotenv()
@@ -54,6 +56,13 @@ tts_provider_type: str = os.getenv("TTS_PROVIDER", "supertonic").lower()
 class TTSRequest(BaseModel):
     text: str
     voice_id: str | None = None
+
+# 설정 업데이트 요청 모델
+class ConfigUpdateRequest(BaseModel):
+    ttsProvider: Optional[str] = None
+    ttsVoice: Optional[str] = None
+    supertonicVoice: Optional[str] = None
+    sttUseGpu: Optional[bool] = None
 
 @app.on_event("startup")
 async def startup_event():
@@ -461,6 +470,104 @@ async def get_providers_info():
         "step3": stt_step3_provider.get_model_info() if stt_step3_provider else None,
         "step5": stt_step5_provider.get_model_info() if stt_step5_provider else None
     }
+
+
+# ==================== 설정 동기화 엔드포인트 ====================
+
+@app.post("/config/update")
+async def update_config(request: ConfigUpdateRequest):
+    """
+    Electron 설정을 Python ConfigManager에 동기화
+
+    Args:
+        request: ConfigUpdateRequest (camelCase 키)
+
+    Returns:
+        {
+            "success": bool,
+            "applied_config": dict,  # 적용된 설정 (디버깅용)
+            "message": str
+        }
+    """
+    global tts_provider, tts_init_status, tts_init_message, tts_provider_type
+
+    try:
+        config = ConfigManager.get_instance()
+
+        # camelCase → UPPER_SNAKE_CASE 변환하여 ConfigManager에 업데이트
+        update_dict = {}
+        if request.ttsProvider is not None:
+            update_dict["ttsProvider"] = request.ttsProvider
+        if request.ttsVoice is not None:
+            update_dict["ttsVoice"] = request.ttsVoice
+        if request.supertonicVoice is not None:
+            update_dict["supertonicVoice"] = request.supertonicVoice
+        if request.sttUseGpu is not None:
+            update_dict["sttUseGpu"] = request.sttUseGpu
+
+        # ConfigManager 업데이트
+        config.update(update_dict)
+
+        print(f"[Config] Updated config: {update_dict}")
+        print(f"[Config] Current ConfigManager state: {config.get_all()}")
+
+        # TTS Provider 재생성 (ttsProvider 또는 음성 설정이 변경된 경우)
+        if request.ttsProvider is not None or request.ttsVoice is not None or request.supertonicVoice is not None:
+            try:
+                print("[Config] Recreating TTS Provider with new config...")
+                tts_provider = TTSProviderFactory.create_provider()
+                provider_info = tts_provider.get_provider_info()
+
+                tts_init_status = "ready"
+                tts_init_message = "TTS 서비스 준비 완료 (설정 업데이트됨)"
+                tts_provider_type = config.get("TTS_PROVIDER", "supertonic").lower()
+
+                print(f"[Config] TTS Provider recreated: {provider_info}")
+            except ValueError as e:
+                # 잘못된 TTS Provider 타입인 경우 400 에러
+                tts_init_status = "error"
+                tts_init_message = f"TTS Provider 재생성 실패: {str(e)}"
+                print(f"[ERROR] Failed to recreate TTS provider: {e}")
+                return JSONResponse(
+                    status_code=400,
+                    content={
+                        "success": False,
+                        "error": "Invalid TTS provider",
+                        "detail": str(e)
+                    }
+                )
+            except Exception as e:
+                # 기타 에러는 500
+                tts_init_status = "error"
+                tts_init_message = f"TTS Provider 재생성 실패: {str(e)}"
+                print(f"[ERROR] Failed to recreate TTS provider: {e}")
+                return JSONResponse(
+                    status_code=500,
+                    content={
+                        "success": False,
+                        "error": "TTS Provider 재생성 실패",
+                        "detail": str(e)
+                    }
+                )
+
+        # applied_config를 평탄화 (electron_config만 반환)
+        all_config = config.get_all()
+        return {
+            "success": True,
+            "applied_config": all_config["electron_config"],
+            "message": "설정이 성공적으로 업데이트되었습니다."
+        }
+
+    except Exception as e:
+        print(f"[ERROR] Config update failed: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={
+                "success": False,
+                "error": "설정 업데이트 실패",
+                "detail": str(e)
+            }
+        )
 
 
 if __name__ == "__main__":

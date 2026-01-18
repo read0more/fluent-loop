@@ -8,8 +8,10 @@ type SettingsPageState = 'loading' | 'loaded' | 'saving' | 'error';
 export const SettingsPage: React.FC = () => {
   const [state, setState] = useState<SettingsPageState>('loading');
   const [settings, setSettings] = useState<AppSettings>({
+    ttsProvider: 'supertonic',
     ttsVoiceId: 'en-US-AriaNeural',
     ttsVoiceIdUser: 'en-US-GuyNeural',
+    supertonicVoice: 'M4',
     recordingSavePath: '',
     sttUseGpu: 'false',
   });

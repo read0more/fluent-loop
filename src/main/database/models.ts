@@ -127,8 +127,10 @@ export interface Voice {
 
 // 앱 설정
 export interface AppSettings {
-  ttsVoiceId: string; // 화자A: AI 음성 + 기본 TTS
+  ttsProvider: string; // TTS Provider ('edge-tts' | 'supertonic')
+  ttsVoiceId: string; // 화자A: AI 음성 + 기본 TTS (Edge TTS voice ID)
   ttsVoiceIdUser: string; // 화자B: User 음성
+  supertonicVoice: string; // Supertonic 음성 이름 (M1~M4, F1~F2)
   recordingSavePath: string;
   sttUseGpu: string; // STT GPU 사용 여부 ('true' | 'false')
   [key: string]: string;
