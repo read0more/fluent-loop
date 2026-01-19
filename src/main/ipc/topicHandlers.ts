@@ -42,6 +42,8 @@ export function registerTopicHandlers(): void {
   ipcMain.handle('save-topic', handleSaveTopic);
   ipcMain.handle('get-active-topic', handleGetActiveTopic);
   ipcMain.handle('update-topic-title', handleUpdateTopicTitle);
+  ipcMain.handle('get-all-topics', handleGetAllTopics);
+  ipcMain.handle('set-active-topic', handleSetActiveTopic);
 }
 
 async function handleStartRecording(): Promise<IPCResponse<void>> {
@@ -268,6 +270,81 @@ async function handleUpdateTopicTitle(
     return {
       success: false,
       error: '제목 업데이트에 실패했습니다.',
+    };
+  }
+}
+
+export async function handleGetAllTopics(): Promise<IPCResponse<Topic[]>> {
+  try {
+    // 테스트 호환성을 위해 repository를 새로 생성
+    const repository = topicRepository || new TopicRepository(getDatabase());
+    const topics = await repository.findAll();
+
+    return {
+      success: true,
+      data: topics,
+    };
+  } catch (error) {
+    if (error instanceof AppError) {
+      return {
+        success: false,
+        error: error.userMessage,
+        errorCode: error.code,
+      };
+    }
+
+    return {
+      success: false,
+      error: '토픽 목록 조회에 실패했습니다.',
+      errorCode: 'UNKNOWN_ERROR',
+    };
+  }
+}
+
+export async function handleSetActiveTopic(
+  _event: IpcMainInvokeEvent | null,
+  args: { topicId: number }
+): Promise<IPCResponse<void>> {
+  try {
+    // 입력 검증
+    if (!args.topicId || typeof args.topicId !== 'number' || args.topicId <= 0) {
+      return {
+        success: false,
+        error: '유효하지 않은 토픽 ID입니다.',
+        errorCode: 'INVALID_INPUT',
+      };
+    }
+
+    // 테스트 호환성을 위해 repository를 새로 생성
+    const repository = topicRepository || new TopicRepository(getDatabase());
+
+    // 토픽 존재 확인
+    const topic = await repository.findById(args.topicId);
+    if (!topic) {
+      return {
+        success: false,
+        error: '토픽을 찾을 수 없습니다.',
+        errorCode: 'TOPIC_NOT_FOUND',
+      };
+    }
+
+    // 활성화 (트랜잭션 보장)
+    await repository.setActive(args.topicId);
+
+    return { success: true };
+  } catch (error) {
+    if (error instanceof AppError) {
+      return {
+        success: false,
+        error: error.userMessage,
+        errorCode: error.code,
+      };
+    }
+
+    return {
+      success: false,
+      error: '토픽 활성화에 실패했습니다.',
+      errorCode: 'UNKNOWN_ERROR',
     };
   }
 }

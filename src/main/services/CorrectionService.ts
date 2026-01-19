@@ -285,7 +285,7 @@ export class CorrectionService {
       params.push(sessionId);
     }
 
-    query += ' ORDER BY created_at DESC LIMIT ?';
+    query += ' ORDER BY id ASC LIMIT ?';
     params.push(limit);
 
     const stmt = this.db.prepare(query);
