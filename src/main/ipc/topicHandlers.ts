@@ -44,6 +44,7 @@ export function registerTopicHandlers(): void {
   ipcMain.handle('update-topic-title', handleUpdateTopicTitle);
   ipcMain.handle('get-all-topics', handleGetAllTopics);
   ipcMain.handle('set-active-topic', handleSetActiveTopic);
+  ipcMain.handle('delete-topic', handleDeleteTopic);
 }
 
 async function handleStartRecording(): Promise<IPCResponse<void>> {
@@ -344,6 +345,64 @@ export async function handleSetActiveTopic(
     return {
       success: false,
       error: '토픽 활성화에 실패했습니다.',
+      errorCode: 'UNKNOWN_ERROR',
+    };
+  }
+}
+
+export async function handleDeleteTopic(
+  _event: IpcMainInvokeEvent | null,
+  args: { topicId: number }
+): Promise<IPCResponse<void>> {
+  try {
+    // 입력 검증
+    if (!args.topicId || typeof args.topicId !== 'number' || args.topicId <= 0) {
+      return {
+        success: false,
+        error: '유효하지 않은 토픽 ID입니다.',
+        errorCode: 'INVALID_INPUT',
+      };
+    }
+
+    // 테스트 호환성을 위해 repository를 새로 생성
+    const repository = topicRepository || new TopicRepository(getDatabase());
+
+    // 활성 토픽인지 확인
+    const activeTopic = await repository.getActiveTopic();
+    if (activeTopic && activeTopic.id === args.topicId) {
+      return {
+        success: false,
+        error: '현재 활성화된 토픽은 삭제할 수 없습니다.',
+        errorCode: 'CANNOT_DELETE_ACTIVE_TOPIC',
+      };
+    }
+
+    // 토픽 존재 확인
+    const topic = await repository.findById(args.topicId);
+    if (!topic) {
+      return {
+        success: false,
+        error: '토픽을 찾을 수 없습니다.',
+        errorCode: 'TOPIC_NOT_FOUND',
+      };
+    }
+
+    // 삭제
+    await repository.delete(args.topicId);
+
+    return { success: true };
+  } catch (error) {
+    if (error instanceof AppError) {
+      return {
+        success: false,
+        error: error.userMessage,
+        errorCode: error.code,
+      };
+    }
+
+    return {
+      success: false,
+      error: '토픽 삭제에 실패했습니다.',
       errorCode: 'UNKNOWN_ERROR',
     };
   }

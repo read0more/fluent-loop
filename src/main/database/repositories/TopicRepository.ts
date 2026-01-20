@@ -10,6 +10,7 @@ export interface ITopicRepository {
   setActive(id: number): Promise<void>;
   getActiveTopic(): Promise<Topic | null>;
   deactivateAll(): Promise<void>;
+  delete(id: number): Promise<void>;
 }
 
 export class TopicRepository implements ITopicRepository {
@@ -183,6 +184,20 @@ export class TopicRepository implements ITopicRepository {
         ErrorCode.DATABASE_QUERY_ERROR,
         'Failed to deactivate all topics',
         '토픽 비활성화에 실패했습니다.',
+        error as Error
+      );
+    }
+  }
+
+  async delete(id: number): Promise<void> {
+    try {
+      const stmt = this.db.prepare('DELETE FROM topics WHERE id = ?');
+      stmt.run(id);
+    } catch (error) {
+      throw new AppError(
+        ErrorCode.DATABASE_QUERY_ERROR,
+        'Failed to delete topic',
+        '토픽 삭제에 실패했습니다.',
         error as Error
       );
     }

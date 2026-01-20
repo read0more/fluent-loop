@@ -423,7 +423,7 @@ export const TopicCreationPage: React.FC = () => {
 
           {/* 녹음 UI */}
           <VoiceRecorder
-            maxDuration={30}
+            maxDuration={60}
             onRecordingComplete={handleRecordingComplete}
             onRecordingError={handleRecordingError}
             disabled={isProcessing}

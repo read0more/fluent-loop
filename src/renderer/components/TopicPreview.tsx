@@ -139,7 +139,7 @@ export const TopicPreview: React.FC<TopicPreviewProps> = ({
       </div>
 
       <div className={styles.section}>
-        <h3>학습 키워드</h3>
+        <h3>문장별 핵심 키워드</h3>
         <div className={styles.keywords}>
           {keywords.map((keyword, index) => (
             <span key={index} className={styles.keywordBadge}>

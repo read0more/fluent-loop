@@ -4,7 +4,6 @@ import {
   TopicGenerationResult,
   CEFRLevel,
   CorrectionResult,
-  CorrectionCategory,
   ConversationCorrectionResult,
   Message,
 } from '../database/models';
@@ -156,7 +155,10 @@ Translation Requirements:
 2. Use vocabulary appropriate for CEFR ${cefrLevel} level
 3. Maintain natural, conversational English
 4. Keep similar length to the original
-5. Extract 5-10 key vocabulary words from your English translation
+5. Extract key vocabulary words per sentence:
+   - Skip sentences with 3 words or fewer (e.g., "Okay", "I'm okay", "Yes", "No", "Thank you")
+   - For each remaining sentence, extract at least ONE key vocabulary word
+   - Choose the most important or educational words from each sentence
 
 <output_format>
 CRITICAL - Output ONLY this JSON structure, nothing else:
@@ -173,7 +175,6 @@ Do NOT include:
 - Any text outside the JSON braces
 </output_format>`;
   }
-
 
   private logClaudeInteraction(context: string, response: string, error?: Error): void {
     // Save logs to project directory instead of temp folder
@@ -204,7 +205,6 @@ Do NOT include:
       console.error('[ClaudeService] Failed to save log:', err);
     }
   }
-
 
   /**
    * Step 4: 문장 첨삭 기능
@@ -313,7 +313,6 @@ Guidelines:
   - B1/B2: Provide intermediate-level explanations, introduce synonyms
   - C1/C2: Offer advanced explanations, discuss nuances and idiomatic usage`;
   }
-
 
   /**
    * Step 4: 여러 문장 배치 첨삭 (성능 최적화)
@@ -545,7 +544,6 @@ Guidelines:
       );
     }
   }
-
 
   /**
    * 첫 대화 메시지 프롬프트

@@ -72,14 +72,8 @@ export const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
       const intervalId = setInterval(() => {
         setElapsedTime((prev) => {
           const newTime = prev + 1;
-
-          // 최대 시간 도달 시 자동 중지
-          if (newTime >= maxDuration) {
-            stopRecording();
-            return maxDuration;
-          }
-
-          return newTime;
+          // side effect 제거 - 순수 함수로 변경
+          return newTime >= maxDuration ? maxDuration : newTime;
         });
       }, 1000);
 
@@ -128,6 +122,13 @@ export const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
     };
   }, []);
 
+  // 최대 시간 도달 시 자동 중지
+  useEffect(() => {
+    if (elapsedTime >= maxDuration && state === 'recording') {
+      stopRecording();
+    }
+  }, [elapsedTime, maxDuration, state]);
+
   // 시간 포맷팅 (mm:ss)
   const formatTime = (seconds: number): string => {
     const mins = Math.floor(seconds / 60);
@@ -143,9 +144,12 @@ export const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
 
       <div className={styles.recorderControls}>
         {state === 'idle' && (
-          <button onClick={startRecording} disabled={disabled} className={styles.btnRecord}>
-            녹음 시작
-          </button>
+          <>
+            <button onClick={startRecording} disabled={disabled} className={styles.btnRecord}>
+              새 토픽 녹음 시작
+            </button>
+            <div className={styles.durationHint}>최대 1분</div>
+          </>
         )}
 
         {state === 'recording' && (

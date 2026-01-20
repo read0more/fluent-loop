@@ -68,8 +68,22 @@ export class ClaudeSDKClient {
           if (message.subtype === 'success') {
             result = message.result;
           } else {
-            // 에러 발생
-            const errorMessage = 'errors' in message ? message.errors.join(', ') : 'Unknown error';
+            // 에러 메시지 추출 로직 개선
+            let errorMessage = 'Unknown error';
+            if ('errors' in message && Array.isArray(message.errors) && message.errors.length > 0) {
+              errorMessage = message.errors.join(', ');
+            } else if ('error' in message && message.error) {
+              errorMessage = String(message.error);
+            } else if ('message' in message && message.message) {
+              errorMessage = String(message.message);
+            } else {
+              // 디버깅을 위해 전체 메시지 로깅
+              console.error(
+                '[ClaudeSDKClient] Unknown error structure:',
+                JSON.stringify(message, null, 2)
+              );
+              errorMessage = `Unknown error (subtype: ${message.subtype || 'unknown'})`;
+            }
             throw new Error(`Claude Agent SDK error: ${errorMessage}`);
           }
         }
@@ -107,8 +121,9 @@ export class ClaudeSDKClient {
         options: {
           // 도구 없이 순수 응답만 받음
           tools: [],
-          // 단일 턴으로 제한
-          maxTurns: 1,
+          // JSON Schema structured output에서 스키마 검증을 위한 여유 제공
+          // 실패 시에도 SDK가 재시도할 수 있도록 충분한 턴 제공
+          maxTurns: 3,
           // JSON Schema 기반 structured output
           outputFormat: {
             type: 'json_schema',
@@ -116,7 +131,6 @@ export class ClaudeSDKClient {
               type: 'object',
               properties: schema.properties,
               required: schema.required,
-              additionalProperties: false,
             },
           },
         },
@@ -131,8 +145,22 @@ export class ClaudeSDKClient {
               result = JSON.parse(message.result) as T;
             }
           } else {
-            // 에러 발생
-            const errorMessage = 'errors' in message ? message.errors.join(', ') : 'Unknown error';
+            // 에러 메시지 추출 로직 개선
+            let errorMessage = 'Unknown error';
+            if ('errors' in message && Array.isArray(message.errors) && message.errors.length > 0) {
+              errorMessage = message.errors.join(', ');
+            } else if ('error' in message && message.error) {
+              errorMessage = String(message.error);
+            } else if ('message' in message && message.message) {
+              errorMessage = String(message.message);
+            } else {
+              // 디버깅을 위해 전체 메시지 로깅
+              console.error(
+                '[ClaudeSDKClient] Unknown error structure:',
+                JSON.stringify(message, null, 2)
+              );
+              errorMessage = `Unknown error (subtype: ${message.subtype || 'unknown'})`;
+            }
             throw new Error(`Claude Agent SDK error: ${errorMessage}`);
           }
         }
@@ -186,6 +214,20 @@ export class ClaudeSDKClient {
           ErrorCode.CLAUDE_API_ERROR,
           'Rate limit exceeded',
           'API 요청 한도를 초과했습니다. 잠시 후 다시 시도해주세요.',
+          error
+        );
+      }
+
+      // Max turns 에러 (structured output 스키마 검증 시 발생 가능)
+      if (
+        message.includes('error_max_turns') ||
+        message.includes('max_turns') ||
+        message.includes('maxturns')
+      ) {
+        return new AppError(
+          ErrorCode.CLAUDE_API_ERROR,
+          'Max turns exceeded',
+          'AI 응답 생성 중 최대 턴 수를 초과했습니다. 다시 시도해주세요.',
           error
         );
       }

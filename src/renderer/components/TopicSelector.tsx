@@ -19,28 +19,29 @@ export const TopicSelector: React.FC<TopicSelectorProps> = ({
   const [error, setError] = useState<string | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // 토픽 목록 로드
-  useEffect(() => {
-    const loadTopics = async () => {
-      setIsLoading(true);
-      setError(null);
+  // 토픽 목록 로드 함수
+  const loadTopics = async () => {
+    setIsLoading(true);
+    setError(null);
 
-      try {
-        const response = await window.electron.invoke('get-all-topics');
+    try {
+      const response = await window.electron.invoke('get-all-topics');
 
-        if (response.success && response.data) {
-          setTopics(response.data);
-        } else {
-          setError(response.error || '토픽 목록 로드 실패');
-        }
-      } catch (error) {
-        console.error('Failed to load topics:', error);
-        setError('토픽 목록을 불러올 수 없습니다.');
-      } finally {
-        setIsLoading(false);
+      if (response.success && response.data) {
+        setTopics(response.data);
+      } else {
+        setError(response.error || '토픽 목록 로드 실패');
       }
-    };
+    } catch (error) {
+      console.error('Failed to load topics:', error);
+      setError('토픽 목록을 불러올 수 없습니다.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
+  // 컴포넌트 마운트 시 토픽 로드
+  useEffect(() => {
     loadTopics();
   }, []);
 
@@ -90,6 +91,24 @@ export const TopicSelector: React.FC<TopicSelectorProps> = ({
     setIsOpen(false);
   };
 
+  const handleDelete = async (e: React.MouseEvent, topicId: number) => {
+    e.stopPropagation(); // 부모 버튼 클릭 이벤트 방지
+
+    try {
+      const response = await window.electron.invoke('delete-topic', { topicId });
+
+      if (response.success) {
+        // 토픽 목록 새로고침
+        await loadTopics();
+      } else {
+        setError(response.error || '토픽 삭제에 실패했습니다.');
+      }
+    } catch (error) {
+      console.error('Failed to delete topic:', error);
+      setError('토픽 삭제 중 오류가 발생했습니다.');
+    }
+  };
+
   const formatDate = (date: Date) => {
     return new Date(date).toLocaleDateString('ko-KR', {
       year: 'numeric',
@@ -98,8 +117,8 @@ export const TopicSelector: React.FC<TopicSelectorProps> = ({
     });
   };
 
-  // 토픽이 1개 이하면 렌더링하지 않음
-  if (topics.length <= 1) {
+  // 토픽이 없으면 렌더링하지 않음
+  if (topics.length === 0) {
     return null;
   }
 
@@ -168,6 +187,16 @@ export const TopicSelector: React.FC<TopicSelectorProps> = ({
                     {topic.id === currentTopicId && <span className={styles.activeBadge}>현재</span>}
                   </div>
                 </div>
+                {/* 삭제 버튼 - 현재 활성 토픽은 삭제 불가 */}
+                {topic.id !== currentTopicId && (
+                  <button
+                    className={styles.deleteBtn}
+                    onClick={(e) => handleDelete(e, topic.id)}
+                    title="토픽 삭제"
+                  >
+                    ✕
+                  </button>
+                )}
               </button>
             ))}
         </div>
