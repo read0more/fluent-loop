@@ -21,10 +21,16 @@ export class CorrectionService {
   }
 
   /**
-   * TC-005, TC-006, TC-007: 텍스트를 문장 단위로 분리
+   * TC-005, TC-006, TC-007, TC-008: 텍스트를 문장 단위로 분리
    *
    * 마침표, 느낌표, 물음표 기준으로 분리하되,
-   * 약어(Mr., Mrs., Dr., U.S.A. 등)는 예외 처리
+   * 약어(Mr., Mrs., Dr., U.S.A. 등)와 시간 표현(a.m., p.m. 등)은 예외 처리
+   *
+   * 시간 표현 처리:
+   * - 숫자 + a.m./p.m. (예: "3 p.m.", "7 a.m.")
+   * - 시:분 형식 (예: "3:30 p.m.", "11:45 a.m.")
+   * - 대소문자 변형 (a.m., A.M., am, AM)
+   * - 공백 있음/없음 (3 p.m., 3p.m.)
    */
   splitSentences(text: string): string[] {
     if (!text || text.trim().length === 0) {
@@ -65,20 +71,46 @@ export class CorrectionService {
       'Co',
     ];
 
-    // 약어를 임시 플레이스홀더로 치환
+    // 약어 및 시간 표현을 임시 플레이스홀더로 치환
     let processed = cleanedText;
     const placeholders: Map<string, string> = new Map();
+    let placeholderIndex = 0;
 
-    abbreviations.forEach((abbr, index) => {
+    // Step 1: 숫자 + 시간 표현 패턴을 먼저 처리 (예: "3 p.m.", "11:30 a.m.")
+    // 패턴 매칭 및 플레이스홀더 치환
+    const timePatterns = [
+      /\b(\d{1,2}):(\d{2})\s*([ap]\.m\.|[AP]\.M\.)/gi, // 3:30 p.m.
+      /\b(\d+)\s*([ap]\.m\.|[AP]\.M\.)/gi, // 3 p.m.
+      /\b(\d{1,2}):(\d{2})\s*([AP]M|[ap]m)\b/g, // 3:30 PM
+      /\b(\d+)\s*([AP]M|[ap]m)\b/g, // 3 PM
+    ];
+
+    timePatterns.forEach((pattern) => {
+      processed = processed.replace(pattern, (match) => {
+        const placeholder = `__TIME${placeholderIndex}__`;
+        placeholders.set(placeholder, match);
+        placeholderIndex++;
+        return placeholder;
+      });
+    });
+
+    // Step 2: 일반 약어 처리
+    abbreviations.forEach((abbr) => {
+      // Escape special characters in abbreviation
+      const escapedAbbr = abbr.replace(/\./g, '\\.');
+
       const patterns = [
-        new RegExp(`\\b${abbr}\\.`, 'gi'),
-        new RegExp(`\\b${abbr.replace(/\./g, '\\.')}`, 'gi'),
+        // Match abbreviation with trailing dot (e.g., "Dr." from "Dr")
+        new RegExp(`\\b${escapedAbbr}\\.`, 'gi'),
+        // Match abbreviation without additional dot (e.g., "U.S" from "U.S")
+        new RegExp(`\\b${escapedAbbr}\\b(?!\\.)`, 'gi'),
       ];
 
       patterns.forEach((pattern) => {
         processed = processed.replace(pattern, (match) => {
-          const placeholder = `__ABBR${index}__`;
+          const placeholder = `__ABBR${placeholderIndex}__`;
           placeholders.set(placeholder, match);
+          placeholderIndex++;
           return placeholder;
         });
       });

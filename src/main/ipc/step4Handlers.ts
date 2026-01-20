@@ -15,6 +15,35 @@ let correctionService: CorrectionService;
 export function registerStep4Handlers(): void {
   // Service initialization (lazy loading to ensure DB is ready)
   correctionService = new CorrectionService();
+
+  /**
+   * 문장 분리 IPC 핸들러
+   * 프론트엔드에서 중복된 문장 분리 로직 대신 백엔드의 splitSentences 사용
+   * 시간 표현(a.m./p.m.) 등 예외 처리 포함
+   */
+  ipcMain.handle('split-sentences', async (event, { text }: { text: string }) => {
+    const response: IPCResponse<string[]> = {
+      success: false,
+    };
+
+    try {
+      const sentences = correctionService.splitSentences(text);
+      response.success = true;
+      response.data = sentences;
+    } catch (error) {
+      if (error instanceof AppError) {
+        response.error = error.userMessage;
+        response.errorCode = error.code;
+        console.error(`[SplitSentencesError] ${error.code}: ${error.message}`, error.originalError);
+      } else {
+        response.error = '문장 분리 중 오류가 발생했습니다.';
+        response.errorCode = ErrorCode.UNKNOWN_ERROR;
+        console.error('[SplitSentencesError]', error);
+      }
+    }
+
+    return response;
+  });
   /**
    * TC-012: 단일 문장 첨삭
    */
