@@ -79,7 +79,7 @@ describe('ClaudeSDKClient - Unit Tests', () => {
           prompt,
           options: expect.objectContaining({
             tools: [],
-            maxTurns: 1,
+            maxTurns: 3,
             outputFormat: expect.objectContaining({
               type: 'json_schema',
             }),

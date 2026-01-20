@@ -2,9 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { VoiceRecorder } from '../components/VoiceRecorder';
 import { CEFRSelector } from '../components/CEFRSelector';
+import { TopicSelector } from '../components/TopicSelector';
 import { TopicPreview } from '../components/TopicPreview';
 import { LoadingSpinner } from '../components/LoadingSpinner';
-import { CEFRLevel } from '../../main/database/models';
+import { CEFRLevel, Topic } from '../../main/database/models';
 import styles from './TopicCreationPage.module.scss';
 
 type Step = 'idle' | 'recording' | 'processing' | 'result' | 'saving' | 'complete';
@@ -34,6 +35,8 @@ interface TopicCreationState {
   isProcessing: boolean;
   error: string | null;
   processingMessage: string;
+  activeTopic: Topic | null;
+  isChangingTopic: boolean;
 }
 
 export const TopicCreationPage: React.FC = () => {
@@ -49,9 +52,11 @@ export const TopicCreationPage: React.FC = () => {
     isProcessing: false,
     error: null,
     processingMessage: '',
+    activeTopic: null,
+    isChangingTopic: false,
   });
 
-  // 컴포넌트 마운트 시 localStorage에서 저장된 상태 복원
+  // 컴포넌트 마운트 시 localStorage에서 저장된 상태 복원 및 활성 토픽 로드
   useEffect(() => {
     const saved = localStorage.getItem(STEP1_STORAGE_KEY);
     if (saved) {
@@ -75,6 +80,20 @@ export const TopicCreationPage: React.FC = () => {
         localStorage.removeItem(STEP1_STORAGE_KEY);
       }
     }
+
+    // 활성 토픽 로드
+    const loadActiveTopic = async () => {
+      try {
+        const response = await window.electron.invoke('get-active-topic');
+        if (response.success && response.data) {
+          setState((prev) => ({ ...prev, activeTopic: response.data }));
+        }
+      } catch (error) {
+        console.error('Failed to load active topic:', error);
+      }
+    };
+
+    loadActiveTopic();
   }, []);
 
   // localStorage에 상태 저장하는 헬퍼 함수
@@ -295,6 +314,8 @@ export const TopicCreationPage: React.FC = () => {
       isProcessing: false,
       error: null,
       processingMessage: '',
+      activeTopic: state.activeTopic,
+      isChangingTopic: false,
     });
   };
 
@@ -315,6 +336,58 @@ export const TopicCreationPage: React.FC = () => {
     handleGenerateTopic(editedKoreanText);
   };
 
+  // 토픽 선택 핸들러
+  const handleTopicSelect = async (topicId: number) => {
+    setState((prev) => ({ ...prev, isChangingTopic: true, error: null }));
+
+    try {
+      // 1. 토픽 활성화 IPC 호출
+      const response = await window.electron.invoke('set-active-topic', { topicId });
+
+      if (response.success) {
+        // 2. localStorage 클리어 (기존 입력 데이터 삭제)
+        clearDraftFromStorage();
+
+        // 3. 활성 토픽 다시 로드
+        const activeTopicResponse = await window.electron.invoke('get-active-topic');
+
+        if (activeTopicResponse.success && activeTopicResponse.data) {
+          setState((prev) => ({
+            ...prev,
+            activeTopic: activeTopicResponse.data,
+            isChangingTopic: false,
+            // 입력 상태 초기화
+            step: 'idle',
+            koreanText: '',
+            englishText: '',
+            keywords: [],
+            title: '',
+            recordingPath: null,
+          }));
+        } else {
+          setState((prev) => ({
+            ...prev,
+            error: '활성 토픽 로드에 실패했습니다.',
+            isChangingTopic: false,
+          }));
+        }
+      } else {
+        setState((prev) => ({
+          ...prev,
+          error: response.error || '토픽 변경에 실패했습니다.',
+          isChangingTopic: false,
+        }));
+      }
+    } catch (error) {
+      console.error('Failed to change topic:', error);
+      setState((prev) => ({
+        ...prev,
+        error: '토픽 변경 중 오류가 발생했습니다.',
+        isChangingTopic: false,
+      }));
+    }
+  };
+
   const isMainUIVisible = state.step !== 'saving' && state.step !== 'complete';
   const isProcessing = state.step === 'processing';
 
@@ -333,6 +406,13 @@ export const TopicCreationPage: React.FC = () => {
       {/* 메인 UI (설명/녹음/결과) */}
       {isMainUIVisible && (
         <div className={styles.stepContainer}>
+          {/* 토픽 선택 드롭다운 */}
+          <TopicSelector
+            currentTopicId={state.activeTopic?.id || null}
+            onTopicSelect={handleTopicSelect}
+            disabled={state.isProcessing || state.isChangingTopic}
+          />
+
           {/* CEFR 선택기 - 결과가 있을 때는 비활성화 */}
           <CEFRSelector
             value={state.cefrLevel}
@@ -343,7 +423,7 @@ export const TopicCreationPage: React.FC = () => {
 
           {/* 녹음 UI */}
           <VoiceRecorder
-            maxDuration={30}
+            maxDuration={60}
             onRecordingComplete={handleRecordingComplete}
             onRecordingError={handleRecordingError}
             disabled={isProcessing}
