@@ -107,7 +107,7 @@ export const CorrectionPage: React.FC = () => {
 
       if (response.success && response.data && response.data.length > 0) {
         // inputText로 섹션 정보 재추출
-        const { sections } = splitSentencesWithSections(inputText);
+        const { sections } = await splitSentencesWithSections(inputText);
 
         setState((prev) => ({
           ...prev,
@@ -170,9 +170,10 @@ export const CorrectionPage: React.FC = () => {
   const SECTION_MARKER_PATTERN = /^-{2,}.*-{2,}$/;
 
   // 문장 분리 (구분자 처리 포함) - 섹션 정보도 함께 반환
-  const splitSentencesWithSections = (
+  // 백엔드의 CorrectionService.splitSentences()를 호출하여 시간 표현(a.m./p.m.) 처리
+  const splitSentencesWithSections = async (
     text: string
-  ): { sentences: string[]; sections: SectionInfo[] } => {
+  ): Promise<{ sentences: string[]; sections: SectionInfo[] }> => {
     if (!text || text.trim().length === 0) {
       return { sentences: [], sections: [] };
     }
@@ -192,7 +193,9 @@ export const CorrectionPage: React.FC = () => {
       if (SECTION_MARKER_PATTERN.test(trimmedLine)) {
         // 이전 섹션의 문장들이 있으면 처리
         if (currentSection.trim()) {
-          const sectionSentences = splitTextIntoSentences(currentSection);
+          // 백엔드 IPC 호출로 문장 분리
+          const response = await window.electron.invoke('split-sentences', { text: currentSection });
+          const sectionSentences = response.success && response.data ? response.data : [];
           if (sectionSentences.length > 0 && currentSectionName) {
             sections.push({
               name: currentSectionName,
@@ -214,7 +217,9 @@ export const CorrectionPage: React.FC = () => {
 
     // 마지막 섹션 처리
     if (currentSection.trim()) {
-      const sectionSentences = splitTextIntoSentences(currentSection);
+      // 백엔드 IPC 호출로 문장 분리
+      const response = await window.electron.invoke('split-sentences', { text: currentSection });
+      const sectionSentences = response.success && response.data ? response.data : [];
       if (sectionSentences.length > 0 && currentSectionName) {
         sections.push({
           name: currentSectionName,
@@ -226,27 +231,6 @@ export const CorrectionPage: React.FC = () => {
     }
 
     return { sentences: sentences.filter((s) => s.length > 0), sections };
-  };
-
-  // 텍스트를 문장으로 분리하는 헬퍼 함수
-  const splitTextIntoSentences = (text: string): string[] => {
-    if (!text || text.trim().length === 0) {
-      return [];
-    }
-
-    // 마침표, 느낌표, 물음표 기준 분리
-    const sentences = text
-      .split(/([.!?]+)/)
-      .reduce((acc: string[], curr, index, arr) => {
-        if (index % 2 === 0 && curr.trim()) {
-          const punctuation = arr[index + 1] || '';
-          acc.push((curr + punctuation).trim());
-        }
-        return acc;
-      }, [])
-      .filter((s) => s.length > 1);
-
-    return sentences;
   };
 
   /**
@@ -262,7 +246,7 @@ export const CorrectionPage: React.FC = () => {
       return;
     }
 
-    const { sentences, sections } = splitSentencesWithSections(state.inputText);
+    const { sentences, sections } = await splitSentencesWithSections(state.inputText);
 
     if (sentences.length === 0) {
       setState((prev) => ({
