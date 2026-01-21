@@ -272,12 +272,16 @@ export const ConversationCorrectionPage: React.FC = () => {
     if (state.isPlayingAll) {
       return;
     }
+    // currentPlayingIndex 설정 (isPlaying 상태 표시를 위해)
+    setState((prev) => ({ ...prev, currentPlayingIndex: index }));
     // playTTSAudio 내부에서 stopCurrentAudio() 호출하므로 별도 중지 로직 불필요
     try {
       await playTTSAudio(text, index, speaker);
     } catch (error) {
       console.error('TTS 재생 실패:', error);
     }
+    // 재생 완료 후 currentPlayingIndex 리셋
+    setState((prev) => ({ ...prev, currentPlayingIndex: -1 }));
   }, [playTTSAudio, state.isPlayingAll]);
 
   // 개별 문장 TTS 재생 (인덱스 표시용, speaker 정보 포함)
@@ -498,10 +502,10 @@ export const ConversationCorrectionPage: React.FC = () => {
                     title="이 문장 재생"
                   >
                     {state.isSynthesizing && state.synthesizingId === index
-                      ? '🔄'
+                      ? '🔄 TTS 생성 중...'
                       : state.currentPlayingIndex === index
-                      ? '⏸️'
-                      : '🔊'}
+                      ? '⏸️ 재생 중...'
+                      : '🔊 듣기'}
                   </button>
                 </div>
                 <p className={styles.flowText}>{c.corrected}</p>

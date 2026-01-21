@@ -91,43 +91,57 @@ export const CorrectionDisplay: React.FC<CorrectionDisplayProps> = ({
   };
 
   /**
-   * FR-002: TTS 재생 핸들러 (여러 번 누르면 처음부터 다시 재생)
+   * FR-002: TTS 재생 핸들러
    * TC-016: TTS 재생 전체 플로우
    * TC-020: TTS 에러 발생 시 상태 복원
    *
-   * TTS 생성 단계와 재생 단계를 구분하여 표시
-   * NOTE: 현재 구조에서는 부모의 onPlayTTS가 synthesis+playback을 모두 처리하므로
-   *       synthesizing과 playing 상태를 완벽하게 분리하기 어려움
-   *       대신 synthesizing을 짧게 표시하고 playing으로 전환하는 방식 사용
+   * TTS 생성 단계와 재생 단계를 명확히 구분하여 표시
+   * - TTS 생성 중: "🔄 TTS 생성 중..." (IPC 호출 완료까지)
+   * - 재생 중: "⏸️ 재생 중..." (Audio onended 이벤트까지)
    */
   const handlePlayTTS = async (text: string, index: number) => {
+    // 이미 재생 중이거나 생성 중이면 무시
+    if (playingId !== null || synthesizingId !== null) return;
+
     try {
-      // 단계 1: TTS 생성 시작
+      // 1. TTS 생성 시작 표시
       setIsSynthesizing(true);
       setSynthesizingId(index);
 
-      // 짧은 딜레이 후 생성 완료로 전환 (UX 개선)
-      // 실제로는 onPlayTTS가 synthesis를 처리하지만,
-      // 캐시 히트 시 너무 빨라서 사용자가 인지하지 못하는 문제 방지
-      await new Promise(resolve => setTimeout(resolve, 100));
+      // 2. 실제 TTS 생성 (IPC 호출) - 캐시 히트 시 빠르게 완료됨
+      const response = await window.electron.invoke('synthesize-tts', text);
 
+      // 3. TTS 생성 완료 → 재생 상태로 전환
       setIsSynthesizing(false);
       setSynthesizingId(null);
-      setPlayingId(index);
 
-      // onPlayTTS 호출 (실제 재생, 완료될 때까지 대기)
-      await onPlayTTS(text, index);
+      if (response.success && response.data?.filePath) {
+        // 4. 재생 상태 시작
+        setPlayingId(index);
 
+        // 5. 오디오 재생 - onended에서 상태 해제
+        const audio = new Audio(`file://${response.data.filePath}`);
+
+        audio.onended = () => {
+          setPlayingId(null);
+        };
+        audio.onerror = () => {
+          console.error('오디오 재생 오류');
+          setPlayingId(null);
+        };
+
+        await audio.play();
+      } else {
+        throw new Error(response.error || 'TTS 생성 실패');
+      }
     } catch (error) {
-      console.error('TTS playback failed:', error);
+      console.error('TTS 재생 오류:', error);
       // 에러 발생 시 모든 상태 복원
       setIsSynthesizing(false);
       setSynthesizingId(null);
       setPlayingId(null);
-    } finally {
-      // 재생 완료 후 playingId 해제
-      setPlayingId(null);
     }
+    // NOTE: finally에서 setPlayingId(null) 하지 않음 - onended에서 처리
   };
 
   // 섹션별 첨삭 완료 문장 생성

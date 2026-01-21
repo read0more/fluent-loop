@@ -106,7 +106,11 @@ export const CorrectedMessageItem: React.FC<CorrectedMessageItemProps> = ({
             }
             disabled={isSynthesizing}
           >
-            {isSynthesizing ? '🔄' : isPlaying ? '⏸️' : '🔊'}
+            {isSynthesizing
+              ? '🔄 TTS 생성 중...'
+              : isPlaying
+              ? '⏸️ 재생 중...'
+              : '🔊 듣기'}
           </button>
         )}
       </div>

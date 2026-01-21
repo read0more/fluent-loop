@@ -20,6 +20,21 @@ import { CorrectionResult } from '../../../main/database/models';
  * - TC-041: 네트워크 타임아웃
  */
 
+// window.electron mock
+const mockInvoke = vi.fn();
+(window as unknown as { electron: { invoke: typeof mockInvoke } }).electron = {
+  invoke: mockInvoke
+};
+
+// Audio mock
+class MockAudio {
+  src = '';
+  onended: (() => void) | null = null;
+  onerror: (() => void) | null = null;
+  play = vi.fn().mockResolvedValue(undefined);
+}
+(window as unknown as { Audio: typeof MockAudio }).Audio = MockAudio as unknown as typeof Audio;
+
 describe('CorrectionDisplay - 에러 케이스 테스트', () => {
   const mockCorrections: CorrectionResult[] = [
     {
@@ -35,6 +50,7 @@ describe('CorrectionDisplay - 에러 케이스 테스트', () => {
   beforeEach(() => {
     mockOnPlayTTS = vi.fn();
     consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    mockInvoke.mockReset();
   });
 
   afterEach(() => {
@@ -55,7 +71,7 @@ describe('CorrectionDisplay - 에러 케이스 테스트', () => {
    *   - 버튼 상태 복원
    */
   it('TC-037: Python 백엔드 미실행 시', async () => {
-    mockOnPlayTTS.mockRejectedValue({
+    mockInvoke.mockRejectedValue({
       code: 'TTS_SERVICE_UNAVAILABLE',
       message: 'TTS 서버에 연결할 수 없습니다.'
     });
@@ -92,7 +108,7 @@ describe('CorrectionDisplay - 에러 케이스 테스트', () => {
    *   - 상태 복원
    */
   it('TC-038: TTS 생성 실패 (Python 에러)', async () => {
-    mockOnPlayTTS.mockRejectedValue({
+    mockInvoke.mockRejectedValue({
       code: 'TTS_SYNTHESIS_FAILED',
       message: '음성 생성에 실패했습니다.'
     });
@@ -112,7 +128,7 @@ describe('CorrectionDisplay - 에러 케이스 테스트', () => {
     });
 
     expect(consoleErrorSpy).toHaveBeenCalledWith(
-      'TTS playback failed:',
+      'TTS 재생 오류:',
       expect.objectContaining({
         code: 'TTS_SYNTHESIS_FAILED'
       })
@@ -133,7 +149,7 @@ describe('CorrectionDisplay - 에러 케이스 테스트', () => {
    *   - 상태 복원
    */
   it('TC-039: Audio 파일 로드 실패', async () => {
-    mockOnPlayTTS.mockRejectedValue(new Error('오디오 재생 실패'));
+    mockInvoke.mockRejectedValue(new Error('오디오 재생 실패'));
 
     render(
       <CorrectionDisplay
@@ -150,7 +166,7 @@ describe('CorrectionDisplay - 에러 케이스 테스트', () => {
     });
 
     expect(consoleErrorSpy).toHaveBeenCalledWith(
-      'TTS playback failed:',
+      'TTS 재생 오류:',
       expect.any(Error)
     );
   });
@@ -167,7 +183,7 @@ describe('CorrectionDisplay - 에러 케이스 테스트', () => {
    *   - 상태 복원
    */
   it('TC-040: 브라우저 자동재생 정책 차단', async () => {
-    mockOnPlayTTS.mockRejectedValue({
+    mockInvoke.mockRejectedValue({
       name: 'NotAllowedError',
       message: '자동 재생이 차단되었습니다.'
     });
@@ -202,7 +218,7 @@ describe('CorrectionDisplay - 에러 케이스 테스트', () => {
    *   - 상태 복원
    */
   it('TC-041: 네트워크 타임아웃', async () => {
-    mockOnPlayTTS.mockRejectedValue({
+    mockInvoke.mockRejectedValue({
       code: 'ETIMEDOUT',
       message: '처리 시간이 초과되었습니다.'
     });
@@ -222,7 +238,7 @@ describe('CorrectionDisplay - 에러 케이스 테스트', () => {
     });
 
     expect(consoleErrorSpy).toHaveBeenCalledWith(
-      'TTS playback failed:',
+      'TTS 재생 오류:',
       expect.objectContaining({
         code: 'ETIMEDOUT'
       })
@@ -243,7 +259,7 @@ describe('CorrectionDisplay - 에러 케이스 테스트', () => {
    *   - 리소스 정리
    */
   it('TC-042: 메모리 부족 시 재생 실패', async () => {
-    mockOnPlayTTS.mockRejectedValue({
+    mockInvoke.mockRejectedValue({
       name: 'QuotaExceededError',
       message: '메모리가 부족합니다.'
     });
@@ -269,7 +285,7 @@ describe('CorrectionDisplay - 에러 케이스 테스트', () => {
    * 연속 에러 발생 시 안정성 테스트
    */
   it('연속 에러 발생 시 버튼 상태 안정성', async () => {
-    mockOnPlayTTS.mockRejectedValue(new Error('TTS failed'));
+    mockInvoke.mockRejectedValue(new Error('TTS failed'));
 
     render(
       <CorrectionDisplay

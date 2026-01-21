@@ -21,11 +21,32 @@ import { CorrectionResult } from '../../../main/database/models';
  * - TC-035: 동시 다중 TTS 요청
  */
 
+// window.electron mock
+const mockInvoke = vi.fn();
+(window as unknown as { electron: { invoke: typeof mockInvoke } }).electron = {
+  invoke: mockInvoke
+};
+
+// Audio mock
+class MockAudio {
+  src = '';
+  onended: (() => void) | null = null;
+  onerror: (() => void) | null = null;
+  play = vi.fn().mockResolvedValue(undefined);
+}
+(window as unknown as { Audio: typeof MockAudio }).Audio = MockAudio as unknown as typeof Audio;
+
 describe('CorrectionDisplay - 경계값 테스트', () => {
   let mockOnPlayTTS: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
     mockOnPlayTTS = vi.fn();
+    mockInvoke.mockReset();
+    // 기본 성공 응답
+    mockInvoke.mockResolvedValue({
+      success: true,
+      data: { filePath: '/tmp/test.mp3' }
+    });
   });
 
   afterEach(() => {
@@ -52,7 +73,7 @@ describe('CorrectionDisplay - 경계값 테스트', () => {
       }
     ];
 
-    mockOnPlayTTS.mockRejectedValue(new Error('TTS_INVALID_REQUEST: 빈 텍스트'));
+    mockInvoke.mockRejectedValue(new Error('TTS_INVALID_REQUEST: 빈 텍스트'));
 
     render(
       <CorrectionDisplay
@@ -143,8 +164,6 @@ describe('CorrectionDisplay - 경계값 테스트', () => {
       }
     ];
 
-    mockOnPlayTTS.mockResolvedValue(undefined);
-
     render(
       <CorrectionDisplay
         corrections={specialCharCorrections}
@@ -155,10 +174,11 @@ describe('CorrectionDisplay - 경계값 테스트', () => {
     const button = screen.getByTestId('play-tts-0');
     fireEvent.click(button);
 
+    // mockInvoke가 특수 문자 텍스트로 호출되었는지 확인
     await waitFor(() => {
-      expect(mockOnPlayTTS).toHaveBeenCalledWith(
-        'Hello! @#$%^&*() <tag>',
-        0
+      expect(mockInvoke).toHaveBeenCalledWith(
+        'synthesize-tts',
+        'Hello! @#$%^&*() <tag>'
       );
     });
 
@@ -204,8 +224,8 @@ describe('CorrectionDisplay - 경계값 테스트', () => {
    *   2. 즉시 두 번째 "듣기" 버튼 클릭
    *   3. 동시성 처리 확인
    * 예상 결과:
-   *   - 첫 번째 재생 중지
-   *   - 두 번째 재생 시작
+   *   - 첫 번째 재생 시작
+   *   - 두 번째 클릭은 무시됨 (중복 재생 방지)
    *   - Race condition 없음
    */
   it('TC-035: 동시 다중 TTS 요청', async () => {
@@ -222,10 +242,6 @@ describe('CorrectionDisplay - 경계값 테스트', () => {
       }
     ];
 
-    mockOnPlayTTS.mockImplementation(
-      () => new Promise((resolve) => setTimeout(resolve, 2000))
-    );
-
     render(
       <CorrectionDisplay
         corrections={multipleCorrections}
@@ -240,14 +256,14 @@ describe('CorrectionDisplay - 경계값 테스트', () => {
     fireEvent.click(firstButton);
     fireEvent.click(secondButton);
 
-    // 첫 번째가 중지되고 두 번째가 재생되는지 확인
+    // 첫 번째만 호출됨 (두 번째는 무시됨 - 중복 재생 방지)
     await waitFor(() => {
-      expect(mockOnPlayTTS).toHaveBeenCalledTimes(2);
+      expect(mockInvoke).toHaveBeenCalledTimes(1);
     });
 
-    // 두 번째 버튼이 재생 중인지 확인
+    // 첫 번째 버튼이 재생 중인지 확인
     await waitFor(() => {
-      expect(secondButton).toHaveTextContent(/재생 중/);
+      expect(firstButton).toHaveTextContent(/재생 중|생성 중/);
     });
   });
 
