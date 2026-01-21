@@ -33,6 +33,14 @@ export const CorrectionDisplay: React.FC<CorrectionDisplayProps> = ({
   const [playingId, setPlayingId] = useState<number | null>(null);
 
   /**
+   * TTS 생성 중 상태 관리
+   * synthesizingId: TTS 생성 중인 문장의 ID
+   * isSynthesizing: TTS 생성 중 여부
+   */
+  const [synthesizingId, setSynthesizingId] = useState<number | null>(null);
+  const [isSynthesizing, setIsSynthesizing] = useState<boolean>(false);
+
+  /**
    * 수정이 필요한 문장인지 확인
    */
   const needsCorrection = (correction: CorrectionResult) => {
@@ -69,22 +77,55 @@ export const CorrectionDisplay: React.FC<CorrectionDisplayProps> = ({
   };
 
   /**
+   * 버튼 텍스트 헬퍼 함수
+   * TTS 생성 중, 재생 중, 대기 중 상태를 구분하여 표시
+   */
+  const getButtonText = (index: number): string => {
+    if (isSynthesizing && synthesizingId === index) {
+      return '🔄 TTS 생성 중...';
+    }
+    if (playingId === index) {
+      return '⏸️ 재생 중...';
+    }
+    return '🔊 듣기';
+  };
+
+  /**
    * FR-002: TTS 재생 핸들러 (여러 번 누르면 처음부터 다시 재생)
    * TC-016: TTS 재생 전체 플로우
    * TC-020: TTS 에러 발생 시 상태 복원
+   *
+   * TTS 생성 단계와 재생 단계를 구분하여 표시
+   * NOTE: 현재 구조에서는 부모의 onPlayTTS가 synthesis+playback을 모두 처리하므로
+   *       synthesizing과 playing 상태를 완벽하게 분리하기 어려움
+   *       대신 synthesizing을 짧게 표시하고 playing으로 전환하는 방식 사용
    */
   const handlePlayTTS = async (text: string, index: number) => {
-    // 부모 컴포넌트의 onPlayTTS가 기존 오디오 중지 처리
-    // return 제거 - 중복 클릭 시 처음부터 다시 재생
-
     try {
+      // 단계 1: TTS 생성 시작
+      setIsSynthesizing(true);
+      setSynthesizingId(index);
+
+      // 짧은 딜레이 후 생성 완료로 전환 (UX 개선)
+      // 실제로는 onPlayTTS가 synthesis를 처리하지만,
+      // 캐시 히트 시 너무 빨라서 사용자가 인지하지 못하는 문제 방지
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      setIsSynthesizing(false);
+      setSynthesizingId(null);
       setPlayingId(index);
+
+      // onPlayTTS 호출 (실제 재생, 완료될 때까지 대기)
       await onPlayTTS(text, index);
+
     } catch (error) {
       console.error('TTS playback failed:', error);
-      // 에러 발생 시에도 상태는 복원해야 함
+      // 에러 발생 시 모든 상태 복원
+      setIsSynthesizing(false);
+      setSynthesizingId(null);
+      setPlayingId(null);
     } finally {
-      // TC-020: 에러 발생 시에도 반드시 재생 상태 해제
+      // 재생 완료 후 playingId 해제
       setPlayingId(null);
     }
   };
@@ -176,7 +217,7 @@ export const CorrectionDisplay: React.FC<CorrectionDisplayProps> = ({
                         aria-label="TTS 재생"
                         data-testid={`play-tts-${originalIndex}`}
                       >
-                        {playingId === originalIndex ? '⏸️ 재생 중...' : '🔊 듣기'}
+                        {getButtonText(originalIndex)}
                       </button>
                     </div>
                   </div>
@@ -202,7 +243,11 @@ export const CorrectionDisplay: React.FC<CorrectionDisplayProps> = ({
                   aria-label="TTS 재생"
                   data-testid={`tts-button-section-${index}`}
                 >
-                  {playingId === -1 - index ? '⏸️ 재생 중...' : '🔊 전체 듣기'}
+                  {isSynthesizing && synthesizingId === -1 - index
+                    ? '🔄 TTS 생성 중...'
+                    : playingId === -1 - index
+                    ? '⏸️ 재생 중...'
+                    : '🔊 전체 듣기'}
                 </button>
               </div>
               <p className={styles.sectionSummaryText}>{summary.text}</p>

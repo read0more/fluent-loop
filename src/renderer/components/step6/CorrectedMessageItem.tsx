@@ -9,6 +9,9 @@ interface CorrectedMessageItemProps {
   correction: ConversationCorrectionResult;
   index: number;
   onPlayTTS?: (text: string) => void;
+  // TTS 상태 props
+  isPlaying?: boolean;
+  isSynthesizing?: boolean;
 }
 
 const CATEGORY_LABELS: Record<CorrectionCategory, string> = {
@@ -34,6 +37,8 @@ export const CorrectedMessageItem: React.FC<CorrectedMessageItemProps> = ({
   correction,
   index,
   onPlayTTS,
+  isPlaying = false,
+  isSynthesizing = false,
 }) => {
   const { speaker, original, corrected, explanation, categories, timestamp } =
     correction;
@@ -92,9 +97,16 @@ export const CorrectedMessageItem: React.FC<CorrectedMessageItemProps> = ({
           <button
             className={styles.btnPlayTts}
             onClick={() => onPlayTTS(isModified ? corrected : original)}
-            title="음성으로 듣기"
+            title={
+              isSynthesizing
+                ? 'TTS 생성 중...'
+                : isPlaying
+                ? '재생 중...'
+                : '음성으로 듣기'
+            }
+            disabled={isSynthesizing}
           >
-            🔊
+            {isSynthesizing ? '🔄' : isPlaying ? '⏸️' : '🔊'}
           </button>
         )}
       </div>

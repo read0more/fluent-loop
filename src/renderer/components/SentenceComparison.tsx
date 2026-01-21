@@ -79,7 +79,7 @@ export const SentenceComparison: React.FC<SentenceComparisonProps> = ({
       <div className={styles.header}>
         <span className={styles.number}>문장 {index + 1}</span>
         <div className={styles.badges}>
-          {categories.map((category) => (
+          {categories?.map((category) => (
             <span
               key={category}
               className={`${styles.badge} ${styles[CATEGORY_COLORS[category]]}`}

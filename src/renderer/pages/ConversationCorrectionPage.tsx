@@ -32,6 +32,9 @@ interface ConversationCorrectionPageState {
   isPlayingAll: boolean;
   currentPlayingIndex: number;
   showConversationModal: boolean;  // 대화내용 모달 표시 여부
+  // TTS 생성 중 상태
+  isSynthesizing: boolean;
+  synthesizingId: number | null;
 }
 
 export const ConversationCorrectionPage: React.FC = () => {
@@ -54,6 +57,8 @@ export const ConversationCorrectionPage: React.FC = () => {
     isPlayingAll: false,
     currentPlayingIndex: -1,
     showConversationModal: false,
+    isSynthesizing: false,
+    synthesizingId: null,
   });
 
   // localStorage에서 대화 정보 로드
@@ -200,48 +205,76 @@ export const ConversationCorrectionPage: React.FC = () => {
   }, []);
 
   // TTS 재생 헬퍼 함수 (speaker에 따라 다른 음성 사용, 중복 재생 방지)
-  const playTTSAudio = useCallback(async (text: string, speaker?: 'user' | 'ai'): Promise<void> => {
+  const playTTSAudio = useCallback(async (
+    text: string,
+    index: number,
+    speaker?: 'user' | 'ai'
+  ): Promise<void> => {
     // 기존 오디오 중지
     stopCurrentAudio();
 
-    const request = speaker ? { text, speaker } : text;
-    const response = await window.electron.invoke('synthesize-tts', request);
+    // TTS 생성 시작
+    setState(prev => ({
+      ...prev,
+      isSynthesizing: true,
+      synthesizingId: index
+    }));
 
-    if (response.success && response.data?.filePath) {
-      return new Promise<void>((resolve, reject) => {
-        const audio = new Audio(`file://${response.data.filePath}`);
-        currentAudioRef.current = audio;
-        setIsPlayingSingle(true);
+    try {
+      const request = speaker ? { text, speaker } : text;
+      const response = await window.electron.invoke('synthesize-tts', request);
 
-        audio.onended = () => {
-          currentAudioRef.current = null;
-          setIsPlayingSingle(false);
-          resolve();
-        };
-        audio.onerror = () => {
-          currentAudioRef.current = null;
-          setIsPlayingSingle(false);
-          reject(new Error('오디오 재생 실패'));
-        };
+      // TTS 생성 완료
+      setState(prev => ({
+        ...prev,
+        isSynthesizing: false,
+        synthesizingId: null
+      }));
 
-        audio.play().catch((err) => {
-          currentAudioRef.current = null;
-          setIsPlayingSingle(false);
-          reject(err);
+      if (response.success && response.data?.filePath) {
+        return new Promise<void>((resolve, reject) => {
+          const audio = new Audio(`file://${response.data.filePath}`);
+          currentAudioRef.current = audio;
+          setIsPlayingSingle(true);
+
+          audio.onended = () => {
+            currentAudioRef.current = null;
+            setIsPlayingSingle(false);
+            resolve();
+          };
+          audio.onerror = () => {
+            currentAudioRef.current = null;
+            setIsPlayingSingle(false);
+            reject(new Error('오디오 재생 실패'));
+          };
+
+          audio.play().catch((err) => {
+            currentAudioRef.current = null;
+            setIsPlayingSingle(false);
+            reject(err);
+          });
         });
-      });
+      }
+    } catch (error) {
+      // 에러 발생 시 상태 복원
+      setState(prev => ({
+        ...prev,
+        isSynthesizing: false,
+        synthesizingId: null
+      }));
+      throw error;
     }
   }, [stopCurrentAudio]);
 
   // TTS 재생 (speaker 정보 포함)
-  const handlePlayTTS = useCallback(async (text: string, speaker?: 'user' | 'ai') => {
+  const handlePlayTTS = useCallback(async (text: string, index: number, speaker?: 'user' | 'ai') => {
     // 전체 재생 중이면 무시
     if (state.isPlayingAll) {
       return;
     }
     // playTTSAudio 내부에서 stopCurrentAudio() 호출하므로 별도 중지 로직 불필요
     try {
-      await playTTSAudio(text, speaker);
+      await playTTSAudio(text, index, speaker);
     } catch (error) {
       console.error('TTS 재생 실패:', error);
     }
@@ -251,7 +284,7 @@ export const ConversationCorrectionPage: React.FC = () => {
   const handlePlaySingle = useCallback(async (text: string, index: number, speaker: 'user' | 'ai') => {
     setState((prev) => ({ ...prev, currentPlayingIndex: index }));
     try {
-      await playTTSAudio(text, speaker);
+      await playTTSAudio(text, index, speaker);
     } catch (error) {
       console.error('TTS 재생 실패:', error);
     }
@@ -272,7 +305,7 @@ export const ConversationCorrectionPage: React.FC = () => {
       setState((prev) => ({ ...prev, currentPlayingIndex: i }));
       try {
         const correction = state.corrections[i];
-        await playTTSAudio(correction.corrected, correction.speaker);
+        await playTTSAudio(correction.corrected, i, correction.speaker);
         // 문장 사이 짧은 딜레이
         await new Promise((resolve) => setTimeout(resolve, 300));
       } catch (error) {
@@ -282,14 +315,27 @@ export const ConversationCorrectionPage: React.FC = () => {
     }
 
     stopPlayRef.current = false;
-    setState((prev) => ({ ...prev, isPlayingAll: false, currentPlayingIndex: -1 }));
+    setState((prev) => ({
+      ...prev,
+      isPlayingAll: false,
+      currentPlayingIndex: -1,
+      isSynthesizing: false,
+      synthesizingId: null
+    }));
   }, [state.isPlayingAll, state.corrections, playTTSAudio]);
 
   // 재생 중지
   const handleStopPlayAll = useCallback(() => {
     stopPlayRef.current = true;
-    setState((prev) => ({ ...prev, isPlayingAll: false, currentPlayingIndex: -1 }));
-  }, []);
+    stopCurrentAudio();
+    setState((prev) => ({
+      ...prev,
+      isPlayingAll: false,
+      currentPlayingIndex: -1,
+      isSynthesizing: false,
+      synthesizingId: null
+    }));
+  }, [stopCurrentAudio]);
 
   // 대화내용 보기 모달 열기
   const handleShowConversation = useCallback(() => {
@@ -376,9 +422,9 @@ export const ConversationCorrectionPage: React.FC = () => {
 
         <button
           onClick={handleShowConversation}
-          disabled={state.originalMessages.length === 0}
+          disabled={!state.originalMessages || state.originalMessages.length === 0}
           className="btn-secondary"
-          title={state.originalMessages.length === 0 ? '표시할 대화내용이 없습니다' : '5단계 대화 원본 보기'}
+          title={!state.originalMessages || state.originalMessages.length === 0 ? '표시할 대화내용이 없습니다' : '5단계 대화 원본 보기'}
         >
           대화내용 보기
         </button>
@@ -414,7 +460,9 @@ export const ConversationCorrectionPage: React.FC = () => {
               key={correction.messageId}
               correction={correction}
               index={index}
-              onPlayTTS={(text) => handlePlayTTS(text, correction.speaker)}
+              onPlayTTS={(text) => handlePlayTTS(text, index, correction.speaker)}
+              isPlaying={state.currentPlayingIndex === index}
+              isSynthesizing={state.isSynthesizing && state.synthesizingId === index}
             />
           ))}
         </div>
@@ -449,7 +497,11 @@ export const ConversationCorrectionPage: React.FC = () => {
                     disabled={state.isPlayingAll}
                     title="이 문장 재생"
                   >
-                    🔊
+                    {state.isSynthesizing && state.synthesizingId === index
+                      ? '🔄'
+                      : state.currentPlayingIndex === index
+                      ? '⏸️'
+                      : '🔊'}
                   </button>
                 </div>
                 <p className={styles.flowText}>{c.corrected}</p>
