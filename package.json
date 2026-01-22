@@ -18,7 +18,11 @@
     "format:check": "prettier --check \"src/**/*.ts\"",
     "test": "vitest run",
     "test:watch": "vitest",
-    "prepare": "husky"
+    "prepare": "husky",
+    "package": "npm run build && electron-builder",
+    "package:win": "npm run build && electron-builder --win",
+    "package:portable": "npm run build && electron-builder --win portable",
+    "package:dir": "npm run build && electron-builder --dir"
   },
   "lint-staged": {
     "src/**/*.ts": [
@@ -51,6 +55,7 @@
     "axios": "^1.13.2",
     "concurrently": "^9.2.1",
     "electron": "^33.0.0",
+    "electron-builder": "^26.4.0",
     "esbuild": "^0.27.2",
     "esbuild-sass-plugin": "^3.6.0",
     "eslint": "^9.39.2",
@@ -74,6 +79,7 @@
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
     "better-sqlite3": "^12.5.0",
+    "dotenv": "^17.2.3",
     "ffmpeg-static": "^5.3.0",
     "fluent-ffmpeg": "^2.1.3",
     "form-data": "^4.0.5",

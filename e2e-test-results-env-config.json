@@ -1,0 +1,118 @@
+{
+  "testExecutionInfo": {
+    "timestamp": "2026-01-22T20:50:00",
+    "executor": "E2E Tester Agent",
+    "workingDirectory": "E:/develop/electron-test-worktrees/feature-KAN-27-electron-packaging-env-config",
+    "branch": "feature/KAN-27-electron-packaging-env-config",
+    "testMethod": "Unit and Integration Tests"
+  },
+  "summary": {
+    "totalScenarios": 15,
+    "passed": 14,
+    "failed": 0,
+    "skipped": 1,
+    "passRate": "93.3%"
+  },
+  "criticalScenarios": {
+    "total": 4,
+    "passed": 4,
+    "scenarios": [
+      "ENV-001: .env 파일 없이 앱 실행 시 기본값 사용 확인",
+      "ENV-002: .env 파일에 백엔드 URL 설정 후 앱 실행",
+      "ENV-004: TTS 서비스가 환경변수 기반 URL 사용 확인",
+      "ENV-005: STT 서비스가 환경변수 기반 URL 사용 확인"
+    ]
+  },
+  "buildVerification": {
+    "status": "Pass",
+    "command": "npm run build",
+    "result": "TypeScript compilation successful, Renderer build completed"
+  },
+  "unitTestVerification": {
+    "framework": "Vitest",
+    "command": "npm test",
+    "testFiles": {
+      "passed": 61,
+      "skipped": 2,
+      "total": 63
+    },
+    "tests": {
+      "passed": 963,
+      "skipped": 32,
+      "total": 995
+    },
+    "duration": "18.61s"
+  },
+  "environmentConfigTests": {
+    "total": 22,
+    "passed": 22,
+    "testCases": [
+      "TC-001: .env 파일 정상 로딩",
+      "TC-002: .env 파일 누락 시 기본값 사용",
+      "TC-003: process.env 환경변수 우선 적용",
+      "TC-004: 환경변수 타입 검증",
+      "TC-021: 빈 .env 파일",
+      "TC-022: 주석만 있는 .env 파일",
+      "TC-023: 잘못된 URL 형식",
+      "TC-024: 포트 번호 범위 초과",
+      "TC-025: 특수 문자가 포함된 환경변수",
+      "TC-026: 매우 긴 URL 값",
+      "TC-027: 환경변수 값에 공백 포함"
+    ]
+  },
+  "verifiedFeatures": [
+    ".env 파일 로딩 (dotenv)",
+    "기본값 폴백 (http://localhost:8000)",
+    "URL 검증 및 폴백",
+    "포트 번호 검증 (0~65535)",
+    "환경변수 우선순위 (process.env > .env > default)",
+    "TTSService 통합",
+    "TypeScript strict 모드 빌드 안정성"
+  ],
+  "issuesFound": [
+    {
+      "issue": "TTSService.ts baseUrl property initialization error (TS2564)",
+      "cause": "TypeScript strict mode doesn't recognize Object.defineProperty initialization",
+      "solution": "Used definite assignment assertion: private readonly baseUrl!: string;",
+      "status": "Resolved"
+    }
+  ],
+  "completionCriteria": {
+    "criticalScenarios": {
+      "required": 4,
+      "passed": 4,
+      "status": "Met"
+    },
+    "highPriorityScenarios": {
+      "required": "80%",
+      "actual": "100%",
+      "status": "Met"
+    },
+    "overallScenarios": {
+      "required": "75%",
+      "actual": "93.3%",
+      "status": "Met"
+    },
+    "criticalBugs": {
+      "allowed": 0,
+      "found": 0,
+      "status": "Met"
+    },
+    "majorBugs": {
+      "allowed": 2,
+      "found": 0,
+      "status": "Met"
+    }
+  },
+  "failedScenarios": [],
+  "skippedScenarios": [
+    {
+      "id": "ENV-013",
+      "title": "동시 다중 TTS/STT 요청 처리",
+      "reason": "Performance testing requires manual testing in actual Electron GUI environment"
+    }
+  ],
+  "documentUpdated": true,
+  "documentPath": "E:\develop\electron-test\claude.config\dev-workflow\docs\qa-scenarios-env-config.md",
+  "conclusion": "환경변수 설정 기능이 모든 Critical 시나리오를 통과하였으며, 유닛 테스트와 통합 테스트를 통해 안정성이 검증되었습니다. Electron 패키징 및 실제 GUI 테스트는 수동 테스트로 보완 필요합니다."
+}

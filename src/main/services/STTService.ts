@@ -3,6 +3,7 @@ import fs from 'fs';
 import FormData from 'form-data';
 import { STTResult } from '../database/models';
 import { AppError, ErrorCode } from '../errors/AppError';
+import { config } from '../../config/env';
 
 /**
  * STT 스트리밍 청크 결과 (확장)
@@ -26,7 +27,7 @@ export interface ISTTService {
 export class STTService implements ISTTService {
   private readonly baseUrl: string;
 
-  constructor(baseUrl: string = 'http://localhost:8000') {
+  constructor(baseUrl: string = config.backendUrl) {
     this.baseUrl = baseUrl;
   }
 

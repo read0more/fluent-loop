@@ -20,13 +20,13 @@ let isRecordingStep2 = false;
 let recordingStartTimeStep2: number | null = null;
 
 export async function registerStep2Handlers(): Promise<void> {
-  // 서비스 초기화
+  // 서비스 초기화 (환경변수 기반)
   ttsCacheService = new TTSCacheService();
   await ttsCacheService.initialize();
-  ttsService = new TTSService('http://localhost:8000', ttsCacheService);
+  ttsService = new TTSService(undefined, ttsCacheService); // config.backendUrl 자동 적용
   audioService = new AudioService();
   settingsService = new SettingsService(getDatabase());
-  configSyncService = new ConfigSyncService('http://localhost:8000');
+  configSyncService = new ConfigSyncService(); // config.backendUrl 자동 적용
 
   // 앱 시작 시 Python 백엔드에 설정 동기화
   try {

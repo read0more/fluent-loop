@@ -2,6 +2,7 @@ import axios from 'axios';
 import { TTSResult, Voice } from '../database/models';
 import { AppError, ErrorCode } from '../errors/AppError';
 import { ITTSCacheService } from './TTSCacheService';
+import { config } from '../../config/env';
 
 interface AxiosLikeError {
   code?: string;
@@ -31,11 +32,17 @@ export interface ITTSService {
 }
 
 export class TTSService implements ITTSService {
-  private readonly baseUrl: string;
+  private readonly baseUrl!: string;
   private readonly cacheService?: ITTSCacheService;
 
-  constructor(baseUrl: string = 'http://localhost:8000', cacheService?: ITTSCacheService) {
-    this.baseUrl = baseUrl;
+  constructor(baseUrl: string = config.backendUrl, cacheService?: ITTSCacheService) {
+    // 불변성을 강제하기 위해 Object.defineProperty 사용
+    Object.defineProperty(this, 'baseUrl', {
+      value: baseUrl,
+      writable: false,
+      enumerable: false,
+      configurable: false,
+    });
     this.cacheService = cacheService;
   }
 

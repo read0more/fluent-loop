@@ -13,6 +13,7 @@
 
 import axios, { AxiosInstance } from 'axios';
 import { AppError, ErrorCode } from '../errors/AppError';
+import { config } from '../../config/env';
 
 export interface ConfigSyncRequest {
   ttsProvider?: string;
@@ -31,7 +32,7 @@ export interface ConfigSyncResponse {
 export class ConfigSyncService {
   private readonly client: AxiosInstance;
 
-  constructor(baseURL: string = 'http://localhost:8000') {
+  constructor(baseURL: string = config.backendUrl) {
     this.client = axios.create({
       baseURL,
       timeout: 10000,
