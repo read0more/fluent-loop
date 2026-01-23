@@ -28,6 +28,7 @@ interface STTStreamResponse {
     text: string;
     language: string;
     is_final: boolean;
+    duration: number;
   };
   error?: string;
 }
@@ -53,6 +54,7 @@ export const useRealtimeSTT = (
   const streamRef = useRef<MediaStream | null>(null);
   const contextRef = useRef<string>(''); // 이전 청크의 텍스트 (컨텍스트)
   const accumulatedChunksRef = useRef<Blob[]>([]); // 청크 누적용 (완전한 WebM 생성)
+  const lastDurationRef = useRef<number>(0); // duration 기반 텍스트 관리용
 
   /**
    * 녹음 시작
@@ -63,6 +65,7 @@ export const useRealtimeSTT = (
       setText('');
       contextRef.current = '';
       accumulatedChunksRef.current = []; // 청크 배열 초기화
+      lastDurationRef.current = 0; // duration 초기화
 
       // 마이크 권한 요청
       const mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -106,11 +109,29 @@ export const useRealtimeSTT = (
 
             if (response.success && response.data?.text) {
               const newText = response.data.text.trim();
+              const newDuration = response.data.duration ?? 0;
 
-              // FR-002: 텍스트가 비어있지 않을 때만 업데이트 (Invalid WebM 시 기존 텍스트 유지)
-              if (newText) {
-                setText(newText);
-                contextRef.current = newText; // 컨텍스트 업데이트
+              // Duration 기반 텍스트 관리:
+              // - duration이 이전보다 크면 → 전체 오디오 재인식 결과이므로 교체
+              // - duration이 이전보다 작거나 같으면 → 이전 결과가 더 최신이므로 무시
+              // 이렇게 하면 중복 발생 안 하고, 응답 순서가 뒤바뀌어도 항상 가장 긴 오디오 결과 사용
+              if (newText && newDuration > lastDurationRef.current) {
+                lastDurationRef.current = newDuration;
+                setText(newText); // 교체 (누적 아님)
+                contextRef.current = newText;
+                console.log(
+                  '[useRealtimeSTT] Updated text with duration:',
+                  newDuration,
+                  'text:',
+                  newText
+                );
+              } else if (newText && newDuration <= lastDurationRef.current) {
+                console.log(
+                  '[useRealtimeSTT] Ignored stale result, duration:',
+                  newDuration,
+                  'lastDuration:',
+                  lastDurationRef.current
+                );
               }
               // 빈 텍스트가 들어오면 기존 텍스트 유지 (아무것도 하지 않음)
             } else if (response.success && !response.data?.text) {

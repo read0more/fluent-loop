@@ -26,9 +26,20 @@ export interface ISTTService {
 
 export class STTService implements ISTTService {
   private readonly baseUrl: string;
+  private abortController: AbortController | null = null;
 
   constructor(baseUrl: string = config.backendUrl) {
     this.baseUrl = baseUrl;
+  }
+
+  /**
+   * 모든 진행 중인 STT 요청 취소
+   */
+  cancelAllRequests(): void {
+    if (this.abortController) {
+      this.abortController.abort();
+      this.abortController = null;
+    }
   }
 
   async checkHealth(): Promise<boolean> {

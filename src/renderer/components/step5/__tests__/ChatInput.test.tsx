@@ -87,10 +87,10 @@ describe('ChatInput - TTS 재생 중 버튼 비활성화 (FR-001)', () => {
       <ChatInput {...defaultProps} onSendMessage={onSendMessage} isPlayingTTS={true} />
     );
 
-    // 5단계: 보내기 버튼 비활성화 및 텍스트 변경 확인
+    // 5단계: 보내기 버튼 비활성화 확인 (텍스트는 유지)
     await waitFor(() => {
       expect(sendButton).toBeDisabled();
-      expect(sendButton).toHaveTextContent('텍스트 만들고 있는 중...');
+      expect(sendButton).toHaveTextContent('보내기 ➤');
     });
 
     // 6단계: 버튼 클릭 시도 (반응 없어야 함)
@@ -113,9 +113,9 @@ describe('ChatInput - TTS 재생 중 버튼 비활성화 (FR-001)', () => {
     // 텍스트 입력
     await user.type(textarea, 'Hello');
 
-    // 2단계: 버튼 비활성화 상태 확인
+    // 2단계: 버튼 비활성화 상태 확인 (텍스트는 유지)
     expect(sendButton).toBeDisabled();
-    expect(sendButton).toHaveTextContent('텍스트 만들고 있는 중...');
+    expect(sendButton).toHaveTextContent('보내기 ➤');
 
     // 3단계: isPlayingTTS를 false로 변경하여 재렌더링
     rerender(

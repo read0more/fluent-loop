@@ -1,4 +1,5 @@
 import { ipcMain, IpcMainInvokeEvent } from 'electron';
+import fs from 'fs';
 import { AudioService } from '../services/AudioService';
 import { STTService } from '../services/STTService';
 import { AppError } from '../errors/AppError';
@@ -240,6 +241,7 @@ async function handleTranscribeRetelling(
     }
 
     // 3. DB에 리텔링 저장 (기존 것이 있으면 업데이트)
+    // audio_path는 null로 저장 (STT 변환 후 녹음 파일은 삭제됨)
     const db = getDatabase();
     const existingRetelling = db
       .prepare(
@@ -252,7 +254,7 @@ async function handleTranscribeRetelling(
       // 업데이트
       db.prepare(
         'UPDATE retellings SET audio_path = ?, transcribed_text = ?, actual_duration = ?, created_at = CURRENT_TIMESTAMP WHERE id = ?'
-      ).run(filePath, transcribedText, actualDuration, existingRetelling.id);
+      ).run(null, transcribedText, actualDuration, existingRetelling.id);
       retellingId = existingRetelling.id;
     } else {
       // 새로 생성
@@ -260,14 +262,19 @@ async function handleTranscribeRetelling(
         .prepare(
           'INSERT INTO retellings (topic_id, duration, audio_path, transcribed_text, actual_duration) VALUES (?, ?, ?, ?, ?)'
         )
-        .run(topicId, duration, filePath, transcribedText, actualDuration);
+        .run(topicId, duration, null, transcribedText, actualDuration);
       retellingId = result.lastInsertRowid as number;
     }
+
+    // 4. STT 변환 완료 후 녹음 파일 삭제 (디스크 공간 절약)
+    fs.promises.unlink(filePath).catch((err) => {
+      console.error('[Step3] Failed to delete recording after STT:', filePath, err);
+    });
 
     return {
       success: true,
       data: {
-        filePath,
+        filePath: '', // 파일이 삭제되었으므로 빈 문자열 반환
         duration,
         actualDuration,
         transcribedText,

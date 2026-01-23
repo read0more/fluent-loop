@@ -281,6 +281,7 @@ export const RolePlayPage: React.FC = () => {
           setState((prev) => ({ ...prev, autoListenEnabled: enabled }))
         }
         isPlayingTTS={isPlayingTTS}
+        isLoading={isLoading}
       />
 
       {/* End confirmation dialog */}

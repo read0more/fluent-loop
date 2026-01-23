@@ -96,11 +96,11 @@ describe('useRealtimeSTT - 텍스트 업데이트 로직 (FR-002)', () => {
       .fn()
       .mockResolvedValueOnce({
         success: true,
-        data: { text: "I don't know.", language: 'en', is_final: false },
+        data: { text: "I don't know.", language: 'en', is_final: false, duration: 1.0 },
       })
       .mockResolvedValueOnce({
         success: true,
-        data: { text: '', language: 'en', is_final: false }, // 빈 텍스트
+        data: { text: '', language: 'en', is_final: false, duration: 2.0 }, // 빈 텍스트
       });
 
     (window as any).electron.invoke = mockInvoke;
@@ -149,7 +149,7 @@ describe('useRealtimeSTT - 텍스트 업데이트 로직 (FR-002)', () => {
   it('TC-005: 유효한 텍스트 수신 시 텍스트 업데이트 및 컨텍스트 저장', async () => {
     const mockInvoke = vi.fn().mockResolvedValue({
       success: true,
-      data: { text: 'Hello world', language: 'en', is_final: false },
+      data: { text: 'Hello world', language: 'en', is_final: false, duration: 1.0 },
     });
 
     (window as any).electron.invoke = mockInvoke;
@@ -192,11 +192,11 @@ describe('useRealtimeSTT - 텍스트 업데이트 로직 (FR-002)', () => {
       .fn()
       .mockResolvedValueOnce({
         success: true,
-        data: { text: 'First chunk', language: 'en', is_final: false },
+        data: { text: 'First chunk', language: 'en', is_final: false, duration: 1.0 },
       })
       .mockResolvedValueOnce({
         success: true,
-        data: { text: 'First chunk Second chunk', language: 'en', is_final: false },
+        data: { text: 'First chunk Second chunk', language: 'en', is_final: false, duration: 2.0 },
       });
 
     (window as any).electron.invoke = mockInvoke;
@@ -248,9 +248,13 @@ describe('useRealtimeSTT - 텍스트 업데이트 로직 (FR-002)', () => {
     // 이 테스트는 버퍼 크기 제한 기능이 구현되면 통과할 예정
     // 현재는 실패하는 테스트 (Red 단계)
 
-    const mockInvoke = vi.fn().mockResolvedValue({
-      success: true,
-      data: { text: 'chunk', language: 'en', is_final: false },
+    let callCount = 0;
+    const mockInvoke = vi.fn().mockImplementation(() => {
+      callCount++;
+      return Promise.resolve({
+        success: true,
+        data: { text: 'chunk', language: 'en', is_final: false, duration: callCount },
+      });
     });
 
     (window as any).electron.invoke = mockInvoke;
@@ -309,7 +313,7 @@ describe('useRealtimeSTT - 텍스트 업데이트 로직 (FR-002)', () => {
 
     global.window.electron.invoke = vi.fn().mockResolvedValue({
       success: true,
-      data: { text: 'test', language: 'en', is_final: false },
+      data: { text: 'test', language: 'en', is_final: false, duration: 1.0 },
     });
 
     const { result, unmount } = renderHook(() => useRealtimeSTT('en', 2500));
@@ -336,7 +340,7 @@ describe('useRealtimeSTT - 텍스트 업데이트 로직 (FR-002)', () => {
       .fn()
       .mockResolvedValueOnce({
         success: true,
-        data: { text: 'Hello', language: 'en', is_final: false },
+        data: { text: 'Hello', language: 'en', is_final: false, duration: 1.0 },
       })
       .mockResolvedValueOnce({
         success: false,
