@@ -1,0 +1,46 @@
+{
+  "appId": "com.fluentloop.app",
+  "productName": "FluentLoop",
+  "copyright": "Copyright © 2026 FluentLoop",
+  "directories": {
+    "output": "release",
+    "buildResources": "build"
+  },
+  "files": [
+    "dist/**/*",
+    "index.html",
+    "icon.ico",
+    "package.json"
+  ],
+  "extraResources": [
+    {
+      "from": ".env",
+      "to": ".env"
+    }
+  ],
+  "win": {
+    "target": [
+      {
+        "target": "nsis",
+        "arch": ["x64"]
+      },
+      {
+        "target": "portable",
+        "arch": ["x64"]
+      }
+    ],
+    "icon": "icon.ico",
+    "artifactName": "${productName}-${version}-${os}-${arch}.${ext}"
+  },
+  "nsis": {
+    "oneClick": false,
+    "allowElevation": true,
+    "allowToChangeInstallationDirectory": true,
+    "createDesktopShortcut": true,
+    "createStartMenuShortcut": true,
+    "shortcutName": "FluentLoop"
+  },
+  "portable": {
+    "artifactName": "${productName}-${version}-portable.${ext}"
+  }
+}

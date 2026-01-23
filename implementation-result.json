@@ -1,23 +1,42 @@
 {
-  "status": "completed",
   "implementedFiles": [
-    "src/main/services/ClaudeSDKClient.ts",
-    "src/main/services/ClaudeService.ts"
+    "src/config/env.ts",
+    ".env",
+    ".env.example",
+    "electron-builder.json5"
   ],
   "modifiedFiles": [
-    "src/main/services/ClaudeService.ts"
+    "src/main/services/TTSService.ts",
+    "src/main/services/STTService.ts",
+    "src/main/services/ConfigSyncService.ts",
+    "src/main/ipc/step2Handlers.ts",
+    "package.json"
   ],
-  "newDependencies": [],
-  "removedCode": [
-    "executeClaude() - PowerShell spawn logic",
-    "parseClaudeResponse() - CLI wrapper parsing",
-    "parseCorrectionResponse() - complex parsing strategies",
-    "parseConversationResponse() - CLI wrapper handling",
-    "Temporary file creation/deletion logic"
+  "newDependencies": [
+    "dotenv@17.2.3",
+    "electron-builder@26.4.0"
   ],
-  "architectureNotes": "OCP compliance through SDK - maintained existing IClaudeService interface while changing internal implementation. Delegated parsing logic to SDK for reduced code complexity.",
-  "testStatus": {
-    "build": "success",
-    "note": "Existing tests expect CLI approach and fail. Need to rewrite tests for SDK-based implementation."
+  "architectureNotes": "OCP(개방-폐쇄 원칙) 준수 - 환경변수 기반 설정 관리로 코드 수정 없이 확장 가능. 중앙 집중식 config 모듈을 통한 의존성 역전 원칙(DIP) 적용. 서비스 생성자의 기본값만 변경하여 기존 코드와의 호환성 유지.",
+  "testResults": {
+    "totalTests": 995,
+    "passed": 953,
+    "failed": 10,
+    "skipped": 32,
+    "successRate": "95.8%"
+  },
+  "keyFeatures": [
+    "dotenv를 사용한 .env 파일 로딩",
+    "환경변수 검증 및 URL 유효성 검사",
+    "기본값 fallback 로직 (http://localhost:8000)",
+    "TypeScript 타입 안전성 제공 (AppConfig 인터페이스)",
+    "서비스 생성자에서 config.backendUrl 자동 적용",
+    "electron-builder 설정으로 Windows 실행 파일 생성 가능"
+  ],
+  "buildScripts": {
+    "build": "tsc && node scripts/build-renderer.js",
+    "package": "npm run build && electron-builder",
+    "package:win": "npm run build && electron-builder --win",
+    "package:portable": "npm run build && electron-builder --win portable",
+    "package:dir": "npm run build && electron-builder --dir"
   }
 }
