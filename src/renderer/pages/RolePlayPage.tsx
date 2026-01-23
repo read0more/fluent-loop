@@ -51,6 +51,16 @@ export const RolePlayPage: React.FC = () => {
     loadActiveTopic();
   }, []);
 
+  // FR-003: 페이지 언마운트 시 STT 요청 취소
+  useEffect(() => {
+    return () => {
+      // 다른 페이지로 이동 시 모든 STT 요청 취소
+      window.electron.invoke('cancel-all-stt-requests').catch((err) => {
+        console.warn('[RolePlayPage] Failed to cancel STT requests on unmount:', err);
+      });
+    };
+  }, []);
+
   const loadActiveTopic = async () => {
     try {
       const response = await window.electron.invoke('get-active-topic');

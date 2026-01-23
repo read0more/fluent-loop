@@ -107,11 +107,15 @@ export const useRealtimeSTT = (
             if (response.success && response.data?.text) {
               const newText = response.data.text.trim();
 
-              // 텍스트가 비어있지 않으면 교체 (API가 전체 누적 텍스트를 반환)
+              // FR-002: 텍스트가 비어있지 않을 때만 업데이트 (Invalid WebM 시 기존 텍스트 유지)
               if (newText) {
                 setText(newText);
                 contextRef.current = newText; // 컨텍스트 업데이트
               }
+              // 빈 텍스트가 들어오면 기존 텍스트 유지 (아무것도 하지 않음)
+            } else if (response.success && !response.data?.text) {
+              // FR-002: 빈 텍스트 응답 시 기존 텍스트 유지 (로깅만)
+              console.log('[useRealtimeSTT] Empty text received, keeping previous text');
             } else if (response.error) {
               console.error('[useRealtimeSTT] STT error:', response.error);
               // 에러는 로깅만 하고 계속 진행 (graceful degradation)

@@ -34,6 +34,18 @@ export function registerStep5Handlers(): void {
   ipcMain.handle('transcribe-step5-audio', handleTranscribeStep5Audio);
   ipcMain.handle('transcribe-step5-audio-stream', handleTranscribeStep5AudioStream);
 
+  // FR-003: STT 요청 취소 핸들러
+  ipcMain.handle('cancel-all-stt-requests', async () => {
+    console.log('[Step5] cancel-all-stt-requests called');
+    try {
+      sttService.cancelAllRequests();
+      return { success: true };
+    } catch (error) {
+      console.error('[Step5] Failed to cancel STT requests:', error);
+      return { success: false, error: 'Failed to cancel requests' };
+    }
+  });
+
   /**
    * 대화 시작
    */
