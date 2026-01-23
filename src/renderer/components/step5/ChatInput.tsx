@@ -257,10 +257,10 @@ export const ChatInput: React.FC<ChatInputProps> = ({
         <button
           className={styles.sendButton}
           onClick={handleSend}
-          disabled={!inputText.trim() || isDisabled || isRecording}
+          disabled={!inputText.trim() || isDisabled || isRecording || isPlayingTTS}
           title="메시지 전송"
         >
-          {isSending ? '전송 중...' : '보내기 ➤'}
+          {isSending ? '전송 중...' : isPlayingTTS ? '텍스트 만들고 있는 중...' : '보내기 ➤'}
         </button>
       </div>
 
