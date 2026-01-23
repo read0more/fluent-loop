@@ -12,7 +12,6 @@
  * - TC-021: 빈 .env 파일
  * - TC-022: 주석만 있는 .env 파일
  * - TC-023: 잘못된 URL 형식
- * - TC-024: 포트 번호 범위 초과
  * - TC-025: 특수 문자가 포함된 환경변수
  * - TC-026: 매우 긴 URL 값
  * - TC-027: 환경변수 값에 공백 포함
@@ -41,7 +40,6 @@ describe('EnvConfig Module - Unit Tests', () => {
 
     // process.env 백업 및 초기화
     vi.stubEnv('BACKEND_URL', '');
-    vi.stubEnv('BACKEND_PORT', '');
     vi.stubEnv('NODE_ENV', '');
 
     // console spy 설정
@@ -67,11 +65,7 @@ describe('EnvConfig Module - Unit Tests', () => {
   describe('TC-001: .env 파일 정상 로딩', () => {
     it('should load .env file and parse environment variables correctly', async () => {
       // Arrange
-      const envContent = [
-        'BACKEND_URL=http://localhost:8000',
-        'BACKEND_PORT=8000',
-        'NODE_ENV=development',
-      ].join('\n');
+      const envContent = ['BACKEND_URL=http://localhost:8000', 'NODE_ENV=development'].join('\n');
 
       fs.writeFileSync(TEST_ENV_PATH, envContent);
 
@@ -82,17 +76,12 @@ describe('EnvConfig Module - Unit Tests', () => {
 
       // Assert
       expect(config.backendUrl).toBe('http://localhost:8000');
-      expect(config.backendPort).toBe('8000');
       expect(config.environment).toBe('development');
     });
 
     it('should validate loaded config matches AppConfig interface', async () => {
       // Arrange
-      const envContent = [
-        'BACKEND_URL=http://test:9000',
-        'BACKEND_PORT=9000',
-        'NODE_ENV=production',
-      ].join('\n');
+      const envContent = ['BACKEND_URL=http://test:9000', 'NODE_ENV=production'].join('\n');
 
       fs.writeFileSync(TEST_ENV_PATH, envContent);
 
@@ -101,7 +90,6 @@ describe('EnvConfig Module - Unit Tests', () => {
 
       // Assert
       expect(config).toHaveProperty('backendUrl');
-      expect(config).toHaveProperty('backendPort');
       expect(config).toHaveProperty('environment');
       expect(typeof config.backendUrl).toBe('string');
       expect(['development', 'production']).toContain(config.environment);
@@ -118,7 +106,6 @@ describe('EnvConfig Module - Unit Tests', () => {
 
       // Assert
       expect(config.backendUrl).toBe('http://localhost:8000');
-      expect(config.backendPort).toBe('8000');
       expect(config.environment).toBe('development');
     });
 
@@ -174,7 +161,6 @@ describe('EnvConfig Module - Unit Tests', () => {
 
       // Assert
       expect(typeof config.backendUrl).toBe('string');
-      expect(typeof config.backendPort).toBe('string');
       expect(typeof config.environment).toBe('string');
     });
 
@@ -197,7 +183,6 @@ describe('EnvConfig Module - Unit Tests', () => {
 
       // Assert
       expect(config.backendUrl).toBe('http://localhost:8000');
-      expect(config.backendPort).toBe('8000');
       expect(config.environment).toBe('development');
     });
 
@@ -231,7 +216,6 @@ describe('EnvConfig Module - Unit Tests', () => {
 
       // Assert
       expect(config.backendUrl).toBe('http://localhost:8000');
-      expect(config.backendPort).toBe('8000');
     });
   });
 
@@ -257,42 +241,6 @@ describe('EnvConfig Module - Unit Tests', () => {
 
       // Assert
       expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('Invalid BACKEND_URL'));
-    });
-  });
-
-  describe('TC-024: 포트 번호 범위 초과', () => {
-    it('should fallback to default port when port exceeds 65535', async () => {
-      // Arrange
-      vi.stubEnv('BACKEND_PORT', '99999');
-
-      // Act
-      const { config } = await import('../env');
-
-      // Assert
-      expect(config.backendPort).toBe('8000');
-    });
-
-    it('should log warning for invalid port number', async () => {
-      // Arrange
-      vi.stubEnv('BACKEND_PORT', '70000');
-      const warnSpy = vi.spyOn(console, 'warn');
-
-      // Act
-      await import('../env');
-
-      // Assert
-      expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('Invalid port'));
-    });
-
-    it('should reject negative port numbers', async () => {
-      // Arrange
-      vi.stubEnv('BACKEND_PORT', '-1');
-
-      // Act
-      const { config } = await import('../env');
-
-      // Assert
-      expect(config.backendPort).toBe('8000');
     });
   });
 
@@ -341,14 +289,12 @@ describe('EnvConfig Module - Unit Tests', () => {
     it('should trim whitespace from environment variable values', async () => {
       // Arrange
       vi.stubEnv('BACKEND_URL', '  http://localhost:8000  ');
-      vi.stubEnv('BACKEND_PORT', '  8000  ');
 
       // Act
       const { config } = await import('../env');
 
       // Assert
       expect(config.backendUrl).toBe('http://localhost:8000');
-      expect(config.backendPort).toBe('8000');
       expect(config.backendUrl).not.toContain(' ');
     });
 

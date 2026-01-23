@@ -9,6 +9,7 @@ claude.config/
 dist/
 build/
 out/
+release/
 
 # Python
 python-backend/venv/

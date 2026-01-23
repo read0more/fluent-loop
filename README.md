@@ -28,10 +28,13 @@
 - **React** - UI framework
 - **TypeScript** - Type safety
 
+### Backend
+- **FastAPI** - Python 기반 REST API 서버
+
 ### AI & Voice
 - **Claude AI** - Conversation & correction
-- **VibeVoice** - Text-to-Speech (Microsoft open source)
-- **OpenAI Whisper** - Speech-to-Text (local)
+- **TTS**: Edge-TTS (Microsoft) 또는 Supertonic (선택 가능)
+- **STT**: faster-whisper (최적화된 Whisper 구현)
 
 ### Data
 - **SQLite** - Learning history, topics, corrections
@@ -42,15 +45,19 @@
 ```
 fluentloop/
 ├── src/
-│   ├── renderer/           # React app
-│   │   ├── components/     # UI components
-│   │   ├── pages/          # Page components
-│   │   ├── hooks/          # Custom hooks
-│   │   ├── services/       # AI, TTS, STT services
-│   │   └── store/          # State management
-│   └── main/               # Electron main process
-├── python-backend/         # VibeVoice + Whisper server
-└── data/                   # SQLite DB & recordings
+│   ├── config/              # 환경 설정
+│   ├── main/                # Electron main process
+│   │   ├── database/        # SQLite 관련
+│   │   ├── services/        # AI, TTS, STT 서비스
+│   │   └── ipc/             # IPC 핸들러 (6단계별)
+│   └── renderer/            # React frontend
+│       ├── components/
+│       ├── pages/           # 6단계 학습 페이지
+│       ├── hooks/
+│       └── styles/
+├── python-backend/          # FastAPI 서버
+├── scripts/                 # 빌드 스크립트
+└── data/                    # SQLite DB & 녹음 파일
 ```
 
 ## Getting Started
@@ -58,7 +65,7 @@ fluentloop/
 ### Prerequisites
 - Node.js 18+
 - Python 3.10+
-- GPU recommended for Whisper
+- (선택) NVIDIA GPU - STT 가속용
 
 ### Installation
 
@@ -67,15 +74,75 @@ fluentloop/
 git clone https://github.com/yourusername/fluentloop.git
 cd fluentloop
 
-# Install dependencies
+# Install Node.js dependencies
 npm install
 
 # Install Python dependencies
 cd python-backend
+python -m venv venv
+venv\Scripts\activate
 pip install -r requirements.txt
+cd ..
+```
 
-# Build TypeScript and run the app
-npm start
+### Environment Configuration
+
+프로젝트 루트와 python-backend 폴더에 각각 `.env` 파일을 생성해야 합니다.
+
+**루트 `.env` 파일** (`.env.example` 참고):
+```env
+# Python Backend Configuration
+BACKEND_URL=http://localhost:8000
+
+# Application Environment (development or production)
+NODE_ENV=development
+
+# Optional: API Keys
+# CLAUDE_API_KEY=your_api_key_here
+# OPENAI_API_KEY=your_api_key_here
+```
+
+**`python-backend/.env` 파일** (`python-backend/.env.example` 참고):
+```env
+# TTS Engine Selection: edge-tts or supertonic(default)
+TTS_PROVIDER=supertonic
+
+# Supertonic TTS Configuration
+SUPERTONIC_VOICE=M4
+
+# Edge TTS Configuration (used when TTS_PROVIDER=edge-tts)
+EDGE_TTS_VOICE=en-US-AriaNeural
+
+# Whisper STT Configuration
+WHISPER_MODEL=small
+STT_USE_GPU=false  # NVIDIA GPU 사용시 true
+
+# Server Configuration
+PORT=8000  # 변경 금지 - Electron 앱이 8000번 포트를 사용
+LOG_LEVEL=info
+```
+
+### Running the App
+
+**개발 모드 (권장):**
+```bash
+npm run dev  # Electron + Python 서버 동시 실행
+```
+
+**개별 실행:**
+```bash
+# 터미널 1: Python 백엔드
+npm run dev:python
+
+# 터미널 2: Electron 앱
+npm run dev:electron
+```
+
+### Packaging
+
+프로덕션 빌드를 생성하려면:
+```bash
+npm run package
 ```
 
 ## License

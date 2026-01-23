@@ -14,7 +14,7 @@
   ],
   "extraResources": [
     {
-      "from": ".env.example",
+      "from": ".env",
       "to": ".env"
     }
   ],

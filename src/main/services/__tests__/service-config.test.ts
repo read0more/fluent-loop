@@ -24,7 +24,6 @@ import { ConfigSyncService } from '../ConfigSyncService';
 vi.mock('../../../config/env', () => ({
   config: {
     backendUrl: 'http://localhost:8000',
-    backendPort: '8000',
     environment: 'development',
   },
 }));
@@ -260,7 +259,6 @@ describe('Service Constructors - Config Injection Tests', () => {
       vi.doMock('../../../config/env', () => ({
         config: {
           backendUrl: 'http://prod:9000',
-          backendPort: '9000',
           environment: 'production',
         },
       }));
