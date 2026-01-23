@@ -34,6 +34,18 @@ export function registerStep5Handlers(): void {
   ipcMain.handle('transcribe-step5-audio', handleTranscribeStep5Audio);
   ipcMain.handle('transcribe-step5-audio-stream', handleTranscribeStep5AudioStream);
 
+  // FR-003: STT 요청 취소 핸들러
+  ipcMain.handle('cancel-all-stt-requests', async () => {
+    console.log('[Step5] cancel-all-stt-requests called');
+    try {
+      sttService.cancelAllRequests();
+      return { success: true };
+    } catch (error) {
+      console.error('[Step5] Failed to cancel STT requests:', error);
+      return { success: false, error: 'Failed to cancel requests' };
+    }
+  });
+
   /**
    * 대화 시작
    */
@@ -293,8 +305,13 @@ async function handleTranscribeStep5Audio(
       transcribedText = sttResult.text || '';
     } catch (sttError) {
       console.error('[Step5 STT] STT 변환 실패:', sttError);
-      // STT 실패해도 녹음은 저장되었으므로 빈 텍스트로 진행
+      // STT 실패해도 빈 텍스트로 진행
     }
+
+    // 3. STT 변환 완료 후 녹음 파일 삭제 (디스크 공간 절약)
+    fs.promises.unlink(filePath).catch((err) => {
+      console.error('[Step5 STT] Failed to delete recording after STT:', filePath, err);
+    });
 
     console.log('[Step5 STT] Returning success, text:', transcribedText);
     return {
@@ -339,7 +356,7 @@ interface TranscribeStreamParams {
 async function handleTranscribeStep5AudioStream(
   _event: IpcMainInvokeEvent,
   params: TranscribeStreamParams
-): Promise<IPCResponse<{ text: string; language: string; is_final: boolean }>> {
+): Promise<IPCResponse<{ text: string; language: string; is_final: boolean; duration: number }>> {
   console.log('[Step5 STT Stream] handleTranscribeStep5AudioStream called');
   console.log(
     '[Step5 STT Stream] params:',
@@ -378,6 +395,7 @@ async function handleTranscribeStep5AudioStream(
           text: '',
           language,
           is_final: false,
+          duration: 0,
         },
       };
     }
@@ -397,6 +415,7 @@ async function handleTranscribeStep5AudioStream(
           text: '',
           language,
           is_final: false,
+          duration: 0,
         },
       };
     }
@@ -409,6 +428,7 @@ async function handleTranscribeStep5AudioStream(
     // 2. 실시간 STT 변환
     let transcribedText = '';
     let isFinal = false;
+    let duration = 0;
 
     try {
       console.log('[Step5 STT Stream] Calling STT stream service with context:', context);
@@ -423,6 +443,7 @@ async function handleTranscribeStep5AudioStream(
 
       transcribedText = sttResult.text || '';
       isFinal = sttResult.is_final || false;
+      duration = sttResult.duration || 0;
     } catch (sttError) {
       console.error('[Step5 STT Stream] STT 변환 실패:', sttError);
       // STT 실패해도 빈 텍스트로 진행 (graceful degradation)
@@ -433,13 +454,19 @@ async function handleTranscribeStep5AudioStream(
       console.error('[Step5 STT Stream] Failed to delete temp file:', filePath, err);
     });
 
-    console.log('[Step5 STT Stream] Returning success, text:', transcribedText);
+    console.log(
+      '[Step5 STT Stream] Returning success, text:',
+      transcribedText,
+      'duration:',
+      duration
+    );
     return {
       success: true,
       data: {
         text: transcribedText,
         language,
         is_final: isFinal,
+        duration,
       },
     };
   } catch (error) {

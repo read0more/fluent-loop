@@ -26,9 +26,20 @@ export interface ISTTService {
 
 export class STTService implements ISTTService {
   private readonly baseUrl: string;
+  private abortController: AbortController | null = null;
 
   constructor(baseUrl: string = config.backendUrl) {
     this.baseUrl = baseUrl;
+  }
+
+  /**
+   * 모든 진행 중인 STT 요청 취소
+   */
+  cancelAllRequests(): void {
+    if (this.abortController) {
+      this.abortController.abort();
+      this.abortController = null;
+    }
   }
 
   async checkHealth(): Promise<boolean> {
@@ -144,6 +155,18 @@ export class STTService implements ISTTService {
 
       return response.data;
     } catch (error: unknown) {
+      // 취소된 요청은 graceful return
+      if (axios.isCancel(error)) {
+        return {
+          success: false,
+          text: '',
+          language,
+          duration: 0,
+          is_final: false,
+          error: 'Request cancelled',
+        };
+      }
+
       const axiosError = error as AxiosError;
       if (axios.isAxiosError(axiosError)) {
         if (axiosError.code === 'ECONNREFUSED') {
@@ -163,6 +186,18 @@ export class STTService implements ISTTService {
             duration: 0,
             is_final: false,
             error: 'STT 처리 시간이 초과되었습니다.',
+          };
+        }
+
+        // ERR_CANCELED 코드도 처리
+        if (axiosError.code === 'ERR_CANCELED') {
+          return {
+            success: false,
+            text: '',
+            language,
+            duration: 0,
+            is_final: false,
+            error: 'Request cancelled',
           };
         }
       }

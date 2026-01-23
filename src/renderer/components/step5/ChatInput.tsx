@@ -17,6 +17,7 @@ export interface ChatInputProps {
   onToggleAutoListen: (enabled: boolean) => void;
   disabled?: boolean;
   isPlayingTTS?: boolean;
+  isLoading?: boolean;
 }
 
 /**
@@ -34,6 +35,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   onToggleAutoListen,
   disabled = false,
   isPlayingTTS = false,
+  isLoading = false,
 }) => {
   const [inputText, setInputText] = useState('');
   const [localError, setLocalError] = useState<string | null>(null);
@@ -257,7 +259,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
         <button
           className={styles.sendButton}
           onClick={handleSend}
-          disabled={!inputText.trim() || isDisabled || isRecording}
+          disabled={!inputText.trim() || isDisabled || isRecording || isPlayingTTS}
           title="메시지 전송"
         >
           {isSending ? '전송 중...' : '보내기 ➤'}

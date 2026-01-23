@@ -200,12 +200,14 @@ describe('ClaudeSDKClient - Unit Tests', () => {
       });
 
       // Act & Assert
+      await expect(client.query(prompt)).rejects.toThrow(AppError);
+      await expect(client.query(prompt)).rejects.toMatchObject({
+        code: ErrorCode.CLAUDE_API_ERROR,
+      });
+
       try {
         await client.query(prompt);
-        expect.fail('Should have thrown');
       } catch (error) {
-        expect(error).toBeInstanceOf(AppError);
-        expect((error as AppError).code).toBe(ErrorCode.CLAUDE_API_ERROR);
         expect((error as AppError).userMessage).toContain('한도');
       }
     });
@@ -221,12 +223,14 @@ describe('ClaudeSDKClient - Unit Tests', () => {
       });
 
       // Act & Assert
+      await expect(client.query(prompt)).rejects.toThrow(AppError);
+      await expect(client.query(prompt)).rejects.toMatchObject({
+        code: ErrorCode.CLAUDE_API_ERROR,
+      });
+
       try {
         await client.query(prompt);
-        expect.fail('Should have thrown');
       } catch (error) {
-        expect(error).toBeInstanceOf(AppError);
-        expect((error as AppError).code).toBe(ErrorCode.CLAUDE_API_ERROR);
         expect((error as AppError).userMessage).toContain('인증');
       }
     });
@@ -242,12 +246,14 @@ describe('ClaudeSDKClient - Unit Tests', () => {
       });
 
       // Act & Assert
+      await expect(client.query(prompt)).rejects.toThrow(AppError);
+      await expect(client.query(prompt)).rejects.toMatchObject({
+        code: ErrorCode.NETWORK_ERROR,
+      });
+
       try {
         await client.query(prompt);
-        expect.fail('Should have thrown');
       } catch (error) {
-        expect(error).toBeInstanceOf(AppError);
-        expect((error as AppError).code).toBe(ErrorCode.NETWORK_ERROR);
         expect((error as AppError).userMessage).toContain('네트워크');
       }
     });
@@ -294,12 +300,14 @@ describe('ClaudeSDKClient - Unit Tests', () => {
           });
 
           // Act & Assert
+          await expect(client.query('test')).rejects.toThrow(AppError);
+          await expect(client.query('test')).rejects.toMatchObject({
+            code: expectedCode,
+          });
+
           try {
             await client.query('test');
-            expect.fail('Should have thrown');
           } catch (error) {
-            expect(error).toBeInstanceOf(AppError);
-            expect((error as AppError).code).toBe(expectedCode);
             expect((error as AppError).userMessage).toContain(expectedMessageContains);
           }
         });
