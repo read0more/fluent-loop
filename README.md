@@ -96,11 +96,16 @@ BACKEND_URL=http://localhost:8000
 
 # Application Environment (development or production)
 NODE_ENV=development
-
-# Optional: API Keys
-# CLAUDE_API_KEY=your_api_key_here
-# OPENAI_API_KEY=your_api_key_here
 ```
+
+> **⚠️ 필수: Claude Code 설치 및 인증**
+>
+> 이 앱은 AI 기능을 위해 **Claude Code SDK**를 사용합니다. 앱 실행 전 반드시 다음 단계를 완료해야 합니다:
+>
+> 1. [Claude Code](https://docs.anthropic.com/en/docs/claude-code) 설치
+> 2. 터미널에서 `claude` 명령어 실행 후 사용자 인증 완료
+>
+> 인증이 완료되지 않으면 AI 대화 및 첨삭 기능이 작동하지 않습니다.
 
 **`python-backend/.env` 파일** (`python-backend/.env.example` 참고):
 ```env
@@ -118,7 +123,7 @@ WHISPER_MODEL=small
 STT_USE_GPU=false  # NVIDIA GPU 사용시 true
 
 # Server Configuration
-PORT=8000  # 변경 금지 - Electron 앱이 8000번 포트를 사용
+PORT=8000  # If changed, update BACKEND_URL in root .env accordingly
 LOG_LEVEL=info
 ```
 
