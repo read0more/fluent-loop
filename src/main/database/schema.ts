@@ -121,6 +121,8 @@ END;
 `;
 
 export const insertDefaultSettingsSQL = `
+INSERT OR IGNORE INTO settings (key, value) VALUES ('ttsProvider', 'edge-tts');
+INSERT OR IGNORE INTO settings (key, value) VALUES ('supertonicVoice', 'M4');
 INSERT OR IGNORE INTO settings (key, value) VALUES ('ttsVoiceId', 'en-US-AriaNeural');
 INSERT OR IGNORE INTO settings (key, value) VALUES ('ttsVoiceIdUser', 'en-US-GuyNeural');
 INSERT OR IGNORE INTO settings (key, value) VALUES ('recordingSavePath', '');
