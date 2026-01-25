@@ -17,10 +17,12 @@ interface UseRealtimeSTTResult {
   isProcessing: boolean;
   error: string | null;
   stream: MediaStream | null;
+  isTextStable: boolean; // STT 텍스트가 안정화되었는지 (1초간 변화 없음)
   startRecording: () => Promise<void>;
   stopRecording: () => Promise<string>;
   resetText: () => void;
   cleanup: () => void;
+  waitForStability: () => Promise<void>; // 텍스트 안정화 대기 함수
 }
 
 interface STTStreamResponse {
@@ -60,6 +62,62 @@ export const useRealtimeSTT = (
   const lastSttPromiseRef = useRef<Promise<void> | null>(null); // 마지막 STT Promise
   const isMountedRef = useRef<boolean>(true); // 컴포넌트 마운트 상태 추적
 
+  // 텍스트 안정화 관련 상태
+  const [isTextStable, setIsTextStable] = useState<boolean>(true);
+  const isTextStableRef = useRef<boolean>(true); // Promise에서 사용할 ref
+  const stabilityTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const TEXT_STABILITY_DELAY = 1000; // 1초간 변화 없으면 안정화
+
+  /**
+   * 텍스트 업데이트 시 안정화 타이머 리셋
+   */
+  const updateTextWithStability = useCallback((newText: string) => {
+    setText(newText);
+    textRef.current = newText;
+    contextRef.current = newText;
+
+    // 안정화 상태 해제
+    setIsTextStable(false);
+    isTextStableRef.current = false;
+
+    // 기존 타이머 클리어
+    if (stabilityTimeoutRef.current) {
+      clearTimeout(stabilityTimeoutRef.current);
+    }
+
+    // 새 안정화 타이머 시작 (1초 후 안정화)
+    stabilityTimeoutRef.current = setTimeout(() => {
+      setIsTextStable(true);
+      isTextStableRef.current = true;
+      console.log('[useRealtimeSTT] Text stabilized');
+    }, TEXT_STABILITY_DELAY);
+  }, []);
+
+  /**
+   * 텍스트 안정화 대기 함수
+   * 1초간 텍스트 업데이트가 없으면 resolve, 최대 3초 대기
+   */
+  const waitForStability = useCallback((): Promise<void> => {
+    return new Promise((resolve) => {
+      const MAX_WAIT = 3000; // 최대 3초 대기
+      const startTime = Date.now();
+
+      const check = () => {
+        if (isTextStableRef.current || Date.now() - startTime > MAX_WAIT) {
+          console.log(
+            '[useRealtimeSTT] Text stability check passed, stable:',
+            isTextStableRef.current
+          );
+          resolve();
+        } else {
+          setTimeout(check, 100);
+        }
+      };
+
+      check();
+    });
+  }, []);
+
   /**
    * 녹음 시작
    */
@@ -72,6 +130,14 @@ export const useRealtimeSTT = (
       lastDurationRef.current = 0; // duration 초기화
       textRef.current = ''; // 텍스트 ref 초기화
       lastSttPromiseRef.current = null; // STT Promise 초기화
+
+      // 안정화 상태 초기화 (녹음 시작 시 안정화된 상태로 시작)
+      setIsTextStable(true);
+      isTextStableRef.current = true;
+      if (stabilityTimeoutRef.current) {
+        clearTimeout(stabilityTimeoutRef.current);
+        stabilityTimeoutRef.current = null;
+      }
 
       // 마이크 권한 요청
       const mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -122,18 +188,37 @@ export const useRealtimeSTT = (
                 // Duration 기반 텍스트 관리:
                 // - duration이 이전보다 크면 → 전체 오디오 재인식 결과이므로 교체
                 // - duration이 이전보다 작거나 같으면 → 이전 결과가 더 최신이므로 무시
+                // - 텍스트 길이 보호: 새 텍스트가 기존의 80% 미만이면 Whisper 부분 인식으로 판단
                 // 이렇게 하면 중복 발생 안 하고, 응답 순서가 뒤바뀌어도 항상 가장 긴 오디오 결과 사용
-                if (newText && newDuration > lastDurationRef.current) {
+                const currentTextLength = textRef.current.length;
+                const newTextLength = newText.length;
+                const isTextShorterByThreshold =
+                  currentTextLength > 0 && newTextLength < currentTextLength * 0.8;
+
+                if (newText && newDuration > lastDurationRef.current && !isTextShorterByThreshold) {
                   lastDurationRef.current = newDuration;
-                  setText(newText); // 교체 (누적 아님)
-                  textRef.current = newText; // ref에도 저장
-                  contextRef.current = newText;
+                  updateTextWithStability(newText); // 안정화 타이머와 함께 텍스트 업데이트
                   console.log(
                     '[useRealtimeSTT] Updated text with duration:',
                     newDuration,
                     'text:',
                     newText
                   );
+                } else if (
+                  newText &&
+                  newDuration > lastDurationRef.current &&
+                  isTextShorterByThreshold
+                ) {
+                  // 부분 인식으로 판단 - duration만 업데이트하여 동일 오디오 재처리 방지
+                  console.log(
+                    '[useRealtimeSTT] Ignored partial recognition, duration:',
+                    newDuration,
+                    'newLength:',
+                    newTextLength,
+                    'currentLength:',
+                    currentTextLength
+                  );
+                  lastDurationRef.current = newDuration;
                 } else if (newText && newDuration <= lastDurationRef.current) {
                   console.log(
                     '[useRealtimeSTT] Ignored stale result, duration:',
@@ -263,6 +348,12 @@ export const useRealtimeSTT = (
     setStream(null);
     setIsRecording(false);
     setIsProcessing(false);
+
+    // 안정화 타이머 정리
+    if (stabilityTimeoutRef.current) {
+      clearTimeout(stabilityTimeoutRef.current);
+      stabilityTimeoutRef.current = null;
+    }
   }, []);
 
   // 컴포넌트 언마운트 시 리소스 정리
@@ -280,9 +371,11 @@ export const useRealtimeSTT = (
     isProcessing,
     error,
     stream,
+    isTextStable,
     startRecording,
     stopRecording,
     resetText,
     cleanup,
+    waitForStability,
   };
 };
