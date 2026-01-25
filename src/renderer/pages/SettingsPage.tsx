@@ -8,10 +8,10 @@ type SettingsPageState = 'loading' | 'loaded' | 'saving' | 'error';
 export const SettingsPage: React.FC = () => {
   const [state, setState] = useState<SettingsPageState>('loading');
   const [settings, setSettings] = useState<AppSettings>({
-    ttsProvider: 'supertonic',
-    ttsVoiceId: 'en-US-AriaNeural',
-    ttsVoiceIdUser: 'en-US-GuyNeural',
-    supertonicVoice: 'M4',
+    ttsProvider: '',
+    ttsVoiceId: '',
+    ttsVoiceIdUser: '',
+    supertonicVoice: '',
     recordingSavePath: '',
   });
   const [error, setError] = useState<string | null>(null);
@@ -45,6 +45,28 @@ export const SettingsPage: React.FC = () => {
     setSuccessMessage(null);
 
     try {
+      // TTS Provider 저장
+      const providerResponse = await window.electron.invoke(
+        'save-setting',
+        'ttsProvider',
+        settings.ttsProvider
+      );
+
+      if (!providerResponse.success) {
+        throw new Error(providerResponse.error || 'TTS Provider 설정 저장 실패');
+      }
+
+      // Supertonic Voice 저장
+      const supertonicResponse = await window.electron.invoke(
+        'save-setting',
+        'supertonicVoice',
+        settings.supertonicVoice
+      );
+
+      if (!supertonicResponse.success) {
+        throw new Error(supertonicResponse.error || 'Supertonic Voice 설정 저장 실패');
+      }
+
       // 화자A (AI 및 기본) TTS 음성 ID 저장
       const voiceResponse = await window.electron.invoke(
         'save-setting',

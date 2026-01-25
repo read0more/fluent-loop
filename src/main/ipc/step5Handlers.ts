@@ -3,6 +3,7 @@ import fs from 'fs';
 import { ConversationService } from '../services/ConversationService';
 import { AudioService } from '../services/AudioService';
 import { STTService } from '../services/STTService';
+import { TextNormalizationService } from '../services/TextNormalizationService';
 import { AppError, ErrorCode } from '../errors/AppError';
 import {
   IPCResponse,
@@ -23,16 +24,21 @@ import {
 let conversationService: ConversationService;
 let audioService: AudioService;
 let sttService: STTService;
+let textNormalizationService: TextNormalizationService;
 
 export function registerStep5Handlers(): void {
   // Service initialization
   conversationService = new ConversationService();
   audioService = new AudioService();
   sttService = new STTService();
+  textNormalizationService = new TextNormalizationService();
 
   // STT 핸들러 등록
   ipcMain.handle('transcribe-step5-audio', handleTranscribeStep5Audio);
   ipcMain.handle('transcribe-step5-audio-stream', handleTranscribeStep5AudioStream);
+
+  // STT 텍스트 정규화 핸들러 (실시간 STT 완료 후 정규화용)
+  ipcMain.handle('normalize-stt-text', handleNormalizeSttText);
 
   // FR-003: STT 요청 취소 핸들러
   ipcMain.handle('cancel-all-stt-requests', async () => {
@@ -303,12 +309,24 @@ async function handleTranscribeStep5Audio(
       const sttResult = await sttService.transcribeAudio(filePath, language);
       console.log('[Step5 STT] STT result:', sttResult);
       transcribedText = sttResult.text || '';
+
+      // 3. STT 후처리: 구두점/포맷팅 교정
+      if (transcribedText) {
+        try {
+          console.log('[Step5 STT] Normalizing text...');
+          transcribedText = await textNormalizationService.normalizeText(transcribedText);
+          console.log('[Step5 STT] Normalized text:', transcribedText);
+        } catch (normError) {
+          console.error('[Step5 STT] Text normalization failed (using raw STT):', normError);
+          // 정규화 실패해도 원본 STT 텍스트 사용
+        }
+      }
     } catch (sttError) {
       console.error('[Step5 STT] STT 변환 실패:', sttError);
       // STT 실패해도 빈 텍스트로 진행
     }
 
-    // 3. STT 변환 완료 후 녹음 파일 삭제 (디스크 공간 절약)
+    // 4. STT 변환 완료 후 녹음 파일 삭제 (디스크 공간 절약)
     fs.promises.unlink(filePath).catch((err) => {
       console.error('[Step5 STT] Failed to delete recording after STT:', filePath, err);
     });
@@ -483,6 +501,63 @@ async function handleTranscribeStep5AudioStream(
     return {
       success: false,
       error: '음성 인식에 실패했습니다.',
+      errorCode: ErrorCode.UNKNOWN_ERROR,
+    };
+  }
+}
+
+/**
+ * STT 텍스트 정규화 핸들러 (실시간 STT 완료 후 정규화용)
+ * ChatInput에서 발화 완료 후 호출하여 구두점/포맷팅 교정
+ */
+interface NormalizeSttTextParams {
+  text: string;
+}
+
+async function handleNormalizeSttText(
+  _event: IpcMainInvokeEvent,
+  params: NormalizeSttTextParams
+): Promise<IPCResponse<{ normalizedText: string }>> {
+  console.log('[Step5 Normalize] handleNormalizeSttText called');
+  console.log(
+    '[Step5 Normalize] params:',
+    params ? { textLength: params.text?.length } : 'undefined'
+  );
+
+  try {
+    const { text } = params;
+
+    // 빈 텍스트 또는 짧은 텍스트는 그대로 반환
+    if (!text || text.trim().length < 5) {
+      return {
+        success: true,
+        data: { normalizedText: text || '' },
+      };
+    }
+
+    // 텍스트 정규화
+    console.log('[Step5 Normalize] Normalizing text...');
+    const normalizedText = await textNormalizationService.normalizeText(text);
+    console.log('[Step5 Normalize] Normalized text:', normalizedText);
+
+    return {
+      success: true,
+      data: { normalizedText },
+    };
+  } catch (error) {
+    console.error('[Step5 Normalize] Error:', error);
+
+    if (error instanceof AppError) {
+      return {
+        success: false,
+        error: error.userMessage,
+        errorCode: error.code,
+      };
+    }
+
+    return {
+      success: false,
+      error: '텍스트 정규화에 실패했습니다.',
       errorCode: ErrorCode.UNKNOWN_ERROR,
     };
   }

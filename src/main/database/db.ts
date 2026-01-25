@@ -52,6 +52,39 @@ export function getDatabase(): Database.Database {
     }
   }
 
+  // 마이그레이션: ttsProvider, supertonicVoice 설정 추가
+  try {
+    const stmt = dbInstance.prepare('SELECT key FROM settings WHERE key = ?');
+    const hasTtsProvider = stmt.get('ttsProvider');
+    const hasSupertonicVoice = stmt.get('supertonicVoice');
+
+    if (!hasTtsProvider) {
+      console.log('Running migration: Add ttsProvider to settings');
+      dbInstance
+        .prepare(
+          `
+        INSERT OR IGNORE INTO settings (key, value) VALUES ('ttsProvider', 'edge-tts')
+      `
+        )
+        .run();
+    }
+
+    if (!hasSupertonicVoice) {
+      console.log('Running migration: Add supertonicVoice to settings');
+      dbInstance
+        .prepare(
+          `
+        INSERT OR IGNORE INTO settings (key, value) VALUES ('supertonicVoice', 'M4')
+      `
+        )
+        .run();
+    }
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error('Settings migration warning:', errorMessage);
+    console.warn('App will continue but TTS settings may need manual configuration');
+  }
+
   return dbInstance;
 }
 
