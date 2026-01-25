@@ -12,12 +12,14 @@ const CATEGORY_LABELS: Record<CorrectionCategory, string> = {
   grammar: '문법',
   vocabulary: '어휘',
   naturalness: '자연스러움',
+  punctuation: '구두점',
 };
 
 const CATEGORY_COLORS: Record<CorrectionCategory, string> = {
   grammar: 'red',
   vocabulary: 'blue',
   naturalness: 'green',
+  punctuation: 'orange',
 };
 
 export const SentenceComparison: React.FC<SentenceComparisonProps> = ({

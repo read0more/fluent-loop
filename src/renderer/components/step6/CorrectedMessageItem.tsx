@@ -18,12 +18,14 @@ const CATEGORY_LABELS: Record<CorrectionCategory, string> = {
   grammar: '문법',
   vocabulary: '어휘',
   naturalness: '자연스러움',
+  punctuation: '구두점',
 };
 
 const CATEGORY_COLORS: Record<CorrectionCategory, string> = {
   grammar: 'red',
   vocabulary: 'blue',
   naturalness: 'green',
+  punctuation: 'orange',
 };
 
 // 시간 포맷 (초 -> MM:SS)
@@ -40,34 +42,35 @@ export const CorrectedMessageItem: React.FC<CorrectedMessageItemProps> = ({
   isPlaying = false,
   isSynthesizing = false,
 }) => {
-  const { speaker, original, corrected, explanation, categories, timestamp } =
+  const { speaker, original, normalized, corrected, explanation, categories, timestamp } =
     correction;
 
   const isAI = speaker === 'ai';
   const isModified = original.trim() !== corrected.trim();
+  const hasGrammarCorrection = normalized.trim() !== corrected.trim();
 
-  // 단어 단위 Diff 렌더링
+  // 단어 단위 Diff 렌더링 (normalized와 corrected 비교 - 문법 첨삭만 하이라이트)
   const renderDiff = () => {
-    if (!isModified) {
+    if (!hasGrammarCorrection) {
       return <span className={styles.textCorrect}>{corrected}</span>;
     }
 
-    const originalWords = original.split(/\s+/);
+    const normalizedWords = normalized.split(/\s+/);
     const correctedWords = corrected.split(/\s+/);
-    const maxLength = Math.max(originalWords.length, correctedWords.length);
+    const maxLength = Math.max(normalizedWords.length, correctedWords.length);
     const diffElements: React.ReactElement[] = [];
 
     for (let i = 0; i < maxLength; i++) {
-      const origWord = originalWords[i] || '';
+      const normWord = normalizedWords[i] || '';
       const corrWord = correctedWords[i] || '';
 
-      if (origWord === corrWord) {
+      if (normWord === corrWord) {
         diffElements.push(
           <span key={i} className={styles.wordUnchanged}>
             {corrWord}{' '}
           </span>
         );
-      } else if (origWord && corrWord) {
+      } else if (normWord && corrWord) {
         diffElements.push(
           <span key={i} className={styles.wordChanged}>
             {corrWord}{' '}
@@ -117,16 +120,19 @@ export const CorrectedMessageItem: React.FC<CorrectedMessageItemProps> = ({
 
       {/* 메시지 내용 */}
       <div className={styles.content}>
-        <div className={styles.originalText}>{original}</div>
+        <div className={styles.originalText}>{normalized}</div>
       </div>
 
       {/* User 메시지이고 수정된 경우 첨삭 결과 표시 */}
       {!isAI && isModified && (
         <div className={styles.correctionDetail}>
-          <div className={styles.correctionRow}>
-            <label className={styles.correctionLabel}>수정:</label>
-            <div className={styles.correctedText}>{renderDiff()}</div>
-          </div>
+          {/* 문법 첨삭이 있는 경우만 수정 표시 */}
+          {hasGrammarCorrection && (
+            <div className={styles.correctionRow}>
+              <label className={styles.correctionLabel}>수정:</label>
+              <div className={styles.correctedText}>{renderDiff()}</div>
+            </div>
+          )}
 
           {explanation && (
             <div className={styles.correctionRow}>

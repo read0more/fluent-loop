@@ -707,19 +707,37 @@ ${conversationHistory}
 **IMPORTANT**: The student's messages are from real-time speech-to-text transcription
 and may lack proper punctuation and capitalization.
 
-For each student message, please perform a 2-step correction:
+For each student message, you MUST perform a 2-step correction IN ORDER:
 
-**Step 1: Normalization (정규화)**
-- Add appropriate punctuation (periods, commas, question marks, exclamation marks)
-- Fix capitalization (sentence starts, proper nouns)
-- Keep the original words unchanged
-- Result goes to the "normalized" field
+⚠️ CRITICAL: You MUST complete Step 1 FIRST, then use that result for Step 2.
+Do NOT skip Step 1. Do NOT mix steps together.
 
-**Step 2: Correction (첨삭)**
+**Step 1: Normalization (정규화) - STRICT RULES** [DO THIS FIRST]
+You are a strict text normalizer for this step. Fix ONLY punctuation and capitalization.
+
+CRITICAL - NEVER VIOLATE:
+- NEVER remove, add, or change ANY words
+- NEVER rephrase or restructure sentences
+- The word count must remain EXACTLY the same as original
+
+Allowed changes for normalization ONLY:
+1. Add period at sentence boundaries (e.g., "I don't have maybe I need" → "I don't have. Maybe I need")
+2. Add comma where grammatically appropriate
+3. Capitalize first letter of sentences
+4. Add question marks for questions, exclamation marks for exclamations
+5. Keep time expressions like "8 a.m." or "3:30 p.m." unchanged
+
+Result goes to the "normalized" field.
+
+**Step 2: Correction (첨삭)** [DO THIS AFTER Step 1]
+Take the "normalized" result from Step 1, then apply corrections:
 - Fix grammar errors
 - Suggest better vocabulary (CEFR ${cefrLevel} level)
 - Improve naturalness and fluency
 - Result goes to the "corrected" field
+
+⚠️ The "normalized" field must contain ONLY punctuation/capitalization fixes (same words as original).
+⚠️ The "corrected" field is where you apply grammar fixes, add missing words, etc.
 
 Return ONLY a JSON array with corrections for each student message:
 [
@@ -729,7 +747,7 @@ Return ONLY a JSON array with corrections for each student message:
     "original": "<STT 원본>",
     "normalized": "<구두점/대소문자 정규화>",
     "corrected": "<최종 첨삭>",
-    "explanation": "<정규화 및 첨삭 설명>",
+    "explanation": "<문법/어휘/자연스러움 첨삭 설명만>",
     "categories": ["punctuation", "grammar", "vocabulary", "naturalness"],
     "timestamp": <timestamp>
   },
@@ -737,11 +755,17 @@ Return ONLY a JSON array with corrections for each student message:
 ]
 
 **Guidelines**:
-- "normalized" shows the text after adding punctuation/capitalization only
+- "normalized" shows the text after adding punctuation/capitalization ONLY
+  - Word count must match original exactly
+  - Never change, add, or remove words
+  - Focus on sentence boundaries (periods) and comma placement
 - "corrected" shows the final version with grammar/vocabulary improvements
 - If the original is already perfect, normalized and corrected can be the same
 - Categories should include "punctuation" if punctuation was added in normalization
 - "explanation" should be concise and in Korean (for ${cefrLevel} learners)
+  - Explain ONLY grammar/vocabulary/naturalness corrections
+  - Do NOT mention normalization (punctuation/capitalization fixes)
+  - Do NOT use prefixes like "정규화:" or "첨삭:"
 - Consider the conversation context: responses should make sense in the flow of the dialogue
 - Focus on helping the student improve conversational skills
 - For ${cefrLevel} level:
