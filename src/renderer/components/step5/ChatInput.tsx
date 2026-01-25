@@ -39,8 +39,10 @@ export const ChatInput: React.FC<ChatInputProps> = ({
 }) => {
   const [inputText, setInputText] = useState('');
   const [localError, setLocalError] = useState<string | null>(null);
+  const [isNormalizing, setIsNormalizing] = useState(false); // STT 텍스트 정규화 중
   const autoSendOnCompleteRef = useRef(false); // 침묵 감지로 인한 자동 전송 플래그
   const silenceStoppedRef = useRef(false); // 침묵으로 녹음이 중지되었는지 여부
+  const prevAutoSendEnabledRef = useRef(autoSendEnabled); // 이전 autoSendEnabled 값 추적
 
   // 실시간 STT 훅 (영어, 2.5초 간격)
   const {
@@ -52,6 +54,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
     startRecording: startRealtimeRecording,
     stopRecording: stopRealtimeRecording,
     resetText,
+    cleanup: cleanupSTT,
   } = useRealtimeSTT('en', 2500);
 
   // 자동 전송 훅 (텍스트 입력 후 자동 전송용 - 기존 로직)
@@ -80,28 +83,40 @@ export const ChatInput: React.FC<ChatInputProps> = ({
 
   // 메시지 전송 핸들러
   const handleSend = useCallback(() => {
-    if (!inputText.trim() || isSending) return;
+    if (!inputText.trim() || isSending || isNormalizing) return;
 
     onSendMessage(inputText.trim());
     setInputText('');
     resetText();
     setLocalError(null);
     stopTimer();
-  }, [inputText, isSending, onSendMessage, resetText, stopTimer]);
+  }, [inputText, isSending, isNormalizing, onSendMessage, resetText, stopTimer]);
 
   // 실시간 텍스트를 inputText에 동기화
   useEffect(() => {
-    if (realtimeText) {
+    // 녹음 중이거나 처리 중일 때만 STT 텍스트를 input에 동기화
+    // 전송 후에는 동기화하지 않음 (이미 메시지로 전송됨)
+    if (realtimeText && (isRecording || isProcessing)) {
       setInputText(realtimeText);
     }
-  }, [realtimeText]);
+  }, [realtimeText, isRecording, isProcessing]);
 
   // 자동 전송 트리거 (녹음 중이 아닐 때만)
   useEffect(() => {
-    if (autoSendEnabled && inputText.trim() && !isRecording && !isProcessing) {
+    // autoSendEnabled가 방금 변경되었는지 확인
+    const justToggled = prevAutoSendEnabledRef.current !== autoSendEnabled;
+    prevAutoSendEnabledRef.current = autoSendEnabled;
+
+    // 토글로 인한 변경이면 타이머 시작하지 않음
+    if (justToggled) {
+      return;
+    }
+
+    // 정규화 중이면 타이머 시작하지 않음
+    if (autoSendEnabled && inputText.trim() && !isRecording && !isProcessing && !isNormalizing) {
       startTimer(handleSend);
     }
-  }, [inputText, autoSendEnabled, isRecording, isProcessing, startTimer, handleSend]);
+  }, [inputText, autoSendEnabled, isRecording, isProcessing, isNormalizing, startTimer, handleSend]);
 
   // 자동 듣기 모드: 페이지 진입 시 및 STT 완료 후 자동 녹음 시작
   useEffect(() => {
@@ -129,18 +144,65 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   }, [disabled, isSending]);
 
   // 침묵 감지로 인한 녹음 중지 및 자동 전송 래퍼
-  const handleStopRecording = useCallback(() => {
-    stopDetection();
-    stopRealtimeRecording();
+  const handleStopRecording = useCallback(async () => {
+    // ★ 핵심 수정: 녹음 중지 처리 시작 시점에 바로 isNormalizing=true 설정
+    // 자동 전송 useEffect가 중간 텍스트로 타이머를 시작하지 않도록 방지
+    setIsNormalizing(true);
 
-    // 침묵 감지로 인한 자동 전송인 경우
-    if (autoSendOnCompleteRef.current && inputText.trim()) {
-      onSendMessage(inputText.trim());
-      setInputText('');
-      resetText();
-      autoSendOnCompleteRef.current = false;
+    stopDetection();
+
+    // stopRecording이 마지막 STT 결과까지 포함된 텍스트 반환
+    const finalText = await stopRealtimeRecording();
+
+    // 빈 텍스트면 정규화 상태 해제하고 종료
+    if (!finalText.trim()) {
+      setIsNormalizing(false);
+      return;
     }
-  }, [stopDetection, stopRealtimeRecording, inputText, onSendMessage, resetText]);
+
+    // 자동 전송 플래그 저장 후 리셋
+    const shouldAutoSend = autoSendOnCompleteRef.current;
+    autoSendOnCompleteRef.current = false;
+
+    // STT 텍스트 정규화 (구두점/포맷팅 교정) - 항상 실행
+    try {
+      const response = await window.electron.invoke('normalize-stt-text', { text: finalText.trim() });
+      const normalizedText = response.success && response.data?.normalizedText
+        ? response.data.normalizedText
+        : finalText.trim();
+
+      if (shouldAutoSend) {
+        // 자동 전송: 정규화된 텍스트로 직접 메시지 전송
+        // useEffect 의존하지 않고 즉시 전송 (race condition 방지)
+        onSendMessage(normalizedText);
+        setInputText('');
+        resetText();
+        setLocalError(null);
+        stopTimer();
+      } else {
+        // 수동 전송 대기: 정규화된 텍스트를 input에 표시
+        setInputText(normalizedText);
+        resetText();
+        stopTimer();
+      }
+    } catch (error) {
+      console.error('[ChatInput] Text normalization failed:', error);
+      // 정규화 실패 시에도 동일한 로직 적용
+      if (shouldAutoSend) {
+        onSendMessage(finalText.trim());
+        setInputText('');
+        resetText();
+        setLocalError(null);
+        stopTimer();
+      } else {
+        setInputText(finalText.trim());
+        resetText();
+        stopTimer();
+      }
+    } finally {
+      setIsNormalizing(false);
+    }
+  }, [stopDetection, stopRealtimeRecording, resetText, stopTimer, onSendMessage]);
 
   // stopRecording을 ref에 저장 (침묵 감지 콜백에서 참조)
   useEffect(() => {
@@ -155,13 +217,18 @@ export const ChatInput: React.FC<ChatInputProps> = ({
     return () => stopDetection();
   }, [stream, isRecording, startDetection, stopDetection]);
 
+  // 컴포넌트 언마운트 시 STT 리소스 명시적 정리
+  useEffect(() => {
+    return () => {
+      cleanupSTT();
+    };
+  }, [cleanupSTT]);
+
   // 엔터키로 전송 (Shift+Enter는 줄바꿈)
   const handleKeyPress = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      if (!autoSendEnabled) {
-        handleSend();
-      }
+      handleSend();
     }
   };
 
@@ -230,7 +297,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
                 ? '음성을 텍스트로 변환 중...'
                 : '메시지를 입력하거나 음성으로 녹음하세요'
           }
-          disabled={isDisabled}
+          disabled={isDisabled || isNormalizing}
           rows={2}
         />
 
@@ -259,7 +326,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
         <button
           className={styles.sendButton}
           onClick={handleSend}
-          disabled={!inputText.trim() || isDisabled || isRecording || isPlayingTTS}
+          disabled={!inputText.trim() || isDisabled || isRecording || isPlayingTTS || isNormalizing}
           title="메시지 전송"
         >
           {isSending ? '전송 중...' : '보내기 ➤'}

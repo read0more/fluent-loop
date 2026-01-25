@@ -1,4 +1,4 @@
-import { useRef, useCallback } from 'react';
+import { useRef, useCallback, useEffect } from 'react';
 
 /**
  * 자동 전송 타이머 관리 훅
@@ -10,10 +10,7 @@ export interface UseAutoSendReturn {
   resetTimer: () => void;
 }
 
-export const useAutoSend = (
-  enabled: boolean,
-  delay: number
-): UseAutoSendReturn => {
+export const useAutoSend = (enabled: boolean, delay: number): UseAutoSendReturn => {
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const callbackRef = useRef<(() => void) | null>(null);
 
@@ -46,6 +43,13 @@ export const useAutoSend = (
       startTimer(callbackRef.current);
     }
   }, [stopTimer, startTimer]);
+
+  // enabled가 false가 되면 자동으로 타이머 중지
+  useEffect(() => {
+    if (!enabled) {
+      stopTimer();
+    }
+  }, [enabled, stopTimer]);
 
   return { startTimer, stopTimer, resetTimer };
 };

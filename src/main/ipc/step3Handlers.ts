@@ -2,6 +2,7 @@ import { ipcMain, IpcMainInvokeEvent } from 'electron';
 import fs from 'fs';
 import { AudioService } from '../services/AudioService';
 import { STTService } from '../services/STTService';
+import { TextNormalizationService } from '../services/TextNormalizationService';
 import { AppError } from '../errors/AppError';
 import {
   IPCResponse,
@@ -16,6 +17,7 @@ import { getDatabase } from '../database/db';
 // Service instances
 let audioService: AudioService;
 let sttService: STTService;
+let textNormalizationService: TextNormalizationService;
 
 // Step3 recording state management
 let isRecordingStep3 = false;
@@ -48,6 +50,7 @@ export function registerStep3Handlers(): void {
   // Service initialization
   audioService = new AudioService();
   sttService = new STTService();
+  textNormalizationService = new TextNormalizationService();
 
   // Recording handlers
   ipcMain.handle('start-recording-step3', handleStartRecordingStep3);
@@ -235,12 +238,22 @@ async function handleTranscribeRetelling(
     try {
       const sttResult = await sttService.transcribeAudio(filePath, 'en');
       transcribedText = sttResult.text || '';
+
+      // 3. STT 후처리: 구두점/포맷팅 교정
+      if (transcribedText) {
+        try {
+          transcribedText = await textNormalizationService.normalizeText(transcribedText);
+        } catch (normError) {
+          console.error('[Step3] Text normalization failed (using raw STT):', normError);
+          // 정규화 실패해도 원본 STT 텍스트 사용
+        }
+      }
     } catch (sttError) {
       console.error('STT 변환 실패 (녹음은 저장됨):', sttError);
       // STT 실패해도 녹음은 저장되었으므로 계속 진행
     }
 
-    // 3. DB에 리텔링 저장 (기존 것이 있으면 업데이트)
+    // 4. DB에 리텔링 저장 (기존 것이 있으면 업데이트)
     // audio_path는 null로 저장 (STT 변환 후 녹음 파일은 삭제됨)
     const db = getDatabase();
     const existingRetelling = db
@@ -266,7 +279,7 @@ async function handleTranscribeRetelling(
       retellingId = result.lastInsertRowid as number;
     }
 
-    // 4. STT 변환 완료 후 녹음 파일 삭제 (디스크 공간 절약)
+    // 5. STT 변환 완료 후 녹음 파일 삭제 (디스크 공간 절약)
     fs.promises.unlink(filePath).catch((err) => {
       console.error('[Step3] Failed to delete recording after STT:', filePath, err);
     });
