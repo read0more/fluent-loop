@@ -679,7 +679,7 @@ Provide ONLY your message, no additional text or formatting.`;
   }
 
   /**
-   * 대화 첨삭 전용 프롬프트 생성
+   * 대화 첨삭 전용 프롬프트 생성 (2단계 첨삭: 정규화 → 첨삭)
    */
   private buildConversationCorrectionPrompt(
     messages: Message[],
@@ -704,29 +704,43 @@ Provide ONLY your message, no additional text or formatting.`;
 **Full Conversation**:
 ${conversationHistory}
 
-Analyze and correct ONLY the student's messages (marked as [Student]) based on:
-1. **Grammar**: Fix grammatical errors (tense, subject-verb agreement, articles, prepositions, etc.)
-2. **Vocabulary**: Suggest better word choices appropriate for ${cefrLevel} level
-3. **Naturalness**: Make the sentences sound more natural in the conversation context
-4. **Conversation Flow**: Consider the context of the AI's questions when correcting
+**IMPORTANT**: The student's messages are from real-time speech-to-text transcription
+and may lack proper punctuation and capitalization.
+
+For each student message, please perform a 2-step correction:
+
+**Step 1: Normalization (정규화)**
+- Add appropriate punctuation (periods, commas, question marks, exclamation marks)
+- Fix capitalization (sentence starts, proper nouns)
+- Keep the original words unchanged
+- Result goes to the "normalized" field
+
+**Step 2: Correction (첨삭)**
+- Fix grammar errors
+- Suggest better vocabulary (CEFR ${cefrLevel} level)
+- Improve naturalness and fluency
+- Result goes to the "corrected" field
 
 Return ONLY a JSON array with corrections for each student message:
 [
   {
     "messageId": <message_id>,
     "speaker": "user",
-    "original": "...",
-    "corrected": "...",
-    "explanation": "...",
-    "categories": ["grammar", "vocabulary", "naturalness"],
+    "original": "<STT 원본>",
+    "normalized": "<구두점/대소문자 정규화>",
+    "corrected": "<최종 첨삭>",
+    "explanation": "<정규화 및 첨삭 설명>",
+    "categories": ["punctuation", "grammar", "vocabulary", "naturalness"],
     "timestamp": <timestamp>
   },
   ...
 ]
 
 **Guidelines**:
-- If a sentence is already correct, set "corrected" = "original" and "explanation" = "수정이 필요하지 않습니다."
-- "categories" should include only relevant correction types (e.g., only ["grammar"] if no vocabulary/naturalness issues)
+- "normalized" shows the text after adding punctuation/capitalization only
+- "corrected" shows the final version with grammar/vocabulary improvements
+- If the original is already perfect, normalized and corrected can be the same
+- Categories should include "punctuation" if punctuation was added in normalization
 - "explanation" should be concise and in Korean (for ${cefrLevel} learners)
 - Consider the conversation context: responses should make sense in the flow of the dialogue
 - Focus on helping the student improve conversational skills
@@ -768,18 +782,19 @@ JSON Array Output:`;
         throw new Error('Response must be an array');
       }
 
-      // 검증
+      // 검증 (normalized 필드 추가)
       for (const item of parsed) {
         if (
           !item.messageId ||
           !item.original ||
+          !item.normalized ||
           !item.corrected ||
           item.explanation === undefined
         ) {
           throw new AppError(
             ErrorCode.CLAUDE_PARSING_ERROR,
-            'Missing required fields in correction item',
-            'Missing required fields'
+            'Missing required fields in correction item (messageId, original, normalized, corrected, explanation)',
+            'normalized 필드가 누락되었습니다. LLM 응답을 확인하세요.'
           );
         }
         if (!Array.isArray(item.categories)) {
@@ -796,11 +811,12 @@ JSON Array Output:`;
 
       for (const message of allMessages) {
         if (message.speaker === 'ai') {
-          // AI 메시지는 첨삭 없이 원문만
+          // AI 메시지는 첨삭 없이 원문만 (normalized = original)
           results.push({
             messageId: message.id,
             speaker: 'ai',
             original: message.content,
+            normalized: message.content,
             corrected: message.content,
             explanation: '',
             categories: [],
@@ -816,6 +832,7 @@ JSON Array Output:`;
               messageId: message.id,
               speaker: 'user',
               original: correction.original,
+              normalized: correction.normalized,
               corrected: correction.corrected,
               explanation: correction.explanation,
               categories: correction.categories,

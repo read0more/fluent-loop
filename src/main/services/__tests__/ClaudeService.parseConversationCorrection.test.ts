@@ -24,6 +24,7 @@ describe('ClaudeService.parseConversationCorrectionResponse', () => {
           messageId: 1,
           speaker: 'user',
           original: 'I go to school yesterday',
+          normalized: 'I go to school yesterday',
           corrected: 'I went to school yesterday',
           explanation: 'Use past tense',
           categories: ['grammar'],
@@ -53,11 +54,14 @@ describe('ClaudeService.parseConversationCorrectionResponse', () => {
       ];
 
       // Act
-      const result = (service as any).parseConversationCorrectionResponse(
-         
-        sdkJsonOutput,
-        allMessages
-      );
+      const result = (
+        service as typeof service & {
+          parseConversationCorrectionResponse: (
+            output: string,
+            messages: Message[]
+          ) => CorrectedMessage[];
+        }
+      ).parseConversationCorrectionResponse(sdkJsonOutput, allMessages);
 
       // Assert
       expect(result.length).toBe(2);
@@ -76,6 +80,7 @@ describe('ClaudeService.parseConversationCorrectionResponse', () => {
           messageId: 1,
           speaker: 'user',
           original: 'I go to school yesterday',
+          normalized: 'I go to school yesterday',
           corrected: 'I went to school yesterday',
           explanation: 'Use past tense',
           categories: ['grammar'],
@@ -105,11 +110,14 @@ describe('ClaudeService.parseConversationCorrectionResponse', () => {
       ];
 
       // Act
-      const result = (service as any).parseConversationCorrectionResponse(
-         
-        plainJsonOutput,
-        allMessages
-      );
+      const result = (
+        service as typeof service & {
+          parseConversationCorrectionResponse: (
+            output: string,
+            messages: Message[]
+          ) => CorrectedMessage[];
+        }
+      ).parseConversationCorrectionResponse(plainJsonOutput, allMessages);
 
       // Assert
       expect(result.length).toBe(2);
@@ -127,6 +135,7 @@ describe('ClaudeService.parseConversationCorrectionResponse', () => {
     "messageId": 1,
     "speaker": "user",
     "original": "Hello",
+    "normalized": "Hello",
     "corrected": "Hi there",
     "explanation": "More natural",
     "categories": ["naturalness"],
@@ -148,11 +157,14 @@ describe('ClaudeService.parseConversationCorrectionResponse', () => {
       ];
 
       // Act
-      const result = (service as any).parseConversationCorrectionResponse(
-         
-        markdownOutput,
-        allMessages
-      );
+      const result = (
+        service as typeof service & {
+          parseConversationCorrectionResponse: (
+            output: string,
+            messages: Message[]
+          ) => CorrectedMessage[];
+        }
+      ).parseConversationCorrectionResponse(markdownOutput, allMessages);
 
       // Assert
       expect(result.length).toBeGreaterThan(0);
@@ -168,6 +180,7 @@ describe('ClaudeService.parseConversationCorrectionResponse', () => {
           messageId: 1,
           speaker: 'user',
           original: 'Hello',
+          normalized: 'Hello',
           corrected: 'Hi',
           explanation: 'More casual',
           categories: ['naturalness'],
@@ -197,7 +210,14 @@ describe('ClaudeService.parseConversationCorrectionResponse', () => {
       ];
 
       // Act
-      const result = (service as any).parseConversationCorrectionResponse(jsonOutput, allMessages); // eslint-disable-line @typescript-eslint/no-explicit-any
+      const result = (
+        service as typeof service & {
+          parseConversationCorrectionResponse: (
+            output: string,
+            messages: Message[]
+          ) => CorrectedMessage[];
+        }
+      ).parseConversationCorrectionResponse(jsonOutput, allMessages);
 
       // Assert
       const aiMessage = result.find((r: ConversationCorrectionResult) => r.speaker === 'ai');
@@ -217,6 +237,7 @@ describe('ClaudeService.parseConversationCorrectionResponse', () => {
           messageId: 1,
           speaker: 'user',
           original: 'I go to school yesterday',
+          normalized: 'I go to school yesterday',
           corrected: 'I went to school yesterday',
           explanation: 'Use past tense for past actions',
           categories: ['grammar'],
@@ -237,7 +258,14 @@ describe('ClaudeService.parseConversationCorrectionResponse', () => {
       ];
 
       // Act
-      const result = (service as any).parseConversationCorrectionResponse(jsonOutput, allMessages); // eslint-disable-line @typescript-eslint/no-explicit-any
+      const result = (
+        service as typeof service & {
+          parseConversationCorrectionResponse: (
+            output: string,
+            messages: Message[]
+          ) => CorrectedMessage[];
+        }
+      ).parseConversationCorrectionResponse(jsonOutput, allMessages);
 
       // Assert
       expect(result[0].original).toBe('I go to school yesterday');
@@ -254,6 +282,7 @@ describe('ClaudeService.parseConversationCorrectionResponse', () => {
       const invalidOutput = JSON.stringify([
         {
           original: 'Hello',
+          normalized: 'Hello',
           corrected: 'Hi',
           explanation: 'test',
           categories: [],
@@ -273,8 +302,15 @@ describe('ClaudeService.parseConversationCorrectionResponse', () => {
       ];
 
       // Act & Assert
-      expect(
-        () => (service as any).parseConversationCorrectionResponse(invalidOutput, allMessages) // eslint-disable-line @typescript-eslint/no-explicit-any
+      expect(() =>
+        (
+          service as typeof service & {
+            parseConversationCorrectionResponse: (
+              output: string,
+              messages: Message[]
+            ) => CorrectedMessage[];
+          }
+        ).parseConversationCorrectionResponse(invalidOutput, allMessages)
       ).toThrow(AppError);
     });
   });
@@ -286,6 +322,7 @@ describe('ClaudeService.parseConversationCorrectionResponse', () => {
         {
           messageId: 1,
           original: 'Hello',
+          normalized: 'Hello',
           explanation: 'test',
           categories: [],
         },
@@ -304,8 +341,15 @@ describe('ClaudeService.parseConversationCorrectionResponse', () => {
       ];
 
       // Act & Assert
-      expect(
-        () => (service as any).parseConversationCorrectionResponse(invalidOutput, allMessages) // eslint-disable-line @typescript-eslint/no-explicit-any
+      expect(() =>
+        (
+          service as typeof service & {
+            parseConversationCorrectionResponse: (
+              output: string,
+              messages: Message[]
+            ) => CorrectedMessage[];
+          }
+        ).parseConversationCorrectionResponse(invalidOutput, allMessages)
       ).toThrow(AppError);
     });
   });
@@ -317,6 +361,7 @@ describe('ClaudeService.parseConversationCorrectionResponse', () => {
         {
           messageId: 1,
           original: 'Hello',
+          normalized: 'Hello',
           corrected: 'Hi',
           explanation: 'test',
           categories: 'grammar', // Should be array
@@ -336,8 +381,15 @@ describe('ClaudeService.parseConversationCorrectionResponse', () => {
       ];
 
       // Act & Assert
-      expect(
-        () => (service as any).parseConversationCorrectionResponse(invalidOutput, allMessages) // eslint-disable-line @typescript-eslint/no-explicit-any
+      expect(() =>
+        (
+          service as typeof service & {
+            parseConversationCorrectionResponse: (
+              output: string,
+              messages: Message[]
+            ) => CorrectedMessage[];
+          }
+        ).parseConversationCorrectionResponse(invalidOutput, allMessages)
       ).toThrow(AppError);
     });
   });
@@ -361,8 +413,15 @@ describe('ClaudeService.parseConversationCorrectionResponse', () => {
       // const logSpy = vi.spyOn(service as any, 'logClaudeInteraction').mockImplementation(() => {}); // eslint-disable-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars
 
       // Act & Assert
-      expect(
-        () => (service as any).parseConversationCorrectionResponse(invalidOutput, allMessages) // eslint-disable-line @typescript-eslint/no-explicit-any
+      expect(() =>
+        (
+          service as typeof service & {
+            parseConversationCorrectionResponse: (
+              output: string,
+              messages: Message[]
+            ) => CorrectedMessage[];
+          }
+        ).parseConversationCorrectionResponse(invalidOutput, allMessages)
       ).toThrow(AppError);
 
       // Note: 현재 구현에서는 logClaudeInteraction을 호출하지 않음
@@ -378,11 +437,14 @@ describe('ClaudeService.parseConversationCorrectionResponse', () => {
       const allMessages: Message[] = [];
 
       // Act
-      const result = (service as any).parseConversationCorrectionResponse(
-         
-        emptyOutput,
-        allMessages
-      );
+      const result = (
+        service as typeof service & {
+          parseConversationCorrectionResponse: (
+            output: string,
+            messages: Message[]
+          ) => CorrectedMessage[];
+        }
+      ).parseConversationCorrectionResponse(emptyOutput, allMessages);
 
       // Assert
       expect(result.length).toBe(0);
@@ -408,8 +470,15 @@ describe('ClaudeService.parseConversationCorrectionResponse', () => {
       ];
 
       // Act & Assert
-      expect(
-        () => (service as any).parseConversationCorrectionResponse(emptyOutput, allMessages) // eslint-disable-line @typescript-eslint/no-explicit-any
+      expect(() =>
+        (
+          service as typeof service & {
+            parseConversationCorrectionResponse: (
+              output: string,
+              messages: Message[]
+            ) => CorrectedMessage[];
+          }
+        ).parseConversationCorrectionResponse(emptyOutput, allMessages)
       ).toThrow(AppError);
     });
   });
@@ -421,6 +490,7 @@ describe('ClaudeService.parseConversationCorrectionResponse', () => {
         messageId: i * 2 + 1,
         speaker: 'user',
         original: `Message ${i}`,
+        normalized: `Message ${i}`,
         corrected: `Corrected ${i}`,
         explanation: 'test',
         categories: ['grammar'],
@@ -440,11 +510,14 @@ describe('ClaudeService.parseConversationCorrectionResponse', () => {
       }));
 
       // Act
-      const result = (service as any).parseConversationCorrectionResponse(
-         
-        jsonOutput,
-        allMessages
-      );
+      const result = (
+        service as typeof service & {
+          parseConversationCorrectionResponse: (
+            output: string,
+            messages: Message[]
+          ) => CorrectedMessage[];
+        }
+      ).parseConversationCorrectionResponse(jsonOutput, allMessages);
 
       // Assert
       expect(result.length).toBe(100);
@@ -459,6 +532,7 @@ describe('ClaudeService.parseConversationCorrectionResponse', () => {
           messageId: 1,
           speaker: 'user',
           original: 'Hello "World" \n\t',
+          normalized: 'Hello "World" \n\t',
           corrected: "Hi 'World'",
           explanation: 'test',
           categories: [],
@@ -479,7 +553,14 @@ describe('ClaudeService.parseConversationCorrectionResponse', () => {
       ];
 
       // Act
-      const result = (service as any).parseConversationCorrectionResponse(jsonOutput, allMessages); // eslint-disable-line @typescript-eslint/no-explicit-any
+      const result = (
+        service as typeof service & {
+          parseConversationCorrectionResponse: (
+            output: string,
+            messages: Message[]
+          ) => CorrectedMessage[];
+        }
+      ).parseConversationCorrectionResponse(jsonOutput, allMessages);
 
       // Assert
       expect(result[0].original).toContain('"World"');
@@ -494,6 +575,7 @@ describe('ClaudeService.parseConversationCorrectionResponse', () => {
           messageId: 1,
           speaker: 'user',
           original: 'Hello',
+          normalized: 'Hello',
           corrected: 'Hi',
           explanation: 'test',
           categories: [],
@@ -514,7 +596,14 @@ describe('ClaudeService.parseConversationCorrectionResponse', () => {
       ];
 
       // Act
-      const result = (service as any).parseConversationCorrectionResponse(jsonOutput, allMessages); // eslint-disable-line @typescript-eslint/no-explicit-any
+      const result = (
+        service as typeof service & {
+          parseConversationCorrectionResponse: (
+            output: string,
+            messages: Message[]
+          ) => CorrectedMessage[];
+        }
+      ).parseConversationCorrectionResponse(jsonOutput, allMessages);
 
       // Assert
       expect(result.length).toBe(1);
@@ -542,7 +631,14 @@ describe('ClaudeService.parseConversationCorrectionResponse', () => {
 
       // Act & Assert
       try {
-        (service as any).parseConversationCorrectionResponse(invalidJson, allMessages); // eslint-disable-line @typescript-eslint/no-explicit-any
+        (
+          service as typeof service & {
+            parseConversationCorrectionResponse: (
+              output: string,
+              messages: Message[]
+            ) => CorrectedMessage[];
+          }
+        ).parseConversationCorrectionResponse(invalidJson, allMessages);
         expect.fail('Should have thrown an error');
       } catch (error) {
         expect(error).toBeInstanceOf(AppError);

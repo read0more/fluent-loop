@@ -173,7 +173,7 @@ export interface AudioPlaybackState {
 // ==================== Step 4: 첨삭 관련 타입 ====================
 
 // 첨삭 카테고리
-export type CorrectionCategory = 'grammar' | 'vocabulary' | 'naturalness';
+export type CorrectionCategory = 'punctuation' | 'grammar' | 'vocabulary' | 'naturalness';
 
 // 첨삭 결과 (AI 응답)
 export interface CorrectionResult {
@@ -435,6 +435,7 @@ export interface ConversationCorrectionResult {
   messageId: number; // conversation_messages.id
   speaker: 'user' | 'ai';
   original: string;
+  normalized: string; // [신규] 구두점/대소문자 정규화된 텍스트 (AI 메시지는 original과 동일)
   corrected: string; // AI 메시지는 original과 동일
   explanation: string; // AI 메시지는 빈 문자열
   categories: CorrectionCategory[]; // AI 메시지는 빈 배열
