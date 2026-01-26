@@ -55,6 +55,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
     stopRecording: stopRealtimeRecording,
     resetText,
     cleanup: cleanupSTT,
+    waitForStability, // 텍스트 안정화 대기 함수
   } = useRealtimeSTT('en', 2500);
 
   // 자동 전송 훅 (텍스트 입력 후 자동 전송용 - 기존 로직)
@@ -151,6 +152,10 @@ export const ChatInput: React.FC<ChatInputProps> = ({
 
     stopDetection();
 
+    // ★ 핵심: 텍스트가 안정화될 때까지 대기 (Whisper 비동기 처리 완료 보장)
+    console.log('[ChatInput] Waiting for text stabilization...');
+    await waitForStability();
+
     // stopRecording이 마지막 STT 결과까지 포함된 텍스트 반환
     const finalText = await stopRealtimeRecording();
 
@@ -202,7 +207,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
     } finally {
       setIsNormalizing(false);
     }
-  }, [stopDetection, stopRealtimeRecording, resetText, stopTimer, onSendMessage]);
+  }, [stopDetection, stopRealtimeRecording, resetText, stopTimer, onSendMessage, waitForStability]);
 
   // stopRecording을 ref에 저장 (침묵 감지 콜백에서 참조)
   useEffect(() => {

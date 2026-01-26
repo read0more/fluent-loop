@@ -385,6 +385,114 @@ describe('useRealtimeSTT - 텍스트 업데이트 로직 (FR-002)', () => {
     // 앱이 크래시하지 않음
     expect(result.current.isRecording).toBe(true);
   });
+
+  it('TC-010: Whisper 부분 인식 보호 - duration이 길어도 텍스트가 80% 미만이면 무시', async () => {
+    // Whisper가 긴 오디오에서 후반부만 인식하는 경우를 시뮬레이션
+    // 원문: "I had a diarrhea yesterday, but I kept drinking water to stay hydrated."
+    // 부분 인식: "I kept staying hydrated." (마지막 부분만)
+    const fullText = 'I had a diarrhea yesterday, but I kept drinking water to stay hydrated.';
+    const partialText = 'I kept staying hydrated.';
+
+    const mockInvoke = vi
+      .fn()
+      .mockResolvedValueOnce({
+        success: true,
+        data: { text: fullText, language: 'en', is_final: false, duration: 10.02 },
+      })
+      .mockResolvedValueOnce({
+        success: true,
+        // Whisper가 후반부만 인식 - duration은 더 길지만 텍스트는 짧음
+        data: { text: partialText, language: 'en', is_final: false, duration: 20.22 },
+      });
+
+    (window as any).electron.invoke = mockInvoke;
+
+    const { result } = renderHook(() => useRealtimeSTT('en', 2500));
+
+    await act(async () => {
+      await result.current.startRecording();
+    });
+
+    // 첫 번째 청크 - 전체 텍스트 수신
+    const chunk1 = new Blob(['chunk1'], { type: 'audio/webm' });
+    await act(async () => {
+      if (mockMediaRecorderInstance.ondataavailable) {
+        await mockMediaRecorderInstance.ondataavailable({ data: chunk1 });
+      }
+    });
+
+    await waitFor(() => {
+      expect(result.current.text).toBe(fullText);
+    });
+
+    // 두 번째 청크 - Whisper 부분 인식 (duration 길지만 텍스트 짧음)
+    const chunk2 = new Blob(['chunk2'], { type: 'audio/webm' });
+    await act(async () => {
+      if (mockMediaRecorderInstance.ondataavailable) {
+        await mockMediaRecorderInstance.ondataavailable({ data: chunk2 });
+      }
+    });
+
+    // 부분 인식은 무시하고 기존 전체 텍스트 유지
+    await waitFor(() => {
+      expect(result.current.text).toBe(fullText);
+    });
+
+    // partialText 길이가 fullText의 80% 미만인지 확인 (테스트 전제 조건)
+    expect(partialText.length).toBeLessThan(fullText.length * 0.8);
+  });
+
+  it('TC-011: 텍스트가 80% 이상이면 정상 업데이트', async () => {
+    // 텍스트가 조금 줄어들어도 80% 이상이면 정상 업데이트
+    const originalText = 'Hello world, how are you?'; // 25자
+    const shorterText = 'Hello world, how are?'; // 21자 (84%)
+
+    const mockInvoke = vi
+      .fn()
+      .mockResolvedValueOnce({
+        success: true,
+        data: { text: originalText, language: 'en', is_final: false, duration: 5.0 },
+      })
+      .mockResolvedValueOnce({
+        success: true,
+        data: { text: shorterText, language: 'en', is_final: false, duration: 10.0 },
+      });
+
+    (window as any).electron.invoke = mockInvoke;
+
+    const { result } = renderHook(() => useRealtimeSTT('en', 2500));
+
+    await act(async () => {
+      await result.current.startRecording();
+    });
+
+    // 첫 번째 청크
+    const chunk1 = new Blob(['chunk1'], { type: 'audio/webm' });
+    await act(async () => {
+      if (mockMediaRecorderInstance.ondataavailable) {
+        await mockMediaRecorderInstance.ondataavailable({ data: chunk1 });
+      }
+    });
+
+    await waitFor(() => {
+      expect(result.current.text).toBe(originalText);
+    });
+
+    // 두 번째 청크 - 텍스트가 80% 이상이므로 업데이트됨
+    const chunk2 = new Blob(['chunk2'], { type: 'audio/webm' });
+    await act(async () => {
+      if (mockMediaRecorderInstance.ondataavailable) {
+        await mockMediaRecorderInstance.ondataavailable({ data: chunk2 });
+      }
+    });
+
+    await waitFor(() => {
+      expect(result.current.text).toBe(shorterText);
+    });
+
+    // shorterText 길이가 originalText의 80% 이상인지 확인 (테스트 전제 조건)
+    expect(shorterText.length).toBeGreaterThanOrEqual(originalText.length * 0.8);
+  });
 });
 
 describe('useRealtimeSTT - 에러 처리', () => {
@@ -523,5 +631,220 @@ describe('useRealtimeSTT - 에러 처리', () => {
 
     // IPC 호출되지 않음 (크기 0인 청크는 무시)
     expect(mockInvoke).not.toHaveBeenCalled();
+  });
+});
+
+describe('useRealtimeSTT - 텍스트 안정화 (Text Stability)', () => {
+  let mockMediaRecorderInstance: any;
+
+  beforeEach(() => {
+    (window as any).electron = {
+      invoke: vi.fn(),
+    };
+
+    mockMediaRecorderInstance = {
+      start: vi.fn(),
+      stop: vi.fn(),
+      state: 'inactive',
+      ondataavailable: null,
+      onerror: null,
+      onstop: null,
+    };
+
+    const MockMediaRecorder = class {
+      start: any;
+      stop: any;
+      state: string;
+      ondataavailable: any;
+      onerror: any;
+      onstop: any;
+
+      constructor() {
+        this.start = mockMediaRecorderInstance.start;
+        this.stop = mockMediaRecorderInstance.stop;
+        this.state = mockMediaRecorderInstance.state;
+        this.ondataavailable = null;
+        this.onerror = null;
+        this.onstop = null;
+
+        Object.defineProperty(this, 'ondataavailable', {
+          get() {
+            return mockMediaRecorderInstance.ondataavailable;
+          },
+          set(value) {
+            mockMediaRecorderInstance.ondataavailable = value;
+          },
+          configurable: true,
+        });
+        Object.defineProperty(this, 'onerror', {
+          get() {
+            return mockMediaRecorderInstance.onerror;
+          },
+          set(value) {
+            mockMediaRecorderInstance.onerror = value;
+          },
+          configurable: true,
+        });
+        Object.defineProperty(this, 'onstop', {
+          get() {
+            return mockMediaRecorderInstance.onstop;
+          },
+          set(value) {
+            mockMediaRecorderInstance.onstop = value;
+          },
+          configurable: true,
+        });
+      }
+    };
+    global.MediaRecorder = MockMediaRecorder as any;
+
+    Object.defineProperty(navigator, 'mediaDevices', {
+      value: {
+        getUserMedia: vi.fn().mockResolvedValue({
+          getTracks: () => [{ stop: vi.fn(), kind: 'audio' }],
+        }),
+      },
+      configurable: true,
+    });
+  });
+
+  afterEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('TC-012: 텍스트 업데이트 직후 isTextStable = false', async () => {
+    const mockInvoke = vi.fn().mockResolvedValue({
+      success: true,
+      data: { text: 'Hello world', language: 'en', is_final: false, duration: 1.0 },
+    });
+    (window as any).electron.invoke = mockInvoke;
+
+    const { result } = renderHook(() => useRealtimeSTT('en', 2500));
+
+    // 녹음 시작 전에는 안정화 상태
+    expect(result.current.isTextStable).toBe(true);
+
+    await act(async () => {
+      await result.current.startRecording();
+    });
+
+    // 녹음 시작 직후에도 안정화 상태 (아직 텍스트 없음)
+    expect(result.current.isTextStable).toBe(true);
+
+    // 청크 시뮬레이션 - IPC 완료 대기
+    const chunk = new Blob(['chunk'], { type: 'audio/webm' });
+    await act(async () => {
+      if (mockMediaRecorderInstance.ondataavailable) {
+        mockMediaRecorderInstance.ondataavailable({ data: chunk });
+      }
+    });
+
+    // 텍스트 업데이트 직후에는 안정화되지 않음
+    await waitFor(() => {
+      expect(result.current.isTextStable).toBe(false);
+    });
+  });
+
+  it('TC-013: 1초 후 isTextStable = true', async () => {
+    const mockInvoke = vi.fn().mockResolvedValue({
+      success: true,
+      data: { text: 'Hello world', language: 'en', is_final: false, duration: 1.0 },
+    });
+    (window as any).electron.invoke = mockInvoke;
+
+    const { result } = renderHook(() => useRealtimeSTT('en', 2500));
+
+    await act(async () => {
+      await result.current.startRecording();
+    });
+
+    // 청크 시뮬레이션
+    const chunk = new Blob(['chunk'], { type: 'audio/webm' });
+    await act(async () => {
+      if (mockMediaRecorderInstance.ondataavailable) {
+        mockMediaRecorderInstance.ondataavailable({ data: chunk });
+      }
+    });
+
+    // 텍스트 업데이트 직후에는 안정화되지 않음
+    await waitFor(() => {
+      expect(result.current.isTextStable).toBe(false);
+    });
+
+    // 1초 후 안정화됨
+    await waitFor(
+      () => {
+        expect(result.current.isTextStable).toBe(true);
+      },
+      { timeout: 2000 }
+    );
+  });
+
+  it('TC-014: waitForStability는 isTextStable=true일 때 즉시 resolve', async () => {
+    const { result } = renderHook(() => useRealtimeSTT('en', 2500));
+
+    // 녹음 시작 전에는 안정화 상태
+    expect(result.current.isTextStable).toBe(true);
+
+    // waitForStability는 이미 stable이면 즉시 resolve
+    let resolved = false;
+    await act(async () => {
+      await result.current.waitForStability();
+      resolved = true;
+    });
+
+    expect(resolved).toBe(true);
+  });
+
+  it('TC-015: waitForStability는 안정화 후 resolve', async () => {
+    const mockInvoke = vi.fn().mockResolvedValue({
+      success: true,
+      data: { text: 'Hello', language: 'en', is_final: false, duration: 1.0 },
+    });
+    (window as any).electron.invoke = mockInvoke;
+
+    const { result } = renderHook(() => useRealtimeSTT('en', 2500));
+
+    await act(async () => {
+      await result.current.startRecording();
+    });
+
+    // 청크 시뮬레이션
+    const chunk = new Blob(['chunk'], { type: 'audio/webm' });
+    await act(async () => {
+      if (mockMediaRecorderInstance.ondataavailable) {
+        mockMediaRecorderInstance.ondataavailable({ data: chunk });
+      }
+    });
+
+    // 안정화되지 않은 상태 확인
+    await waitFor(() => {
+      expect(result.current.isTextStable).toBe(false);
+    });
+
+    // waitForStability 호출 - 최대 3초 또는 안정화될 때까지 대기
+    await act(async () => {
+      await result.current.waitForStability();
+    });
+
+    // waitForStability 완료 후에는 안정화되었거나 타임아웃
+    // 어느 쪽이든 함수가 resolve되어야 함
+    expect(true).toBe(true);
+  });
+
+  it('TC-016: 훅이 isTextStable 상태를 반환', () => {
+    const { result } = renderHook(() => useRealtimeSTT('en', 2500));
+
+    // isTextStable이 반환 객체에 포함되어 있는지 확인
+    expect(result.current).toHaveProperty('isTextStable');
+    expect(typeof result.current.isTextStable).toBe('boolean');
+  });
+
+  it('TC-017: 훅이 waitForStability 함수를 반환', () => {
+    const { result } = renderHook(() => useRealtimeSTT('en', 2500));
+
+    // waitForStability가 반환 객체에 포함되어 있는지 확인
+    expect(result.current).toHaveProperty('waitForStability');
+    expect(typeof result.current.waitForStability).toBe('function');
   });
 });

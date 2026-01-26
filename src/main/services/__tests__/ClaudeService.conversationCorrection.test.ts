@@ -147,6 +147,7 @@ describe('ClaudeService - Step 6: correctConversation()', () => {
           "messageId": 2,
           "speaker": "user",
           "original": "I go park.",
+          "normalized": "I go park.",
           "corrected": "I went to the park.",
           "explanation": "과거형 사용, 'the' 추가",
           "categories": ["grammar"],
@@ -204,7 +205,7 @@ describe('ClaudeService - Step 6: correctConversation()', () => {
     it('should handle markdown code blocks', () => {
       // Arrange
       const mockResponse =
-        '```json\n[{"messageId":2,"speaker":"user","original":"Test","corrected":"Test","explanation":"OK","categories":[],"timestamp":5}]\n```';
+        '```json\n[{"messageId":2,"speaker":"user","original":"Test","normalized":"Test","corrected":"Test","explanation":"OK","categories":[],"timestamp":5}]\n```';
 
       const allMessages: Message[] = [
         {
@@ -290,6 +291,7 @@ describe('ClaudeService - Step 6: correctConversation()', () => {
         "messageId": 2,
         "speaker": "user",
         "original": "I can't go!",
+        "normalized": "I can't go!",
         "corrected": "I can't go!",
         "explanation": "수정 불필요",
         "categories": [],
@@ -336,6 +338,7 @@ describe('ClaudeService - Step 6: correctConversation()', () => {
         "messageId": 2,
         "speaker": "user",
         "original": "I like books.",
+        "normalized": "I like books.",
         "corrected": "I like books.",
         "explanation": "수정이 필요하지 않습니다.",
         "categories": [],
@@ -392,6 +395,7 @@ describe('ClaudeService - Step 6: correctConversation()', () => {
         "messageId": 2,
         "speaker": "user",
         "original": "I'm happy! What's new?",
+        "normalized": "I'm happy! What's new?",
         "corrected": "I'm happy! What's new?",
         "explanation": "Perfect!",
         "categories": [],
@@ -452,6 +456,7 @@ describe('ClaudeService - Step 6: correctConversation()', () => {
         "messageId": 2,
         "speaker": "user",
         "original": "Test",
+        "normalized": "Test",
         "corrected": "Test",
         "categories": []
       }]`;
@@ -480,6 +485,7 @@ describe('ClaudeService - Step 6: correctConversation()', () => {
         "messageId": 2,
         "speaker": "user",
         "original": "Test",
+        "normalized": "Test",
         "corrected": "Test",
         "explanation": "OK",
         "categories": "grammar",
