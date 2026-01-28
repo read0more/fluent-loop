@@ -181,6 +181,67 @@ export const RetellingPage: React.FC = () => {
     }
   }, []);
 
+  /**
+   * 녹음 상태 및 리소스 정리
+   * - Timer 중지 시 호출
+   * - MediaRecorder 정리
+   * - MediaStream tracks 중지
+   * - refs 초기화
+   */
+  const cleanupRecording = useCallback(() => {
+    console.log('[Cleanup] Starting recording cleanup');
+
+    try {
+      // MediaRecorder 정리
+      if (mediaRecorderRef.current) {
+        const recorder = mediaRecorderRef.current;
+
+        // MediaRecorder 상태 확인 후 정리
+        if (recorder.state !== 'inactive') {
+          try {
+            recorder.stop();
+          } catch (error) {
+            console.warn('[Cleanup] MediaRecorder.stop() failed:', error);
+          }
+        }
+
+        // MediaStream tracks 중지 (마이크 권한 해제)
+        try {
+          recorder.stream.getTracks().forEach((track) => {
+            track.stop();
+            console.log('[Cleanup] Stopped track:', track.kind);
+          });
+        } catch (error) {
+          console.warn('[Cleanup] Failed to stop stream tracks:', error);
+        }
+
+        mediaRecorderRef.current = null;
+      }
+
+      // 녹음 데이터 초기화
+      audioChunksRef.current = [];
+      recordingStartTimeRef.current = null;
+
+      // UI 상태 업데이트
+      setState((prev) => ({
+        ...prev,
+        isRecording: false,
+      }));
+
+      console.log('[Cleanup] Recording cleanup completed');
+    } catch (error) {
+      // 최상위 에러 핸들러
+      console.error('[Cleanup] Unexpected error during cleanup:', error);
+
+      // 최소한의 상태 정리
+      setState((prev) => ({
+        ...prev,
+        isRecording: false,
+        error: '녹음 정리 중 오류가 발생했습니다.',
+      }));
+    }
+  }, []);
+
   // 녹음 중지 및 STT 변환
   const stopRecordingAndTranscribe = useCallback(async () => {
     if (!mediaRecorderRef.current || !state.topic) return;
@@ -424,6 +485,7 @@ export const RetellingPage: React.FC = () => {
                 duration={DURATIONS[state.currentTimerStep]}
                 label={`${state.currentTimerStep === 1 ? '3분' : state.currentTimerStep === 2 ? '2분' : '1분'} 타이머`}
                 onStart={startRecording}
+                onStop={cleanupRecording}
                 onComplete={handleTimerComplete}
                 onManualComplete={handleTimerComplete}
                 showCompleteButton={true}
