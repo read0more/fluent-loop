@@ -7,6 +7,7 @@ export interface TimerProps {
   duration: number;
   autoStart?: boolean;
   onStart?: () => void;
+  onStop?: () => void;
   onComplete?: () => void;
   onManualComplete?: () => void;
   onTick?: (remaining: number) => void;
@@ -34,6 +35,7 @@ export const Timer: React.FC<TimerProps> = ({
   duration,
   autoStart = false,
   onStart,
+  onStop,
   onComplete,
   onManualComplete,
   onTick,
@@ -139,7 +141,12 @@ export const Timer: React.FC<TimerProps> = ({
       startTime: null,
       pausedTime: 0,
     });
-  }, [duration]);
+
+    // Call onStop callback
+    if (onStop) {
+      onStop();
+    }
+  }, [duration, onStop]);
 
   // Manual complete - user clicks complete button
   const manualComplete = useCallback(() => {
